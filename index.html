@@ -1,0 +1,181 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#316b62" />
+    <title>离线书架</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Pocket Shelf</p>
+          <h1>离线书架</h1>
+        </div>
+        <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
+      </header>
+
+      <main class="layout">
+        <aside class="panel library-panel" aria-label="书架">
+          <form class="import-box" id="importForm">
+            <label for="sourceUrl">原站链接</label>
+            <div class="url-row">
+              <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://作品站点/works/..." autocomplete="off" />
+              <button type="submit">保存</button>
+            </div>
+            <button class="ghost-button" type="button" id="manualOpen">手动导入</button>
+            <label class="file-import">
+              <span>导入 HTML 文件</span>
+              <input id="htmlFileInput" type="file" accept=".html,.htm,text/html" />
+            </label>
+            <p class="helper-text">手机推荐：在 原站 点 Download → HTML，再回这里导入文件。</p>
+            <p class="status" id="importStatus" role="status"></p>
+          </form>
+
+          <section class="folder-tools">
+            <div class="section-title">
+              <h2>文件夹</h2>
+              <button class="tiny-button" id="newFolderButton" title="新建文件夹" aria-label="新建文件夹">＋</button>
+            </div>
+            <div class="folder-list" id="folderList"></div>
+          </section>
+
+          <section class="sync-tools">
+            <div class="section-title">
+              <h2>备份</h2>
+            </div>
+            <div class="backup-actions">
+              <button class="ghost-button" type="button" id="exportLibraryButton">导出书架</button>
+              <label class="file-import compact-file-import">
+                <span>导入书架</span>
+                <input id="libraryFileInput" type="file" accept=".json,application/json" />
+              </label>
+            </div>
+            <p class="helper-text">电脑抓取后导出书架，把 JSON 文件发到手机导入。</p>
+          </section>
+
+          <section class="search-tools">
+            <label for="searchInput">搜索</label>
+            <input id="searchInput" type="search" placeholder="标题、作者、CP、备注" />
+          </section>
+
+          <section class="work-list" id="workList" aria-label="作品列表"></section>
+        </aside>
+
+        <article class="reader-panel" id="readerPanel">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-mark">原站</div>
+            <h2>把想读的作品收进来</h2>
+            <p>作品会保存在这台设备的浏览器里，断网后也能打开。你可以按 CP、坑位、阅读状态或任何习惯建立文件夹。</p>
+          </div>
+
+          <div class="reader hidden" id="reader">
+            <div class="reader-actions">
+              <button class="ghost-button" id="backToList">书架</button>
+              <div>
+                <button class="ghost-button square-button" id="fontDecrease" title="缩小字号" aria-label="缩小字号">A-</button>
+                <button class="ghost-button square-button" id="fontIncrease" title="放大字号" aria-label="放大字号">A+</button>
+                <button class="ghost-button" id="highlightButton">高亮</button>
+                <button class="ghost-button" id="editMetaButton">整理</button>
+                <button class="danger-button" id="deleteWorkButton">删除</button>
+              </div>
+            </div>
+
+            <header class="work-header">
+              <p id="workFolder" class="work-folder"></p>
+              <h2 id="workTitle"></h2>
+              <p id="workAuthor"></p>
+              <div class="tag-row" id="workTags"></div>
+            </header>
+
+            <section class="chapter-strip">
+              <button class="ghost-button" id="prevChapter">上一章</button>
+              <button class="ghost-button chapter-current" id="openChapterDialog">目录</button>
+              <button class="ghost-button" id="nextChapter">下一章</button>
+            </section>
+
+            <section class="metadata-block" id="metadataBlock"></section>
+            <section class="notes-block">
+              <label for="noteInput">我的备注</label>
+              <textarea id="noteInput" placeholder="读后感、雷点提醒、名场面、进度……"></textarea>
+            </section>
+            <section class="summary-block" id="summaryBlock"></section>
+            <h3 class="chapter-heading" id="chapterTitle"></h3>
+            <section class="work-content userstuff" id="workContent"></section>
+          </div>
+        </article>
+      </main>
+    </div>
+
+    <nav class="reading-bar hidden" id="readingBar" aria-label="阅读进度">
+      <button class="ghost-button" id="barTocButton">目录</button>
+      <input id="progressRange" type="range" min="0" max="1000" value="0" />
+      <span id="progressText">0%</span>
+      <button class="ghost-button" id="bookmarkButton">书签</button>
+    </nav>
+
+    <dialog id="chapterDialog">
+      <div class="dialog-card chapter-dialog-card">
+        <div class="dialog-head">
+          <h2>阅读导航</h2>
+          <button class="ghost-button" id="closeChapterDialog">关闭</button>
+        </div>
+        <p class="chapter-progress" id="chapterProgressText"></p>
+        <h3>章节</h3>
+        <div class="chapter-list" id="chapterList"></div>
+        <h3>书签</h3>
+        <div class="bookmark-list" id="bookmarkList"></div>
+      </div>
+    </dialog>
+
+    <dialog id="folderDialog">
+      <form method="dialog" class="dialog-card" id="folderForm">
+        <h2>新建文件夹</h2>
+        <label for="folderName">名称</label>
+        <input id="folderName" required maxlength="40" placeholder="例如：授翻、Steve/Bucky、未读" />
+        <menu>
+          <button value="cancel" class="ghost-button">取消</button>
+          <button value="save">保存</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="metaDialog">
+      <form method="dialog" class="dialog-card" id="metaForm">
+        <h2>整理作品</h2>
+        <label for="metaFolder">文件夹</label>
+        <select id="metaFolder"></select>
+        <label for="metaCustomTags">自定义标签</label>
+        <input id="metaCustomTags" placeholder="用逗号分隔，比如 HE, 长篇, 已读" />
+        <menu>
+          <button value="cancel" class="ghost-button">取消</button>
+          <button value="save">保存</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="manualDialog">
+      <form method="dialog" class="dialog-card manual-card" id="manualForm">
+        <h2>手动导入</h2>
+        <label for="manualTitle">标题</label>
+        <input id="manualTitle" required />
+        <label for="manualAuthor">作者</label>
+        <input id="manualAuthor" />
+        <label for="manualUrl">原链接</label>
+        <input id="manualUrl" type="url" />
+        <label for="manualContent">正文</label>
+        <textarea id="manualContent" required placeholder="如果在线网页不能直接读取原站，可以先把正文粘贴进来。"></textarea>
+        <menu>
+          <button value="cancel" class="ghost-button">取消</button>
+          <button value="save">保存</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
