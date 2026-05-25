@@ -342,8 +342,11 @@ async function importFromSource(url) {
     status.textContent = "已经保存到本机书架。";
     $("#sourceUrl").value = "";
   } catch (error) {
-    if (error.message === "STATIC_PAGE" || location.protocol === "https:" || location.protocol === "file:") {
-      throw new Error("这个在线网页可以离线阅读和整理，但不能直接跨站读取原站。请点“手动导入”或“导入 HTML 文件”。");
+    if (error.message === "STATIC_PAGE") {
+      throw new Error("这个网页还没有连接到导入后端。请上传包含 Render 地址的新版 app.js。");
+    }
+    if (error instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(error.message)) {
+      throw new Error("导入后端暂时没连上。Render 第一次启动可能要等 30 秒左右；如果一直这样，请确认 Render 服务已部署并在运行。");
     }
     throw error;
   }
