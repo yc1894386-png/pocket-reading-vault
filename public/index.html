@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#316b62" />
-    <title>AO3 离线书架</title>
+    <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
@@ -13,7 +13,7 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">AO3 Offline Shelf</p>
+          <p class="eyebrow">Pocket Shelf</p>
           <h1>离线书架</h1>
         </div>
         <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
@@ -22,9 +22,9 @@
       <main class="layout">
         <aside class="panel library-panel" aria-label="书架">
           <form class="import-box" id="importForm">
-            <label for="ao3Url">AO3 链接</label>
+            <label for="sourceUrl">原站链接</label>
             <div class="url-row">
-              <input id="ao3Url" name="ao3Url" type="url" placeholder="https://archiveofourown.org/works/..." autocomplete="off" />
+              <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://作品站点/works/..." autocomplete="off" />
               <button type="submit">保存</button>
             </div>
             <button class="ghost-button" type="button" id="manualOpen">手动导入</button>
@@ -32,7 +32,7 @@
               <span>导入 HTML 文件</span>
               <input id="htmlFileInput" type="file" accept=".html,.htm,text/html" />
             </label>
-            <p class="helper-text">手机推荐：在 AO3 点 Download → HTML，再回这里导入文件。</p>
+            <p class="helper-text">手机推荐：在 原站 点 Download → HTML，再回这里导入文件。</p>
             <p class="status" id="importStatus" role="status"></p>
           </form>
 
@@ -68,7 +68,7 @@
 
         <article class="reader-panel" id="readerPanel">
           <div class="empty-state" id="emptyState">
-            <div class="empty-mark">AO3</div>
+            <div class="empty-mark">原站</div>
             <h2>把想读的作品收进来</h2>
             <p>作品会保存在这台设备的浏览器里，断网后也能打开。你可以按 CP、坑位、阅读状态或任何习惯建立文件夹。</p>
           </div>
@@ -168,7 +168,7 @@
         <label for="manualUrl">原链接</label>
         <input id="manualUrl" type="url" />
         <label for="manualContent">正文</label>
-        <textarea id="manualContent" required placeholder="如果在线网页不能直接读取 AO3，可以先把正文粘贴进来。"></textarea>
+        <textarea id="manualContent" required placeholder="如果在线网页不能直接读取原站，可以先把正文粘贴进来。"></textarea>
         <menu>
           <button value="cancel" class="ghost-button">取消</button>
           <button value="save">保存</button>

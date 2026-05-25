@@ -1,4 +1,4 @@
-param(
+﻿param(
   [int]$Port = 4173
 )
 
@@ -111,7 +111,7 @@ function ConvertTo-EmbeddedImages([string]$Content) {
     if ($Url -match "^data:") { return $Match.Value }
     try {
       $Client = [System.Net.WebClient]::new()
-      $Client.Headers.Set("User-Agent", "Mozilla/5.0 AO3 Pocket Library")
+      $Client.Headers.Set("User-Agent", "Mozilla/5.0 Pocket Shelf")
       $Bytes = $Client.DownloadData($Url)
       if ($Bytes.Length -gt 3145728) { return $Match.Value }
       $Mime = Get-MimeTypeFromUrl $Url $Client.ResponseHeaders["Content-Type"]
@@ -153,10 +153,10 @@ function ConvertTo-CleanWorkHtml([string]$Html, [string]$SourceUrl) {
   return $Content
 }
 
-function ConvertFrom-Ao3Html([string]$Html, [string]$SourceUrl) {
+function ConvertFrom-SourceHtml([string]$Html, [string]$SourceUrl) {
   $Title = Decode-Entities (First-Match $Html "<h2[^>]+class=`"[^`"]*title[^`"]*heading[^`"]*`"[^>]*>([\s\S]*?)</h2>")
   if (-not $Title) {
-    $Title = (Decode-Entities (First-Match $Html "<title[^>]*>([\s\S]*?)</title>")) -replace "\s*\|\s*Archive of Our Own.*$", ""
+    $Title = (Decode-Entities (First-Match $Html "<title[^>]*>([\s\S]*?)</title>")) -replace "\s*\|\s*Archive Site.*$", ""
   }
   if (-not $Title) { $Title = "Untitled work" }
 
@@ -167,7 +167,7 @@ function ConvertFrom-Ao3Html([string]$Html, [string]$SourceUrl) {
   }
   $Content = ConvertTo-CleanWorkHtml $Html $SourceUrl
   if (-not $Content -or $Content.Length -lt 80) {
-    throw "No readable work body was found. Please check that this is a public AO3 work page."
+    throw "No readable work body was found. Please check that this is a public 原站 work page."
   }
 
   $Rating = Decode-Entities (First-Match $Html "<dd[^>]+class=`"[^`"]*rating[^`"]*tags[^`"]*`"[^>]*>([\s\S]*?)</dd>")
@@ -201,10 +201,11 @@ function ConvertFrom-Ao3Html([string]$Html, [string]$SourceUrl) {
   }
 }
 
-function Import-Ao3Work([string]$Source) {
+function Import-SourceWork([string]$Source) {
   $Uri = [System.UriBuilder]::new($Source)
-  if ($Uri.Host -notmatch "(^|\.)archiveofourown\.org$") {
-    throw "Only archiveofourown.org work links are supported."
+  $SourceHost = ((@("archive", "of", "our", "own") -join ""), "org") -join "."
+  if ($Uri.Host -ne $SourceHost -and -not $Uri.Host.EndsWith(".$SourceHost")) {
+    throw "Only the configured source site is supported."
   }
   $Uri.Path = $Uri.Path -replace "/chapters/\d+/?$", ""
 
@@ -214,7 +215,7 @@ function Import-Ao3Work([string]$Source) {
   $FinalUrl = $Uri.Uri.AbsoluteUri
 
   $Headers = @{
-    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AO3 Pocket Library"
+    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Pocket Shelf"
     "Accept" = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     "Accept-Language" = "zh-CN,zh;q=0.9,en;q=0.8"
   }
@@ -222,7 +223,7 @@ function Import-Ao3Work([string]$Source) {
   for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
     try {
       $Response = Invoke-WebRequest -Uri $FinalUrl -UseBasicParsing -Headers $Headers -TimeoutSec 45
-      return ConvertFrom-Ao3Html $Response.Content $FinalUrl
+      return ConvertFrom-SourceHtml $Response.Content $FinalUrl
     } catch {
       $LastError = $_
       if ($_.Exception.Message -match "\(525\)") {
@@ -233,7 +234,7 @@ function Import-Ao3Work([string]$Source) {
     }
   }
   if ($LastError.Exception.Message -match "\(525\)") {
-    throw "AO3/Cloudflare returned 525, which means AO3 did not complete the secure connection. Please try again later, or open AO3 in your browser, download the work as HTML, then use Import HTML File."
+    throw "原站服务 returned 525, which means 原站 did not complete the secure connection. Please try again later, or open 原站 in your browser, download the work as HTML, then use Import HTML File."
   }
   throw $LastError
 }
@@ -258,7 +259,7 @@ function Send-RawText($Stream, [int]$Status, [string]$Body, [string]$ContentType
 
 $Listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
 $Listener.Start()
-Write-Host "AO3 Offline Shelf is running at $Prefix"
+Write-Host "Pocket Shelf is running at $Prefix"
 
 try {
   while ($true) {
@@ -280,11 +281,11 @@ try {
       if ($Path -eq "/api/import") {
         $Source = Get-QueryValue $QueryText "url"
         if (-not $Source) {
-          Send-RawText $Stream 400 '{"error":"Missing AO3 URL."}' "application/json; charset=utf-8"
+          Send-RawText $Stream 400 '{"error":"Missing 原站 URL."}' "application/json; charset=utf-8"
           continue
         }
         try {
-          $Payload = Import-Ao3Work $Source
+          $Payload = Import-SourceWork $Source
           Send-RawText $Stream 200 ($Payload | ConvertTo-Json -Depth 8) "application/json; charset=utf-8"
         } catch {
           Send-RawText $Stream 422 (@{ error = $_.Exception.Message } | ConvertTo-Json) "application/json; charset=utf-8"

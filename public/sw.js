@@ -1,4 +1,4 @@
-const CACHE_NAME = "ao3-offline-shelf-v5";
+﻿const CACHE_NAME = "pocket-reading-vault-v5";
 const ASSETS = [
   "./",
   "./index.html",

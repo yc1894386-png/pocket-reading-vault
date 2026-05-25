@@ -1,4 +1,4 @@
-const DB_NAME = "ao3-pocket-library";
+﻿const DB_NAME = "pocket-reading-vault";
 const DB_VERSION = 1;
 const STORE = "state";
 
@@ -277,12 +277,12 @@ function downloadTextFile(filename, content, type = "application/json") {
 function exportLibrary() {
   const payload = {
     exportedAt: new Date().toISOString(),
-    app: "ao3-pocket-library",
+    app: "pocket-reading-vault",
     version: 1,
     state
   };
   const date = new Date().toISOString().slice(0, 10);
-  downloadTextFile(`ao3-library-${date}.json`, JSON.stringify(payload, null, 2));
+  downloadTextFile(`reading-vault-${date}.json`, JSON.stringify(payload, null, 2));
 }
 
 async function importLibraryFile(file) {
@@ -326,9 +326,9 @@ async function addWork(work) {
   renderAll();
 }
 
-async function importFromAo3(url) {
+async function importFromSource(url) {
   const status = $("#importStatus");
-  status.textContent = "正在读取 AO3……";
+  status.textContent = "正在读取原站……";
   try {
     const response = await fetch(`./api/import?url=${encodeURIComponent(url)}`, {
       headers: { accept: "application/json" }
@@ -339,10 +339,10 @@ async function importFromAo3(url) {
     if (!response.ok) throw new Error(payload.error || "导入失败。");
     await addWork(payload);
     status.textContent = "已经保存到本机书架。";
-    $("#ao3Url").value = "";
+    $("#sourceUrl").value = "";
   } catch (error) {
     if (error.message === "STATIC_PAGE" || location.protocol === "https:" || location.protocol === "file:") {
-      throw new Error("这个在线网页可以离线阅读和整理，但不能直接跨站读取 AO3。请点“手动导入”或“导入 HTML 文件”。");
+      throw new Error("这个在线网页可以离线阅读和整理，但不能直接跨站读取原站。请点“手动导入”或“导入 HTML 文件”。");
     }
     throw error;
   }
@@ -355,19 +355,19 @@ function plainTextToHtml(text) {
     .join("");
 }
 
-function parseAo3Html(html, sourceUrl = "") {
+function parseWorkHtml(html, sourceUrl = "") {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const text = (selector) => doc.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim() || "";
   const tags = (selector) => [...doc.querySelectorAll(`${selector} a`)].map((item) => item.textContent.trim()).filter(Boolean);
   const chapters = doc.querySelector("#chapters");
-  if (!chapters) throw new Error("这个 HTML 里没有找到 AO3 正文。请下载作品的 Entire Work / HTML 文件。");
+  if (!chapters) throw new Error("这个 HTML 里没有找到 正文。请下载作品的 Entire Work / HTML 文件。");
   chapters.querySelectorAll("script, style").forEach((node) => node.remove());
   chapters.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src");
     if (src && sourceUrl) img.src = new URL(src, sourceUrl).toString();
   });
   return {
-    title: text("h2.title.heading") || text("title").replace(/\s*\|\s*Archive of Our Own.*$/i, "") || "未命名作品",
+    title: text("h2.title.heading") || text("title").replace(/\s*\|\s*Archive Site.*$/i, "") || "未命名作品",
     author: text("h3.byline.heading") || "未知作者",
     sourceUrl,
     summaryHtml: doc.querySelector("blockquote.userstuff.summary")?.innerHTML || "",
@@ -519,10 +519,10 @@ async function boot() {
 
 $("#importForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const url = $("#ao3Url").value.trim();
+  const url = $("#sourceUrl").value.trim();
   if (!url) return;
   try {
-    await importFromAo3(url);
+    await importFromSource(url);
   } catch (error) {
     $("#importStatus").textContent = error.message;
   }
@@ -685,7 +685,7 @@ $("#htmlFileInput").addEventListener("change", async (event) => {
   try {
     $("#importStatus").textContent = "正在读取 HTML 文件……";
     const html = await file.text();
-    await addWork(parseAo3Html(html));
+    await addWork(parseWorkHtml(html));
     $("#importStatus").textContent = "已经从 HTML 文件保存到书架。";
   } catch (error) {
     $("#importStatus").textContent = error.message;
