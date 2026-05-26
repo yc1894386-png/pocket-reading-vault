@@ -330,6 +330,16 @@ function setCloudStatus(message) {
 
 function renderCloudPanel() {
   const signedIn = Boolean(cloudSession?.user);
+  if (!supabase) {
+    $("#cloudEmail").disabled = true;
+    $("#cloudLoginButton").classList.remove("hidden");
+    $("#cloudLogoutButton").classList.add("hidden");
+    $("#cloudUploadButton").disabled = true;
+    $("#cloudDownloadButton").disabled = true;
+    $("#cloudUser").textContent = "云端暂不可用";
+    setCloudStatus("云端模块没加载成功，但本机导入和阅读可以继续用。");
+    return;
+  }
   $("#cloudEmail").disabled = signedIn;
   $("#cloudLoginButton").classList.toggle("hidden", signedIn);
   $("#cloudLogoutButton").classList.toggle("hidden", !signedIn);
@@ -562,14 +572,19 @@ function isPagedMode() {
 function pageStepRatio() {
   const content = $("#workContent");
   const max = Math.max(1, content.scrollWidth - content.clientWidth);
-  return Math.max(0.02, content.clientWidth / max);
+  const gap = parseFloat(getComputedStyle(content).columnGap) || 0;
+  return Math.max(0.02, (content.clientWidth + gap) / max);
 }
 
 function turnPage(delta) {
   const work = activeWork();
   if (!work || !isPagedMode()) return;
-  const next = Math.max(0, Math.min(1, chapterScrollRatio() + pageStepRatio() * delta));
-  scrollToChapterRatio(next);
+  const content = $("#workContent");
+  const gap = parseFloat(getComputedStyle(content).columnGap) || 0;
+  const step = content.clientWidth + gap;
+  const max = Math.max(0, content.scrollWidth - content.clientWidth);
+  const next = Math.max(0, Math.min(max, content.scrollLeft + step * delta));
+  content.scrollTo({ left: next, behavior: "smooth" });
   persistProgress();
 }
 
@@ -594,9 +609,10 @@ function updatePageCount() {
   const count = $("#readerPageCount");
   if (!work || !count) return;
   const content = $("#workContent");
-  const max = Math.max(1, content.scrollWidth - content.clientWidth);
-  const total = isPagedMode() ? Math.max(1, Math.round(content.scrollWidth / Math.max(1, content.clientWidth))) : 1;
-  const current = isPagedMode() ? Math.min(total, Math.max(1, Math.round(content.scrollLeft / Math.max(1, content.clientWidth)) + 1)) : 1;
+  const gap = parseFloat(getComputedStyle(content).columnGap) || 0;
+  const step = Math.max(1, content.clientWidth + gap);
+  const total = isPagedMode() ? Math.max(1, Math.ceil((content.scrollWidth + gap) / step)) : 1;
+  const current = isPagedMode() ? Math.min(total, Math.max(1, Math.round(content.scrollLeft / step) + 1)) : 1;
   count.textContent = `${current} / ${total}`;
 }
 
@@ -697,21 +713,29 @@ async function addHighlightFromSelection() {
 }
 
 async function boot() {
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch {
+    supabase = null;
+  }
   db = await openDb();
   state = { ...defaultState, ...(await dbGet("library") || {}) };
   state.works = (state.works || []).map(normalizeWork);
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   renderAll();
-  await refreshCloudSession({ initial: true });
-  supabase.auth.onAuthStateChange(async (_event, session) => {
-    cloudSession = session;
+  if (supabase) {
+    await refreshCloudSession({ initial: true });
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      cloudSession = session;
+      renderCloudPanel();
+      if (session?.user) await loadCloudIntoLocal({ merge: true });
+      else setCloudStatus("已退出云端。");
+    });
+  } else {
     renderCloudPanel();
-    if (session?.user) await loadCloudIntoLocal({ merge: true });
-    else setCloudStatus("已退出云端。");
-  });
+  }
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }
@@ -739,6 +763,10 @@ $("#cloudPanelButton").addEventListener("click", () => {
 });
 
 $("#cloudLoginButton").addEventListener("click", async () => {
+  if (!supabase) {
+    setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
+    return;
+  }
   const email = $("#cloudEmail").value.trim();
   if (!email) {
     setCloudStatus("先输入邮箱。");
@@ -753,6 +781,7 @@ $("#cloudLoginButton").addEventListener("click", async () => {
 });
 
 $("#cloudLogoutButton").addEventListener("click", async () => {
+  if (!supabase) return;
   await supabase.auth.signOut();
   cloudSession = null;
   renderCloudPanel();
@@ -929,8 +958,8 @@ $("#workContent").addEventListener("click", (event) => {
   }
   const rect = $("#workContent").getBoundingClientRect();
   const x = (event.clientX - rect.left) / Math.max(1, rect.width);
-  if (x < 0.34) turnPage(-1);
-  else if (x > 0.66) turnPage(1);
+  if (x < 0.25) turnPage(-1);
+  else if (x > 0.75) turnPage(1);
   else setControlsOpen(!controlsOpen);
 });
 

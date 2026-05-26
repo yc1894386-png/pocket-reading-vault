@@ -1,17 +1,17 @@
 :root {
   color-scheme: light;
-  --bg: #f4eadb;
-  --panel: #fff7ea;
-  --panel-strong: #fff;
-  --text: #2c241b;
-  --muted: #9b8c7a;
-  --line: #eadfce;
+  --bg: #fbfbfb;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --text: #222222;
+  --muted: #9a9a9a;
+  --line: #eeeeee;
   --accent: #202020;
   --accent-strong: #111111;
   --danger: #9d3b3b;
-  --paper: #fff7ea;
-  --soft: #f8eedf;
-  --shadow: 0 18px 42px rgba(94, 68, 37, 0.08);
+  --paper: #ffffff;
+  --soft: #f6f6f6;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.055);
   --reader-font-size: 18px;
 }
 
@@ -148,13 +148,21 @@ label {
 
 .cloud-mini {
   min-height: 34px;
-  width: auto;
+  min-width: 34px;
   padding: 0 8px;
   border: 0;
   background: transparent;
   box-shadow: none;
   color: color-mix(in srgb, var(--muted) 75%, transparent);
   font-size: 0.8rem;
+}
+
+.import-mini {
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--text);
+  font-size: 1rem;
 }
 
 .tiny-button {
@@ -186,19 +194,19 @@ label {
 
 .import-drawer {
   position: fixed;
+  top: 64px;
   right: 14px;
-  bottom: max(78px, calc(env(safe-area-inset-bottom) + 78px));
-  left: 14px;
+  left: auto;
   z-index: 70;
-  max-width: 460px;
-  margin: 0 auto;
+  width: min(420px, calc(100vw - 28px));
+  margin: 0;
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   border-radius: 28px;
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
-  transform: translateY(18px);
+  transform: translateY(-8px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease, transform 180ms ease;
@@ -208,23 +216,6 @@ body.import-open .import-drawer {
   transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
-}
-
-.floating-import {
-  position: fixed;
-  right: 18px;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  z-index: 69;
-  width: 46px;
-  min-height: 46px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--paper) 84%, transparent);
-  color: var(--muted);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
-  font-size: 1.4rem;
 }
 
 .backup-section {
@@ -908,9 +899,10 @@ dialog::backdrop {
   }
 
   .reader {
+    display: block;
     max-width: none;
     min-height: 100dvh;
-    padding: 0 23px 0;
+    padding: 0 24px;
   }
 
   .metadata-block,
@@ -921,19 +913,27 @@ dialog::backdrop {
   }
 
   .work-content {
-    height: calc(100dvh - 24px);
-    min-height: calc(100dvh - 24px);
-    overflow: hidden;
-    column-width: calc(100vw - 46px);
-    column-gap: 46px;
-    padding: 12px 0 32px;
+    width: calc(100vw - 48px);
+    height: calc(100dvh - 78px);
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    column-width: calc(100vw - 48px);
+    column-gap: 48px;
+    padding: 42px 0 36px;
     touch-action: manipulation;
     user-select: text;
     scroll-behavior: smooth;
+    scrollbar-width: none;
   }
 
-  .work-content > * {
-    break-inside: avoid;
+  .work-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  .work-content > *,
+  .work-content p {
+    break-inside: auto;
   }
 
   .reading-bar {
