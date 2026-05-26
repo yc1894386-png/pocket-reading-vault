@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#fbfbfb" />
+    <meta name="theme-color" content="#f4eadb" />
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=11-cloud-sync-20260526" />
+    <link rel="stylesheet" href="./styles.css?v=12-reader-redesign-20260526" />
   </head>
   <body>
     <div class="app-shell">
@@ -16,12 +16,15 @@
           <p class="eyebrow">Pocket Shelf</p>
           <h1>离线书架</h1>
         </div>
-        <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
+        <div class="top-actions">
+          <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步">☁</button>
+          <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
+        </div>
       </header>
 
       <main class="layout">
         <aside class="panel library-panel" aria-label="书架">
-          <form class="import-box" id="importForm">
+          <form class="import-box import-drawer" id="importForm">
             <label for="sourceUrl">原站链接</label>
             <div class="url-row">
               <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://作品站点/works/..." autocomplete="off" />
@@ -36,15 +39,15 @@
             <p class="status" id="importStatus" role="status"></p>
           </form>
 
-          <section class="folder-tools">
+          <section class="folder-tools shelf-directory">
             <div class="section-title">
-              <h2>文件夹</h2>
+              <h2>文库</h2>
               <button class="tiny-button" id="newFolderButton" title="新建文件夹" aria-label="新建文件夹">＋</button>
             </div>
             <div class="folder-list" id="folderList"></div>
           </section>
 
-          <section class="sync-tools">
+          <section class="sync-tools cloud-section">
             <div class="section-title">
               <h2>云端同步</h2>
             </div>
@@ -63,7 +66,7 @@
             </div>
           </section>
 
-          <section class="sync-tools">
+          <section class="sync-tools backup-section">
             <div class="section-title">
               <h2>备份</h2>
             </div>
@@ -130,12 +133,39 @@
       </main>
     </div>
 
+    <button class="floating-import" id="importDrawerButton" type="button" aria-label="导入作品">＋</button>
+
     <nav class="reading-bar hidden" id="readingBar" aria-label="阅读进度">
       <button class="ghost-button" id="barTocButton">目录</button>
       <input id="progressRange" type="range" min="0" max="1000" value="0" />
       <span id="progressText">0%</span>
       <button class="ghost-button" id="bookmarkButton">书签</button>
     </nav>
+
+    <div class="reader-page-count hidden" id="readerPageCount">1 / 1</div>
+
+    <div class="reader-console hidden" id="readerConsole">
+      <div class="reader-console-top">
+        <button class="console-text-button" id="consoleBackButton" type="button">← 扉页</button>
+      </div>
+      <div class="reader-console-bottom">
+        <input id="consoleProgress" type="range" min="0" max="1000" value="0" />
+        <button class="console-icon-button" id="consoleSettingsButton" type="button">A_A</button>
+        <button class="console-icon-button" id="consoleLibraryButton" type="button">☰</button>
+      </div>
+    </div>
+
+    <dialog id="readerSettingsDialog">
+      <form method="dialog" class="dialog-card compact-settings">
+        <h2>阅读设置</h2>
+        <label for="settingsFontSize">字号</label>
+        <input id="settingsFontSize" type="range" min="15" max="28" value="18" />
+        <button class="ghost-button" id="settingsNightButton" type="button">夜间模式</button>
+        <menu>
+          <button value="close">完成</button>
+        </menu>
+      </form>
+    </dialog>
 
     <dialog id="chapterDialog">
       <div class="dialog-card chapter-dialog-card">
@@ -195,6 +225,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=11-cloud-sync-20260526" type="module"></script>
+    <script src="./app.js?v=12-reader-redesign-20260526" type="module"></script>
   </body>
 </html>

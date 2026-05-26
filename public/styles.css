@@ -1,33 +1,34 @@
 :root {
   color-scheme: light;
-  --bg: #fbfbfb;
-  --panel: #ffffff;
+  --bg: #f4eadb;
+  --panel: #fff7ea;
   --panel-strong: #fff;
-  --text: #202020;
-  --muted: #9a9a9a;
-  --line: #eeeeee;
+  --text: #2c241b;
+  --muted: #9b8c7a;
+  --line: #eadfce;
   --accent: #202020;
   --accent-strong: #111111;
   --danger: #9d3b3b;
-  --paper: #ffffff;
-  --soft: #f6f6f6;
-  --shadow: 0 18px 42px rgba(0, 0, 0, 0.055);
+  --paper: #fff7ea;
+  --soft: #f8eedf;
+  --shadow: 0 18px 42px rgba(94, 68, 37, 0.08);
   --reader-font-size: 18px;
 }
 
 :root.dark {
   color-scheme: dark;
-  --bg: #171a1c;
-  --panel: #222527;
-  --panel-strong: #2a2e31;
-  --text: #f5efe7;
-  --muted: #b7ada2;
-  --line: #3b4145;
-  --accent: #85b7a6;
-  --accent-strong: #a6d5c5;
+  --bg: #000;
+  --panel: #050505;
+  --panel-strong: #080808;
+  --text: #6f6a62;
+  --muted: #4d4943;
+  --line: #161616;
+  --accent: #8a8479;
+  --accent-strong: #a39b8e;
   --danger: #e0877e;
-  --paper: #24282a;
-  --shadow: 0 18px 45px rgba(0, 0, 0, 0.24);
+  --paper: #000;
+  --soft: #060606;
+  --shadow: none;
 }
 
 * {
@@ -39,7 +40,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
   letter-spacing: 0;
 }
 
@@ -107,7 +108,7 @@ label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 22px 18px;
+  padding: 18px 22px 14px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 95%, transparent);
   backdrop-filter: blur(16px);
@@ -115,7 +116,7 @@ label {
 
 .topbar h1 {
   margin: 0;
-  font-size: 1.52rem;
+  font-size: 1.15rem;
   line-height: 1.12;
   font-weight: 850;
 }
@@ -125,7 +126,7 @@ label {
   color: var(--muted);
   font-size: 0.72rem;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .icon-button,
@@ -137,6 +138,23 @@ label {
   color: var(--text);
   border-radius: 18px;
   box-shadow: var(--shadow);
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cloud-mini {
+  min-height: 34px;
+  width: auto;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+  font-size: 0.8rem;
 }
 
 .tiny-button {
@@ -164,6 +182,75 @@ label {
   padding: 20px;
   scrollbar-color: #d8d8d8 transparent;
   scrollbar-width: thin;
+}
+
+.import-drawer {
+  position: fixed;
+  right: 14px;
+  bottom: max(78px, calc(env(safe-area-inset-bottom) + 78px));
+  left: 14px;
+  z-index: 70;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  transform: translateY(18px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+body.import-open .import-drawer {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.floating-import {
+  position: fixed;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 69;
+  width: 46px;
+  min-height: 46px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--paper) 84%, transparent);
+  color: var(--muted);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  font-size: 1.4rem;
+}
+
+.backup-section {
+  display: none;
+}
+
+.cloud-section {
+  position: fixed;
+  top: 70px;
+  right: 14px;
+  z-index: 72;
+  width: min(360px, calc(100vw - 28px));
+  transform: translateY(-8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+body.cloud-open .cloud-section {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.backup-section {
+  display: none !important;
 }
 
 .library-panel::-webkit-scrollbar {
@@ -320,11 +407,14 @@ label {
   display: grid;
   gap: 8px;
   min-height: 92px;
-  border-radius: 22px;
-  padding: 18px;
+  min-height: 58px;
+  border: 0;
+  border-radius: 0;
+  padding: 4px 2px;
+  background: transparent;
   color: var(--text);
   text-align: left;
-  box-shadow: var(--shadow);
+  box-shadow: none;
 }
 
 .folder-card span {
@@ -344,9 +434,9 @@ label {
 }
 
 .folder-card.active {
-  background: #f0f0f0;
+  background: transparent;
   color: var(--accent-strong);
-  border-color: #dfdfdf;
+  border-color: transparent;
 }
 
 .work-list {
@@ -510,11 +600,13 @@ label {
 }
 
 .work-content {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", Georgia, serif;
   font-size: var(--reader-font-size);
-  line-height: 1.9;
+  line-height: 1.8;
   padding: 6px 2px 22px;
   color: color-mix(in srgb, var(--text) 94%, var(--muted));
+  text-align: justify;
+  text-justify: inter-ideograph;
 }
 
 .work-content img {
@@ -560,6 +652,73 @@ label {
   background: color-mix(in srgb, var(--paper) 94%, transparent);
   box-shadow: var(--shadow);
   backdrop-filter: blur(16px);
+}
+
+.reader-console {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  pointer-events: none;
+}
+
+.reader-console-top,
+.reader-console-bottom {
+  position: absolute;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--paper) 58%, transparent);
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
+}
+
+.reader-console-top {
+  top: 0;
+  justify-content: flex-start;
+}
+
+.reader-console-bottom {
+  bottom: 0;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+}
+
+.reader-console-bottom input {
+  flex: 1;
+  padding: 0;
+}
+
+.console-text-button,
+.console-icon-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.console-icon-button {
+  min-width: 38px;
+}
+
+.reader-page-count {
+  position: fixed;
+  right: 0;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 40;
+  color: color-mix(in srgb, var(--muted) 55%, transparent);
+  font-size: 0.68rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.compact-settings {
+  max-width: 360px;
 }
 
 .reading-bar input {
@@ -693,8 +852,15 @@ dialog::backdrop {
 }
 
 @media (max-width: 879px) {
+  html,
+  body,
+  .app-shell {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
   .topbar {
-    padding: 18px 20px 16px;
+    padding: 12px 18px 8px;
   }
 
   .topbar h1 {
@@ -706,7 +872,7 @@ dialog::backdrop {
   }
 
   .reader-actions {
-    top: 76px;
+    display: none;
   }
 
   .reader-actions > div {
@@ -719,25 +885,48 @@ dialog::backdrop {
   }
 
   .chapter-strip {
-    position: sticky;
-    top: 136px;
-    z-index: 9;
-    padding: 8px 0;
-    background: color-mix(in srgb, var(--bg) 94%, transparent);
-    backdrop-filter: blur(14px);
+    display: none;
   }
 
   .work-header {
-    padding: 16px;
+    min-height: calc(100dvh - 48px);
+    align-content: center;
+    padding: 38px 24px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    text-align: center;
+  }
+
+  .work-header h2 {
+    font-size: clamp(1.8rem, 8vw, 3rem);
+    line-height: 1.25;
+  }
+
+  .work-header p {
+    font-size: 1rem;
+  }
+
+  .reader {
+    max-width: none;
+    min-height: 100dvh;
+    padding: 0 23px 0;
+  }
+
+  .metadata-block,
+  .notes-block,
+  .summary-block,
+  .chapter-heading {
+    display: none !important;
   }
 
   .work-content {
-    height: calc(100vh - 250px);
-    min-height: 430px;
+    height: calc(100dvh - 24px);
+    min-height: calc(100dvh - 24px);
     overflow: hidden;
     column-width: calc(100vw - 46px);
-    column-gap: 34px;
-    padding: 10px 4px 20px;
+    column-gap: 46px;
+    padding: 12px 0 32px;
     touch-action: manipulation;
     user-select: text;
     scroll-behavior: smooth;
@@ -748,10 +937,7 @@ dialog::backdrop {
   }
 
   .reading-bar {
-    right: 8px;
-    left: 8px;
-    grid-template-columns: auto minmax(0, 1fr) 40px auto;
-    padding: 8px 10px;
+    display: none !important;
   }
 
   .reading-bar.hidden {

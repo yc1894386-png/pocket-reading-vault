@@ -27,6 +27,8 @@ let progressTimer;
 let cloudTimer;
 let pendingJump = null;
 let controlsOpen = false;
+let importDrawerOpen = false;
+let cloudPanelOpen = false;
 let cloudSession = null;
 let syncingCloud = false;
 let supabase;
@@ -172,6 +174,8 @@ function renderReader() {
   $("#emptyState").classList.toggle("hidden", Boolean(work));
   $("#reader").classList.toggle("hidden", !work);
   $("#readingBar").classList.toggle("hidden", !work || !controlsOpen);
+  $("#readerConsole").classList.toggle("hidden", !work || !controlsOpen);
+  $("#readerPageCount").classList.toggle("hidden", !work);
   document.body.classList.toggle("reading", Boolean(work));
 
   if (!work) return;
@@ -204,6 +208,7 @@ function renderReader() {
   $("#workTags").innerHTML = tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
   $("#metadataBlock").innerHTML = renderMetadata(work);
   updateProgressBar();
+  updatePageCount();
 
   if (pendingJump !== null) {
     const ratio = pendingJump;
@@ -267,6 +272,8 @@ function renderChapterDialog() {
 
 function renderAll() {
   document.documentElement.classList.toggle("dark", state.theme === "dark");
+  document.body.classList.toggle("import-open", importDrawerOpen);
+  document.body.classList.toggle("cloud-open", cloudPanelOpen);
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   renderFolders();
   renderWorks();
@@ -537,6 +544,7 @@ function scrollToChapterRatio(ratio) {
     const max = Math.max(1, content.scrollWidth - content.clientWidth);
     content.scrollTo({ left: max * ratio, behavior: "auto" });
     updateProgressBar();
+    updatePageCount();
     return;
   }
   const rect = content.getBoundingClientRect();
@@ -544,6 +552,7 @@ function scrollToChapterRatio(ratio) {
   const max = Math.max(1, content.scrollHeight - window.innerHeight + 120);
   window.scrollTo({ top: start + max * ratio, behavior: "auto" });
   updateProgressBar();
+  updatePageCount();
 }
 
 function isPagedMode() {
@@ -567,6 +576,7 @@ function turnPage(delta) {
 function setControlsOpen(open) {
   controlsOpen = open;
   $("#readingBar").classList.toggle("hidden", !activeWork() || !controlsOpen);
+  $("#readerConsole").classList.toggle("hidden", !activeWork() || !controlsOpen);
 }
 
 function updateProgressBar() {
@@ -574,7 +584,20 @@ function updateProgressBar() {
   if (!work) return;
   const ratio = chapterScrollRatio();
   $("#progressRange").value = Math.round(ratio * 1000);
+  $("#consoleProgress").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
+  updatePageCount();
+}
+
+function updatePageCount() {
+  const work = activeWork();
+  const count = $("#readerPageCount");
+  if (!work || !count) return;
+  const content = $("#workContent");
+  const max = Math.max(1, content.scrollWidth - content.clientWidth);
+  const total = isPagedMode() ? Math.max(1, Math.round(content.scrollWidth / Math.max(1, content.clientWidth))) : 1;
+  const current = isPagedMode() ? Math.min(total, Math.max(1, Math.round(content.scrollLeft / Math.max(1, content.clientWidth)) + 1)) : 1;
+  count.textContent = `${current} / ${total}`;
 }
 
 async function persistProgress() {
@@ -703,6 +726,16 @@ $("#importForm").addEventListener("submit", async (event) => {
   } catch (error) {
     $("#importStatus").textContent = error.message;
   }
+});
+
+$("#importDrawerButton").addEventListener("click", () => {
+  importDrawerOpen = !importDrawerOpen;
+  renderAll();
+});
+
+$("#cloudPanelButton").addEventListener("click", () => {
+  cloudPanelOpen = !cloudPanelOpen;
+  renderAll();
 });
 
 $("#cloudLoginButton").addEventListener("click", async () => {
@@ -852,6 +885,40 @@ $("#progressRange").addEventListener("input", (event) => {
 
 $("#progressRange").addEventListener("change", persistProgress);
 
+$("#consoleProgress").addEventListener("input", (event) => {
+  const ratio = Number(event.target.value) / 1000;
+  scrollToChapterRatio(ratio);
+});
+
+$("#consoleProgress").addEventListener("change", persistProgress);
+
+$("#consoleBackButton").addEventListener("click", async () => {
+  setControlsOpen(false);
+  await persistProgress();
+  state.selectedWorkId = null;
+  await saveState();
+  renderAll();
+});
+
+$("#consoleSettingsButton").addEventListener("click", () => {
+  $("#settingsFontSize").value = state.readerFontSize || 18;
+  $("#readerSettingsDialog").showModal();
+});
+
+$("#consoleLibraryButton").addEventListener("click", openReaderDialog);
+
+$("#settingsFontSize").addEventListener("input", async (event) => {
+  state.readerFontSize = Number(event.target.value);
+  await saveState();
+  renderAll();
+});
+
+$("#settingsNightButton").addEventListener("click", async () => {
+  state.theme = state.theme === "dark" ? "light" : "dark";
+  await saveState();
+  renderAll();
+});
+
 $("#workContent").addEventListener("click", (event) => {
   if (!activeWork()) return;
   const selection = window.getSelection();
@@ -866,6 +933,12 @@ $("#workContent").addEventListener("click", (event) => {
   else if (x > 0.66) turnPage(1);
   else setControlsOpen(!controlsOpen);
 });
+
+$("#workContent").addEventListener("scroll", () => {
+  updateProgressBar();
+  clearTimeout(progressTimer);
+  progressTimer = setTimeout(persistProgress, 400);
+}, { passive: true });
 
 window.addEventListener("scroll", () => {
   if (!activeWork()) return;
