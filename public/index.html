@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=13-white-reader-fix-20260526" />
+    <link rel="stylesheet" href="./styles.css?v=15-reader-controls-20260527" />
   </head>
   <body>
     <div class="app-shell">
@@ -148,7 +148,6 @@
         <button class="console-text-button" id="consoleBackButton" type="button">← 扉页</button>
       </div>
       <div class="reader-console-bottom">
-        <input id="consoleProgress" type="range" min="0" max="1000" value="0" />
         <button class="console-icon-button" id="consoleSettingsButton" type="button">A_A</button>
         <button class="console-icon-button" id="consoleLibraryButton" type="button">☰</button>
       </div>
@@ -159,6 +158,10 @@
         <h2>阅读设置</h2>
         <label for="settingsFontSize">字号</label>
         <input id="settingsFontSize" type="range" min="15" max="28" value="18" />
+        <label for="settingsLineHeight">行间距</label>
+        <input id="settingsLineHeight" type="range" min="150" max="220" value="180" />
+        <label for="settingsSideMargin">左右页边距</label>
+        <input id="settingsSideMargin" type="range" min="24" max="52" value="34" />
         <button class="ghost-button" id="settingsNightButton" type="button">夜间模式</button>
         <menu>
           <button value="close">完成</button>
@@ -170,7 +173,10 @@
       <div class="dialog-card chapter-dialog-card">
         <div class="dialog-head">
           <h2>阅读导航</h2>
-          <button class="ghost-button" id="closeChapterDialog">关闭</button>
+          <div class="dialog-actions">
+            <button class="ghost-button" id="chapterSettingsButton" type="button">设置</button>
+            <button class="ghost-button" id="closeChapterDialog" type="button">关闭</button>
+          </div>
         </div>
         <p class="chapter-progress" id="chapterProgressText"></p>
         <h3>章节</h3>
@@ -224,6 +230,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=13-white-reader-fix-20260526" type="module"></script>
+    <script src="./app.js?v=15-reader-controls-20260527" type="module"></script>
   </body>
 </html>

@@ -11,6 +11,8 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Mat
 const defaultState = {
   theme: "light",
   readerFontSize: 18,
+  readerLineHeight: 1.8,
+  readerSideMargin: 34,
   selectedFolder: "all",
   selectedWorkId: null,
   folders: [
@@ -197,6 +199,8 @@ function renderReader() {
 
   $("#workContent").innerHTML = chapter.html;
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
+  $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
+  $("#workContent").style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
   applyHighlights(work, index);
 
   const tags = [
@@ -275,6 +279,8 @@ function renderAll() {
   document.body.classList.toggle("import-open", importDrawerOpen);
   document.body.classList.toggle("cloud-open", cloudPanelOpen);
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
+  document.documentElement.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
+  document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
   renderFolders();
   renderWorks();
   renderReader();
@@ -318,6 +324,8 @@ async function importLibraryFile(file) {
   }
   state.works = [...existingWorks.values()].map(normalizeWork);
   state.readerFontSize = nextState.readerFontSize || state.readerFontSize;
+  state.readerLineHeight = nextState.readerLineHeight || state.readerLineHeight;
+  state.readerSideMargin = nextState.readerSideMargin || state.readerSideMargin;
   state.theme = nextState.theme || state.theme;
   await saveState();
   renderAll();
@@ -378,6 +386,8 @@ function mergeLibraryState(localState, cloudState) {
   }
   merged.works = [...workMap.values()];
   merged.readerFontSize = localState.readerFontSize || cloudState.readerFontSize || defaultState.readerFontSize;
+  merged.readerLineHeight = localState.readerLineHeight || cloudState.readerLineHeight || defaultState.readerLineHeight;
+  merged.readerSideMargin = localState.readerSideMargin || cloudState.readerSideMargin || defaultState.readerSideMargin;
   merged.theme = localState.theme || cloudState.theme || defaultState.theme;
   merged.updatedAt = new Date().toISOString();
   return merged;
@@ -572,17 +582,23 @@ function isPagedMode() {
 function pageStepRatio() {
   const content = $("#workContent");
   const max = Math.max(1, content.scrollWidth - content.clientWidth);
-  const gap = parseFloat(getComputedStyle(content).columnGap) || 0;
-  return Math.max(0.02, (content.clientWidth + gap) / max);
+  return Math.max(0.02, content.clientWidth / max);
 }
 
 function turnPage(delta) {
   const work = activeWork();
   if (!work || !isPagedMode()) return;
   const content = $("#workContent");
-  const gap = parseFloat(getComputedStyle(content).columnGap) || 0;
-  const step = content.clientWidth + gap;
+  const step = content.clientWidth;
   const max = Math.max(0, content.scrollWidth - content.clientWidth);
+  if (delta > 0 && content.scrollLeft >= max - 2) {
+    changeChapter(1);
+    return;
+  }
+  if (delta < 0 && content.scrollLeft <= 2) {
+    changeChapter(-1);
+    return;
+  }
   const next = Math.max(0, Math.min(max, content.scrollLeft + step * delta));
   content.scrollTo({ left: next, behavior: "smooth" });
   persistProgress();
@@ -599,7 +615,6 @@ function updateProgressBar() {
   if (!work) return;
   const ratio = chapterScrollRatio();
   $("#progressRange").value = Math.round(ratio * 1000);
-  $("#consoleProgress").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
   updatePageCount();
 }
@@ -609,11 +624,19 @@ function updatePageCount() {
   const count = $("#readerPageCount");
   if (!work || !count) return;
   const content = $("#workContent");
-  const gap = parseFloat(getComputedStyle(content).columnGap) || 0;
-  const step = Math.max(1, content.clientWidth + gap);
-  const total = isPagedMode() ? Math.max(1, Math.ceil((content.scrollWidth + gap) / step)) : 1;
+  const step = Math.max(1, content.clientWidth);
+  const total = isPagedMode() ? Math.max(1, Math.ceil(content.scrollWidth / step)) : 1;
   const current = isPagedMode() ? Math.min(total, Math.max(1, Math.round(content.scrollLeft / step) + 1)) : 1;
   count.textContent = `${current} / ${total}`;
+}
+
+function requestReadingFullscreen() {
+  if (!isPagedMode() || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+  document.documentElement.requestFullscreen().catch(() => {});
+}
+
+function exitReadingFullscreen() {
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 }
 
 async function persistProgress() {
@@ -722,6 +745,8 @@ async function boot() {
   db = await openDb();
   state = { ...defaultState, ...(await dbGet("library") || {}) };
   state.works = (state.works || []).map(normalizeWork);
+  state.readerLineHeight ||= defaultState.readerLineHeight;
+  state.readerSideMargin ||= defaultState.readerSideMargin;
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   renderAll();
@@ -814,6 +839,7 @@ $("#workList").addEventListener("click", async (event) => {
   state.selectedWorkId = button.dataset.work;
   const work = activeWork();
   pendingJump = work?.reading?.ratio || 0;
+  requestReadingFullscreen();
   await saveState();
   renderAll();
 });
@@ -880,6 +906,7 @@ $("#deleteWorkButton").addEventListener("click", async () => {
 $("#backToList").addEventListener("click", async () => {
   await persistProgress();
   state.selectedWorkId = null;
+  exitReadingFullscreen();
   await saveState();
   renderAll();
 });
@@ -914,30 +941,54 @@ $("#progressRange").addEventListener("input", (event) => {
 
 $("#progressRange").addEventListener("change", persistProgress);
 
-$("#consoleProgress").addEventListener("input", (event) => {
+$("#consoleProgress")?.addEventListener("input", (event) => {
   const ratio = Number(event.target.value) / 1000;
   scrollToChapterRatio(ratio);
 });
 
-$("#consoleProgress").addEventListener("change", persistProgress);
+$("#consoleProgress")?.addEventListener("change", persistProgress);
 
 $("#consoleBackButton").addEventListener("click", async () => {
   setControlsOpen(false);
   await persistProgress();
   state.selectedWorkId = null;
+  exitReadingFullscreen();
   await saveState();
   renderAll();
 });
 
-$("#consoleSettingsButton").addEventListener("click", () => {
+function openSettingsDialog() {
   $("#settingsFontSize").value = state.readerFontSize || 18;
+  $("#settingsLineHeight").value = Math.round((state.readerLineHeight || 1.8) * 100);
+  $("#settingsSideMargin").value = state.readerSideMargin || 34;
   $("#readerSettingsDialog").showModal();
+}
+
+$("#consoleSettingsButton").addEventListener("click", () => {
+  openSettingsDialog();
+});
+
+$("#chapterSettingsButton").addEventListener("click", () => {
+  $("#chapterDialog").close();
+  openSettingsDialog();
 });
 
 $("#consoleLibraryButton").addEventListener("click", openReaderDialog);
 
 $("#settingsFontSize").addEventListener("input", async (event) => {
   state.readerFontSize = Number(event.target.value);
+  await saveState();
+  renderAll();
+});
+
+$("#settingsLineHeight").addEventListener("input", async (event) => {
+  state.readerLineHeight = Number(event.target.value) / 100;
+  await saveState();
+  renderAll();
+});
+
+$("#settingsSideMargin").addEventListener("input", async (event) => {
+  state.readerSideMargin = Number(event.target.value);
   await saveState();
   renderAll();
 });
@@ -953,14 +1004,14 @@ $("#workContent").addEventListener("click", (event) => {
   const selection = window.getSelection();
   if (selection && !selection.isCollapsed) return;
   if (!isPagedMode()) {
-    setControlsOpen(!controlsOpen);
+    openReaderDialog();
     return;
   }
   const rect = $("#workContent").getBoundingClientRect();
   const x = (event.clientX - rect.left) / Math.max(1, rect.width);
   if (x < 0.25) turnPage(-1);
   else if (x > 0.75) turnPage(1);
-  else setControlsOpen(!controlsOpen);
+  else openReaderDialog();
 });
 
 $("#workContent").addEventListener("scroll", () => {

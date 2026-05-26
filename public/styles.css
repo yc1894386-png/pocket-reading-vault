@@ -13,6 +13,8 @@
   --soft: #f6f6f6;
   --shadow: 0 18px 42px rgba(0, 0, 0, 0.055);
   --reader-font-size: 18px;
+  --reader-line-height: 1.8;
+  --reader-side-margin: 34px;
 }
 
 :root.dark {
@@ -593,7 +595,7 @@ body.cloud-open .cloud-section {
 .work-content {
   font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", Georgia, serif;
   font-size: var(--reader-font-size);
-  line-height: 1.8;
+  line-height: var(--reader-line-height);
   padding: 6px 2px 22px;
   color: color-mix(in srgb, var(--text) 94%, var(--muted));
   text-align: justify;
@@ -673,12 +675,11 @@ body.cloud-open .cloud-section {
 
 .reader-console-bottom {
   bottom: 0;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
-}
-
-.reader-console-bottom input {
-  flex: 1;
-  padding: 0;
+  justify-content: center;
+  padding-top: 8px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .console-text-button,
@@ -727,6 +728,11 @@ body.cloud-open .cloud-section {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .chapter-dialog-card {
@@ -862,6 +868,33 @@ dialog::backdrop {
     padding: 12px;
   }
 
+  body.reading {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    overflow: hidden;
+    background: var(--paper);
+  }
+
+  body.reading .topbar {
+    display: none;
+  }
+
+  body.reading .app-shell,
+  body.reading .layout,
+  body.reading .reader-panel,
+  body.reading .reader {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--paper);
+    box-shadow: none;
+  }
+
   .reader-actions {
     display: none;
   }
@@ -889,6 +922,10 @@ dialog::backdrop {
     text-align: center;
   }
 
+  body.reading .work-header {
+    display: none;
+  }
+
   .work-header h2 {
     font-size: clamp(1.8rem, 8vw, 3rem);
     line-height: 1.25;
@@ -902,7 +939,7 @@ dialog::backdrop {
     display: block;
     max-width: none;
     min-height: 100dvh;
-    padding: 0 24px;
+    padding: 0;
   }
 
   .metadata-block,
@@ -913,18 +950,19 @@ dialog::backdrop {
   }
 
   .work-content {
-    width: calc(100vw - 48px);
-    height: calc(100dvh - 78px);
+    width: 100vw;
+    height: 100dvh;
     min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    column-width: calc(100vw - 48px);
-    column-gap: 48px;
-    padding: 42px 0 36px;
+    column-width: calc(100vw - (var(--reader-side-margin) * 2));
+    column-gap: calc(var(--reader-side-margin) * 2);
+    padding: max(42px, env(safe-area-inset-top)) var(--reader-side-margin) max(42px, env(safe-area-inset-bottom));
     touch-action: manipulation;
     user-select: text;
     scroll-behavior: smooth;
     scrollbar-width: none;
+    background: var(--paper);
   }
 
   .work-content::-webkit-scrollbar {
