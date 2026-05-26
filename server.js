@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("./public", import.meta.url));
 const port = Number(process.env.PORT || 4173);
 const sourceHost = [[ "archive", "of", "our", "own" ].join(""), "org"].join(".");
+const downloadHost = `download.${sourceHost}`;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -87,9 +88,11 @@ function cleanWorkHtml(html, sourceUrl) {
 
 function parseSourceWork(html, sourceUrl) {
   const title = textOnly(firstMatch(html, /<h2[^>]+class=["'][^"']*title[^"']*heading[^"']*["'][^>]*>([\s\S]*?)<\/h2>/i))
-    || textOnly(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)).replace(/\s*\|\s*Archive Site.*$/i, "")
+    || textOnly(firstMatch(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i))
+    || textOnly(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)).replace(/\s+-\s+[\s\S]*$/i, "").replace(/\s*\|\s*Archive Site.*$/i, "")
     || "未命名作品";
-  const author = textOnly(firstMatch(html, /<h3[^>]+class=["'][^"']*byline[^"']*heading[^"']*["'][^>]*>([\s\S]*?)<\/h3>/i));
+  const author = textOnly(firstMatch(html, /<h3[^>]+class=["'][^"']*byline[^"']*heading[^"']*["'][^>]*>([\s\S]*?)<\/h3>/i))
+    || textOnly(firstMatch(html, /<[^>]+class=["'][^"']*byline[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i));
   const summary = firstMatch(html, /<blockquote[^>]+class=["'][^"']*userstuff[^"']*summary[^"']*["'][^>]*>([\s\S]*?)<\/blockquote>/i)
     || firstMatch(html, /<div[^>]+class=["'][^"']*summary[^"']*["'][^>]*>[\s\S]*?<blockquote[^>]*>([\s\S]*?)<\/blockquote>/i);
   const rating = textOnly(firstMatch(html, /<dd[^>]+class=["'][^"']*rating[^"']*tags[^"']*["'][^>]*>([\s\S]*?)<\/dd>/i));
@@ -132,7 +135,7 @@ function parseSourceWork(html, sourceUrl) {
   };
 }
 
-async function importSource(url) {
+function normalizeSourceUrl(url) {
   const parsed = new URL(url);
   if (parsed.hostname.toLowerCase() !== sourceHost && !parsed.hostname.toLowerCase().endsWith(`.${sourceHost}`)) {
     throw new Error("目前只支持指定作品站点的链接。");
@@ -140,19 +143,87 @@ async function importSource(url) {
   parsed.pathname = parsed.pathname.replace(/\/chapters\/\d+\/?$/i, "");
   parsed.searchParams.set("view_adult", "true");
   parsed.searchParams.set("view_full_work", "true");
+  return parsed;
+}
 
-  const response = await fetch(parsed, {
-    headers: {
-      "accept": "text/html,application/xhtml+xml",
-      "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
-      "user-agent": "Mozilla/5.0 Pocket Shelf"
+function getWorkId(parsed) {
+  return parsed.pathname.match(/\/works\/(\d+)/i)?.[1] || "";
+}
+
+function getDownloadUrl(parsed) {
+  const workId = getWorkId(parsed);
+  return workId ? `https://${downloadHost}/downloads/${workId}/fic.html` : "";
+}
+
+function requestHeaders(url) {
+  return {
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+    "cache-control": "no-cache",
+    "pragma": "no-cache",
+    "referer": url,
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
+    "cookie": "view_adult=true; viewed_adult=true"
+  };
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchHtml(url, label) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      signal: controller.signal,
+      headers: requestHeaders(url)
+    });
+
+    if (!response.ok) {
+      const error = new Error(`${label}返回了 ${response.status}`);
+      error.status = response.status;
+      throw error;
     }
-  });
-
-  if (!response.ok) {
-    throw new Error(`原站返回了 ${response.status}，暂时不能读取这个链接。`);
+    return await response.text();
+  } finally {
+    clearTimeout(timeout);
   }
-  return parseSourceWork(await response.text(), parsed.toString());
+}
+
+async function fetchFirstAvailable(candidates) {
+  const errors = [];
+  for (const candidate of candidates) {
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        return {
+          html: await fetchHtml(candidate.url, candidate.label),
+          url: candidate.url
+        };
+      } catch (error) {
+        errors.push(error);
+        if (attempt < 2) await wait(800);
+      }
+    }
+  }
+
+  const statuses = errors.map((error) => error.status).filter(Boolean);
+  if (statuses.includes(525)) {
+    throw new Error("原站返回了 525，备用 HTML 下载源也没有成功。可以稍后再试，或先用原站 Download → HTML 导入。");
+  }
+  const lastError = errors[errors.length - 1];
+  throw new Error(lastError?.message || "暂时不能读取这个链接。");
+}
+
+async function importSource(url) {
+  const parsed = normalizeSourceUrl(url);
+  const candidates = [{ url: parsed.toString(), label: "原站" }];
+  const downloadUrl = getDownloadUrl(parsed);
+  if (downloadUrl) candidates.push({ url: downloadUrl, label: "HTML 下载源" });
+
+  const result = await fetchFirstAvailable(candidates);
+  return parseSourceWork(result.html, result.url);
 }
 
 const server = http.createServer(async (req, res) => {
