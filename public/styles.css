@@ -1091,3 +1091,329 @@ dialog::backdrop {
     display: none;
   }
 }
+
+/* v17 text-driven library UI */
+:root {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --text: #000000;
+  --muted: #666666;
+  --line: #eeeeee;
+  --accent: #000000;
+  --accent-strong: #000000;
+  --danger: #000000;
+  --paper: #ffffff;
+  --soft: #f5f5f5;
+  --reader-bg: #ffffff;
+  --reader-ink: #000000;
+  --shadow: none;
+}
+
+:root.dark {
+  --bg: #000000;
+  --panel: #000000;
+  --panel-strong: #000000;
+  --text: #ffffff;
+  --muted: #888888;
+  --line: #222222;
+  --accent: #ffffff;
+  --accent-strong: #ffffff;
+  --danger: #ffffff;
+  --paper: #000000;
+  --soft: #161616;
+  --reader-bg: #000000;
+  --reader-ink: #888888;
+}
+
+:root.reader-bg-white {
+  --reader-bg: #ffffff;
+  --reader-ink: #000000;
+}
+
+:root.reader-bg-light,
+:root.reader-bg-paper,
+:root.reader-bg-green,
+:root.reader-bg-gray {
+  --reader-bg: #f0f0f0;
+  --reader-ink: #1a1a1a;
+}
+
+:root.reader-bg-medium {
+  --reader-bg: #a0a0a0;
+  --reader-ink: #111111;
+}
+
+:root.reader-bg-darkgray {
+  --reader-bg: #333333;
+  --reader-ink: #cccccc;
+}
+
+:root.reader-bg-black,
+:root.reader-bg-dark {
+  --reader-bg: #000000;
+  --reader-ink: #888888;
+}
+
+button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+input,
+textarea,
+select {
+  border-radius: 2px;
+}
+
+.topbar {
+  padding: 24px 20px 16px;
+  background: var(--bg);
+  backdrop-filter: none;
+}
+
+.topbar h1 {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.eyebrow {
+  display: none;
+}
+
+.top-actions {
+  gap: 6px;
+}
+
+.cloud-mini,
+.icon-button,
+.tiny-button,
+.import-mini {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  font-size: 1rem;
+}
+
+.layout {
+  gap: 0;
+  padding: 0;
+}
+
+.panel,
+.library-panel {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.library-panel {
+  gap: 18px;
+  padding: 18px 20px 28px;
+}
+
+.import-drawer,
+.cloud-box,
+.file-import,
+dialog,
+.dialog-card,
+.chapter-item,
+.bg-choice {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.folder-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.folder-list::-webkit-scrollbar {
+  display: none;
+}
+
+.folder-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: max-content;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 2px;
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.folder-card small {
+  color: inherit;
+}
+
+.folder-card.active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.work-list {
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.work-card {
+  gap: 5px;
+  min-height: 96px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 0;
+}
+
+.work-card.active,
+.work-card:active {
+  background: var(--soft);
+  box-shadow: none;
+}
+
+.work-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.work-title-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.work-title-line span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.work-title-line small {
+  border: 1px solid var(--line);
+  padding: 1px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.work-title-line b {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.work-card p {
+  font-size: 13px;
+}
+
+.tag {
+  border-radius: 2px;
+}
+
+.stepper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stepper-row > span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.stepper-control {
+  display: grid;
+  grid-template-columns: 44px 72px 44px;
+  align-items: center;
+  border: 1px solid var(--line);
+}
+
+.stepper-control button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.stepper-control output {
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border-inline: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.background-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bg-choice {
+  position: relative;
+  min-height: 54px;
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.bg-choice.active::after {
+  content: "✓";
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  font-size: 0.85rem;
+}
+
+.console-icon-button,
+.console-text-button {
+  border-radius: 2px;
+}
+
+.reader-console-bottom {
+  background: color-mix(in srgb, var(--reader-bg) 88%, transparent);
+}
+
+@media (min-width: 880px) {
+  .layout {
+    grid-template-columns: 400px minmax(0, 1fr);
+    max-width: 1200px;
+  }
+}
+
+@media (max-width: 879px) {
+  .topbar {
+    padding: 22px 18px 14px;
+  }
+
+  .topbar h1 {
+    font-size: 28px;
+  }
+
+  .layout {
+    padding: 0;
+  }
+
+  #readerSettingsDialog,
+  #backgroundDialog {
+    border-radius: 2px 2px 0 0;
+  }
+
+  #chapterDialog {
+    border-radius: 0 2px 2px 0;
+  }
+}

@@ -7,16 +7,17 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=16-reader-toolbar-20260527" />
+    <link rel="stylesheet" href="./styles.css?v=17-library-ui-20260527" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Pocket Shelf</p>
-          <h1>离线书架</h1>
+          <p class="eyebrow">Library</p>
+          <h1>文库</h1>
         </div>
         <div class="top-actions">
+          <button class="cloud-mini" id="searchToggleButton" type="button" title="搜索" aria-label="搜索">⌕</button>
           <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步">☁</button>
           <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="导入作品" aria-label="导入作品">＋</button>
           <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
@@ -171,12 +172,30 @@
           <option value="both">点击 + 滑动</option>
           <option value="scroll">连续滚动</option>
         </select>
-        <label for="settingsFontSize">字号</label>
-        <input id="settingsFontSize" type="range" min="15" max="28" value="18" />
-        <label for="settingsLineHeight">行间距</label>
-        <input id="settingsLineHeight" type="range" min="150" max="220" value="180" />
-        <label for="settingsSideMargin">左右页边距</label>
-        <input id="settingsSideMargin" type="range" min="24" max="52" value="34" />
+        <div class="stepper-row">
+          <span>字号</span>
+          <div class="stepper-control">
+            <button type="button" data-stepper="font" data-delta="-1">−</button>
+            <output id="settingsFontSize">18px</output>
+            <button type="button" data-stepper="font" data-delta="1">＋</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <span>行距</span>
+          <div class="stepper-control">
+            <button type="button" data-stepper="line" data-delta="-1">−</button>
+            <output id="settingsLineHeight">1.8</output>
+            <button type="button" data-stepper="line" data-delta="1">＋</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <span>页边距</span>
+          <div class="stepper-control">
+            <button type="button" data-stepper="margin" data-delta="-1">−</button>
+            <output id="settingsSideMargin">20px</output>
+            <button type="button" data-stepper="margin" data-delta="1">＋</button>
+          </div>
+        </div>
         <button class="ghost-button" id="settingsNightButton" type="button">夜间模式</button>
         <menu>
           <button value="close">完成</button>
@@ -188,11 +207,11 @@
       <form method="dialog" class="dialog-card compact-settings">
         <h2>背景</h2>
         <div class="background-grid">
-          <button class="bg-choice" type="button" data-bg="white">白色</button>
-          <button class="bg-choice" type="button" data-bg="paper">纸色</button>
-          <button class="bg-choice" type="button" data-bg="green">护眼</button>
-          <button class="bg-choice" type="button" data-bg="gray">灰色</button>
-          <button class="bg-choice" type="button" data-bg="dark">夜间</button>
+          <button class="bg-choice" type="button" data-bg="white">纯白</button>
+          <button class="bg-choice" type="button" data-bg="light">浅灰</button>
+          <button class="bg-choice" type="button" data-bg="medium">中灰</button>
+          <button class="bg-choice" type="button" data-bg="darkgray">暗灰</button>
+          <button class="bg-choice" type="button" data-bg="black">纯黑</button>
         </div>
         <menu>
           <button value="close">完成</button>
@@ -261,6 +280,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=16-reader-toolbar-20260527" type="module"></script>
+    <script src="./app.js?v=17-library-ui-20260527" type="module"></script>
   </body>
 </html>

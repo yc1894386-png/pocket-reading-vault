@@ -12,7 +12,7 @@ const defaultState = {
   theme: "light",
   readerFontSize: 18,
   readerLineHeight: 1.8,
-  readerSideMargin: 34,
+  readerSideMargin: 20,
   readerTurnMode: "tap",
   readerBg: "white",
   selectedFolder: "all",
@@ -164,11 +164,18 @@ function renderWorks() {
   $("#workList").innerHTML = works.length ? works.map((work) => {
     const rel = work.metadata?.relationships?.[0] || work.customTags?.[0] || folderName(work.folderId || "unfiled");
     const chapters = getChapters(work).length;
+    const chapterText = work.metadata?.chapters || "";
+    const complete = /(\d+)\s*\/\s*\1/.test(chapterText) || /complete|完结/i.test(work.metadata?.status || "");
+    const status = complete ? "完结" : (chapterText ? "连载" : "未知");
+    const chapterIndex = Math.min(chapters - 1, Math.max(0, Number(work.reading?.chapterIndex || 0)));
+    const ratio = Math.max(0, Math.min(1, Number(work.reading?.ratio || 0)));
+    const progress = chapters ? Math.round(((chapterIndex + ratio) / chapters) * 100) : Math.round(ratio * 100);
+    const progressText = progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读";
     return `
       <button class="work-card ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}">
-        <h3>${escapeHtml(work.title)}</h3>
-        <p>${escapeHtml(work.author || "未知作者")}</p>
-        <p>${escapeHtml(rel)} · ${chapters} 章 · ${escapeHtml(work.metadata?.words || "字数未知")}</p>
+        <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
+        <p>${escapeHtml(work.author || "未知作者")} · ${escapeHtml(rel)}</p>
+        <p>${progressText} · ${chapters} 章 · ${escapeHtml(work.metadata?.words || "字数未知")}</p>
       </button>
     `;
   }).join("") : `<div class="empty-state compact-empty"><p>这里还没有作品。</p></div>`;
@@ -281,7 +288,17 @@ function renderChapterDialog() {
 
 function renderAll() {
   document.documentElement.classList.toggle("dark", state.theme === "dark");
-  document.documentElement.classList.remove("reader-bg-white", "reader-bg-paper", "reader-bg-green", "reader-bg-gray", "reader-bg-dark");
+  document.documentElement.classList.remove(
+    "reader-bg-white",
+    "reader-bg-light",
+    "reader-bg-medium",
+    "reader-bg-darkgray",
+    "reader-bg-black",
+    "reader-bg-paper",
+    "reader-bg-green",
+    "reader-bg-gray",
+    "reader-bg-dark"
+  );
   document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${state.readerTurnMode || "tap"}`);
@@ -294,6 +311,23 @@ function renderAll() {
   renderWorks();
   renderReader();
   renderMetaOptions();
+  renderSettingsLabels();
+  renderBackgroundChoices();
+}
+
+function renderSettingsLabels() {
+  const font = $("#settingsFontSize");
+  const line = $("#settingsLineHeight");
+  const margin = $("#settingsSideMargin");
+  if (font) font.textContent = `${state.readerFontSize || 18}px`;
+  if (line) line.textContent = `${(state.readerLineHeight || 1.8).toFixed(1)}`;
+  if (margin) margin.textContent = `${state.readerSideMargin || 20}px`;
+}
+
+function renderBackgroundChoices() {
+  document.querySelectorAll("[data-bg]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.bg === (state.readerBg || "white"));
+  });
 }
 
 function downloadTextFile(filename, content, type = "application/json") {
@@ -802,6 +836,11 @@ async function boot() {
   state.readerSideMargin ||= defaultState.readerSideMargin;
   state.readerTurnMode ||= defaultState.readerTurnMode;
   state.readerBg ||= defaultState.readerBg;
+  if (["paper", "green", "gray"].includes(state.readerBg)) state.readerBg = "light";
+  if (state.readerBg === "dark") state.readerBg = "black";
+  state.readerFontSize = Math.max(12, Math.min(32, Number(state.readerFontSize || defaultState.readerFontSize)));
+  state.readerLineHeight = Math.max(1.4, Math.min(2.4, Number(state.readerLineHeight || defaultState.readerLineHeight)));
+  state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   renderAll();
@@ -835,6 +874,11 @@ $("#importForm").addEventListener("submit", async (event) => {
 $("#importDrawerButton").addEventListener("click", () => {
   importDrawerOpen = !importDrawerOpen;
   renderAll();
+});
+
+$("#searchToggleButton").addEventListener("click", () => {
+  $("#searchInput").focus();
+  $("#searchInput").scrollIntoView({ block: "center", behavior: "smooth" });
 });
 
 $("#cloudPanelButton").addEventListener("click", () => {
@@ -1014,9 +1058,7 @@ $("#consoleBackButton").addEventListener("click", async () => {
 
 function openSettingsDialog() {
   $("#settingsTurnMode").value = state.readerTurnMode || "tap";
-  $("#settingsFontSize").value = state.readerFontSize || 18;
-  $("#settingsLineHeight").value = Math.round((state.readerLineHeight || 1.8) * 100);
-  $("#settingsSideMargin").value = state.readerSideMargin || 34;
+  renderSettingsLabels();
   $("#readerSettingsDialog").showModal();
 }
 
@@ -1041,27 +1083,44 @@ $("#settingsTurnMode").addEventListener("change", async (event) => {
   renderAll();
 });
 
-$("#settingsFontSize").addEventListener("input", async (event) => {
+document.querySelectorAll("[data-stepper]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const delta = Number(button.dataset.delta || 0);
+    if (button.dataset.stepper === "font") {
+      state.readerFontSize = Math.max(12, Math.min(32, (state.readerFontSize || 18) + delta));
+    }
+    if (button.dataset.stepper === "line") {
+      state.readerLineHeight = Math.max(1.4, Math.min(2.4, Number(((state.readerLineHeight || 1.8) + delta * 0.1).toFixed(1))));
+    }
+    if (button.dataset.stepper === "margin") {
+      state.readerSideMargin = Math.max(12, Math.min(32, (state.readerSideMargin || 20) + delta * 2));
+    }
+    await saveState();
+    renderAll();
+  });
+});
+
+$("#settingsFontSize")?.addEventListener("input", async (event) => {
   state.readerFontSize = Number(event.target.value);
   await saveState();
   renderAll();
 });
 
-$("#settingsLineHeight").addEventListener("input", async (event) => {
+$("#settingsLineHeight")?.addEventListener("input", async (event) => {
   state.readerLineHeight = Number(event.target.value) / 100;
   await saveState();
   renderAll();
 });
 
-$("#settingsSideMargin").addEventListener("input", async (event) => {
+$("#settingsSideMargin")?.addEventListener("input", async (event) => {
   state.readerSideMargin = Number(event.target.value);
   await saveState();
   renderAll();
 });
 
 $("#settingsNightButton").addEventListener("click", async () => {
-  state.readerBg = state.readerBg === "dark" ? "white" : "dark";
-  state.theme = state.readerBg === "dark" ? "dark" : "light";
+  state.readerBg = state.readerBg === "black" ? "white" : "black";
+  state.theme = state.readerBg === "black" ? "dark" : "light";
   await saveState();
   renderAll();
 });
@@ -1069,7 +1128,7 @@ $("#settingsNightButton").addEventListener("click", async () => {
 document.querySelectorAll("[data-bg]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.readerBg = button.dataset.bg;
-    state.theme = state.readerBg === "dark" ? "dark" : "light";
+    state.theme = state.readerBg === "black" ? "dark" : "light";
     await saveState();
     renderAll();
   });
