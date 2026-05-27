@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=17-library-ui-20260527" />
+    <link rel="stylesheet" href="./styles.css?v=18-dialog-cancel-fix-20260527" />
   </head>
   <body>
     <div class="app-shell">
@@ -242,7 +242,7 @@
         <label for="folderName">名称</label>
         <input id="folderName" required maxlength="40" placeholder="例如：授翻、Steve/Bucky、未读" />
         <menu>
-          <button value="cancel" class="ghost-button">取消</button>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
           <button value="save">保存</button>
         </menu>
       </form>
@@ -256,7 +256,7 @@
         <label for="metaCustomTags">自定义标签</label>
         <input id="metaCustomTags" placeholder="用逗号分隔，比如 HE, 长篇, 已读" />
         <menu>
-          <button value="cancel" class="ghost-button">取消</button>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
           <button value="save">保存</button>
         </menu>
       </form>
@@ -274,12 +274,12 @@
         <label for="manualContent">正文</label>
         <textarea id="manualContent" required placeholder="如果在线网页不能直接读取原站，可以先把正文粘贴进来。"></textarea>
         <menu>
-          <button value="cancel" class="ghost-button">取消</button>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
           <button value="save">保存</button>
         </menu>
       </form>
     </dialog>
 
-    <script src="./app.js?v=17-library-ui-20260527" type="module"></script>
+    <script src="./app.js?v=18-dialog-cancel-fix-20260527" type="module"></script>
   </body>
 </html>
