@@ -8,6 +8,7 @@ const port = Number(process.env.PORT || 4173);
 const sourceHost = [[ "archive", "of", "our", "own" ].join(""), "org"].join(".");
 const downloadHost = `download.${sourceHost}`;
 const importCache = new Map();
+const imageCache = new Map();
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://pocket-reading-vault.onrender.com";
 
 const mimeTypes = {
@@ -166,6 +167,8 @@ async function proxyImage(targetUrl) {
     error.status = 400;
     throw error;
   }
+  const cached = imageCache.get(targetUrl);
+  if (cached && Date.now() - cached.at < 1000 * 60 * 60 * 24) return cached;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
@@ -186,7 +189,10 @@ async function proxyImage(targetUrl) {
     }
     const type = response.headers.get("content-type") || "application/octet-stream";
     const bytes = Buffer.from(await response.arrayBuffer());
-    return { type, bytes };
+    const image = { type, bytes, at: Date.now() };
+    imageCache.set(targetUrl, image);
+    if (imageCache.size > 160) imageCache.delete(imageCache.keys().next().value);
+    return image;
   } finally {
     clearTimeout(timeout);
   }
