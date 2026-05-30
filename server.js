@@ -142,7 +142,6 @@ function cleanWorkHtml(html, sourceUrl) {
 
   return chapters
     .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/\son\w+=["'][\s\S]*?["']/gi, "")
     .replace(/href=["']javascript:[\s\S]*?["']/gi, "")
     .replace(/<img\b([^>]*)>/gi, (tag, attrs) => {
