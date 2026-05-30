@@ -239,11 +239,16 @@ function renderReader() {
   applyHighlights(work, index);
 
   const tags = [
-    ...(work.metadata?.relationships || []),
-    ...(work.customTags || []),
     work.metadata?.rating,
+    ...(work.metadata?.warnings || []),
+    ...(work.metadata?.categories || []),
+    ...(work.metadata?.fandoms || []),
+    ...(work.metadata?.relationships || []),
+    ...(work.metadata?.characters || []),
+    ...(work.metadata?.freeforms || []),
+    ...(work.customTags || []),
     work.metadata?.chapters
-  ].filter(Boolean).slice(0, 14);
+  ].filter(Boolean).slice(0, 28);
   $("#workTags").innerHTML = tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
   $("#metadataBlock").innerHTML = renderMetadata(work);
   updateProgressBar();
@@ -283,12 +288,14 @@ function renderMetadata(work) {
 }
 
 function renderMetaOptions() {
-  $("#metaFolder").innerHTML = [
+  const options = [
     `<option value="unfiled">不放入文件夹</option>`,
     ...state.folders
     .filter((folder) => folder.id !== "all" && folder.id !== "unfiled")
     .map((folder) => `<option value="${folder.id}">${escapeHtml(folder.name)}</option>`)
   ].join("");
+  $("#metaFolder").innerHTML = options;
+  $("#manageFolderSelect").innerHTML = options;
 }
 
 function renderChapterDialog() {
@@ -297,6 +304,21 @@ function renderChapterDialog() {
   const chapters = getChapters(work);
   const index = currentChapterIndex(work, chapters);
   $("#chapterProgressText").textContent = `当前：${index + 1}/${chapters.length} · ${Math.round((work.reading?.ratio || 0) * 100)}%`;
+  const infoTags = [
+    work.metadata?.rating,
+    ...(work.metadata?.warnings || []),
+    ...(work.metadata?.categories || []),
+    ...(work.metadata?.fandoms || []),
+    ...(work.metadata?.relationships || []),
+    ...(work.metadata?.characters || []),
+    ...(work.metadata?.freeforms || [])
+  ].filter(Boolean);
+  $("#chapterWorkInfo").innerHTML = `
+    <h3>${escapeHtml(work.title || "作品信息")}</h3>
+    <p>${escapeHtml(work.author || "未知作者")}</p>
+    ${infoTags.length ? `<div class="tag-row">${infoTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
+    ${work.summaryHtml ? `<details><summary>SUMMARY</summary><div class="summary-in-dialog">${work.summaryHtml}</div></details>` : ""}
+  `;
   $("#chapterList").innerHTML = chapters.map((chapter, chapterIndex) => `
     <button class="chapter-item ${chapterIndex === index ? "active" : ""}" data-chapter="${chapterIndex}">
       <span>${escapeHtml(chapter.title)}</span>
@@ -472,7 +494,8 @@ function openWorkManageDialog(id) {
   const work = workById(id);
   if (!work) return;
   managedWorkId = id;
-  $("#manageWorkTitle").textContent = `整理《${work.title}》`;
+  $("#manageWorkTitle").textContent = "整理";
+  $("#manageFolderSelect").value = work.folderId || "unfiled";
   $("#manageTagInput").value = "";
   renderManageTags(work);
   if (!$("#workManageDialog").open) $("#workManageDialog").showModal();
@@ -483,8 +506,7 @@ function openFolderManageDialog(id) {
   if (!folder) return;
   managedFolderId = id;
   const locked = id === "all";
-  $("#manageFolderTitle").textContent = `整理「${folder.name}」`;
-  $("#manageFolderHint").textContent = locked ? "“全部”固定在最前面，只用来看完整书架。" : "可以调整左右位置；删除后，里面的作品会回到完整书架里。";
+  $("#manageFolderTitle").textContent = "文件夹";
   $("#manageDeleteFolderButton").disabled = locked;
   refreshFolderManageButtons();
   if (!$("#folderManageDialog").open) $("#folderManageDialog").showModal();
@@ -559,6 +581,14 @@ function cancelWorkPress() {
   longPressPoint = null;
   document.body.classList.remove("shelf-dragging");
   document.querySelectorAll(".work-card.dragging").forEach((card) => card.classList.remove("dragging"));
+}
+
+function enableBackdropClose(selector) {
+  const dialog = $(selector);
+  if (!dialog) return;
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
 }
 
 function exportLibrary() {
@@ -1351,6 +1381,16 @@ $("#manageTagList").addEventListener("click", async (event) => {
   openWorkManageDialog(work.id);
 });
 
+$("#manageFolderSelect").addEventListener("change", async (event) => {
+  const work = workById(managedWorkId);
+  if (!work) return;
+  work.folderId = event.target.value;
+  work.updatedAt = new Date().toISOString();
+  await saveState();
+  renderAll();
+  openWorkManageDialog(work.id);
+});
+
 $("#manageDownloadButton").addEventListener("click", () => {
   const work = workById(managedWorkId);
   if (work) downloadWork(work);
@@ -1617,6 +1657,17 @@ $("#bookmarkList").addEventListener("click", (event) => {
   $("#chapterDialog").close();
   goToChapter(bookmark.chapterIndex, bookmark.ratio);
 });
+
+[
+  "#readerSettingsDialog",
+  "#backgroundDialog",
+  "#chapterDialog",
+  "#workManageDialog",
+  "#folderManageDialog",
+  "#folderDialog",
+  "#metaDialog",
+  "#manualDialog"
+].forEach(enableBackdropClose);
 
 $("#manualOpen").addEventListener("click", () => {
   $("#manualForm").reset();

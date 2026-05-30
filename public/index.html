@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=23-shelf-polish-20260530" />
+    <link rel="stylesheet" href="./styles.css?v=24-clean-manage-info-20260530" />
   </head>
   <body>
     <div class="app-shell">
@@ -229,6 +229,7 @@
           </div>
         </div>
         <p class="chapter-progress" id="chapterProgressText"></p>
+        <section class="chapter-work-info" id="chapterWorkInfo"></section>
         <h3>章节</h3>
         <div class="chapter-list" id="chapterList"></div>
         <h3>书签</h3>
@@ -264,8 +265,9 @@
 
     <dialog id="workManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="workManageForm">
-        <h2 id="manageWorkTitle">整理作品</h2>
-        <p class="helper-text">长按不动打开管理；长按后上下拖动可以直接调整顺序。</p>
+        <h2 id="manageWorkTitle">整理</h2>
+        <label for="manageFolderSelect">文件夹</label>
+        <select id="manageFolderSelect"></select>
         <label for="manageTagInput">小 tag</label>
         <div class="mini-tag-row editable-tags" id="manageTagList"></div>
         <div class="inline-action-row">
@@ -284,8 +286,7 @@
 
     <dialog id="folderManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="folderManageForm">
-        <h2 id="manageFolderTitle">整理文件夹</h2>
-        <p class="helper-text" id="manageFolderHint">长按文件夹可以打开这里。</p>
+        <h2 id="manageFolderTitle">文件夹</h2>
         <div class="manage-section">
           <span>位置</span>
           <div class="manage-actions">
@@ -321,6 +322,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=23-shelf-polish-20260530" type="module"></script>
+    <script src="./app.js?v=24-clean-manage-info-20260530" type="module"></script>
   </body>
 </html>

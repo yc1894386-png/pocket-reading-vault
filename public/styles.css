@@ -805,6 +805,42 @@ body.cloud-open .cloud-section {
   font-size: 0.96rem;
 }
 
+.chapter-work-info {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0 6px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.chapter-work-info h3 {
+  margin: 0;
+}
+
+.chapter-work-info p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.chapter-work-info details {
+  color: var(--text);
+}
+
+.chapter-work-info summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.summary-in-dialog {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .chapter-progress {
   margin: 0;
   color: var(--muted);
