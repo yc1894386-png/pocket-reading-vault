@@ -337,10 +337,42 @@ body.cloud-open .cloud-section {
   box-sizing: border-box;
 }
 
+.cloud-account-details {
+  display: grid;
+  gap: 10px;
+}
+
+.cloud-account-details[open] {
+  padding-top: 4px;
+}
+
+.cloud-account-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.88rem;
+  list-style: none;
+}
+
+.cloud-account-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.cloud-account-details summary::after {
+  content: "›";
+  display: inline-block;
+  margin-left: 6px;
+  transform: rotate(90deg);
+}
+
+.cloud-account-details:not([open]) summary::after {
+  transform: rotate(0deg);
+}
+
 .cloud-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .cloud-actions .hidden {
@@ -719,37 +751,40 @@ body.cloud-open .cloud-section {
   bottom: max(14px, env(safe-area-inset-bottom));
   left: 50%;
   right: auto;
-  width: min(86vw, 420px);
+  width: min(82vw, 430px);
   transform: translateX(-50%);
   display: grid;
-  gap: 8px;
+  gap: 10px;
   padding: 0;
   background: transparent;
 }
 
 .console-progress-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
   align-items: center;
-  gap: 12px;
-  min-height: 58px;
-  padding: 0 14px;
-  border-radius: 28px;
-  background: color-mix(in srgb, #111 88%, transparent);
-  color: #fff;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(24px) saturate(1.25);
+  gap: 6px;
 }
 
-.console-progress-row input {
-  padding: 0;
-  accent-color: #fff;
+.console-main-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 28px;
+  background: color-mix(in srgb, #111 90%, transparent);
+  color: #fff;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(26px) saturate(1.25);
+  font-size: 0.98rem;
 }
 
 .console-action-row {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 7px;
 }
 
 .console-text-button,
@@ -770,13 +805,28 @@ body.cloud-open .cloud-section {
   justify-content: space-between;
   align-items: center;
   min-width: 38px;
+  min-height: 54px;
   text-align: left;
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  border-radius: 22px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
 }
 
 .console-icon-button b {
   color: var(--text);
   font-size: 1.2rem;
   font-weight: 700;
+}
+
+.console-main-pill b {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.console-main-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .console-text-button {
@@ -787,18 +837,15 @@ body.cloud-open .cloud-section {
   border-radius: 50%;
   font-size: 1.6rem;
   line-height: 1;
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
 }
 
 .console-progress-row .console-text-button {
-  width: auto;
-  height: auto;
-  min-height: 0;
-  border-radius: 0;
-  background: transparent;
-  color: color-mix(in srgb, #fff 86%, transparent);
-  box-shadow: none;
-  font-size: 0.82rem;
-  backdrop-filter: none;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  color: var(--text);
+  font-size: 1.55rem;
 }
 
 .chapter-jump[hidden] {

@@ -655,6 +655,7 @@ function renderCloudPanel() {
     $("#cloudSignupButton").classList.remove("hidden");
     $("#cloudSetPasswordButton").classList.add("hidden");
     $("#cloudLogoutButton").classList.add("hidden");
+    $("#cloudQuickSyncButton").disabled = true;
     $("#cloudUploadButton").disabled = true;
     $("#cloudDownloadButton").disabled = true;
     $("#cloudUser").textContent = "云端暂不可用";
@@ -668,9 +669,11 @@ function renderCloudPanel() {
   $("#cloudSignupButton").classList.toggle("hidden", signedIn);
   $("#cloudSetPasswordButton").classList.toggle("hidden", !signedIn);
   $("#cloudLogoutButton").classList.toggle("hidden", !signedIn);
+  $("#cloudQuickSyncButton").disabled = !signedIn;
   $("#cloudUploadButton").disabled = !signedIn;
   $("#cloudDownloadButton").disabled = !signedIn;
-  $("#cloudUser").textContent = signedIn ? `已登录：${cloudSession.user.email}` : "未登录云端";
+  $("#cloudUser").textContent = signedIn ? "私人同步已开启" : "未开启私人同步";
+  $("#cloudAccountDetails").open = !signedIn;
 }
 
 function cloneLibraryState(value) {
@@ -1090,6 +1093,9 @@ function updateProgressBar() {
   const ratio = chapterScrollRatio();
   $("#progressRange").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
+  $("#consoleMenuProgress").textContent = `Contents · ${Math.round(ratio * 100)}%`;
+  const bookmarkCount = (work.bookmarks || []).length + (work.highlights || []).length;
+  $("#consoleBookmarkCount").textContent = String(bookmarkCount);
   updatePageCount();
 }
 
@@ -1380,6 +1386,22 @@ $("#cloudLogoutButton").addEventListener("click", async () => {
 
 $("#cloudUploadButton").addEventListener("click", () => saveCloudNow());
 
+$("#cloudQuickSyncButton").addEventListener("click", async () => {
+  if (!cloudSession?.user) {
+    setCloudStatus("先在账号设置里登录一次。");
+    $("#cloudAccountDetails").open = true;
+    return;
+  }
+  try {
+    setCloudStatus("正在同步……");
+    await loadCloudIntoLocal({ merge: true });
+    await saveCloudNow({ silent: true });
+    setCloudStatus(`同步完成：${new Date().toLocaleTimeString()}`);
+  } catch (error) {
+    setCloudStatus(`同步失败：${error.message}`);
+  }
+});
+
 $("#cloudDownloadButton").addEventListener("click", async () => {
   if (!confirm("用云端书架合并到本机？本机已有作品不会被直接清空。")) return;
   try {
@@ -1637,6 +1659,13 @@ $("#chapterSettingsButton").addEventListener("click", () => {
 });
 
 $("#consoleLibraryButton").addEventListener("click", openReaderDialog);
+$("#consoleBookmarkPanelButton").addEventListener("click", openReaderDialog);
+$("#consoleSearchButton").addEventListener("click", () => {
+  const query = prompt("Search Book");
+  if (!query) return;
+  setControlsOpen(false);
+  window.find?.(query);
+});
 $("#consoleBackgroundButton").addEventListener("click", () => $("#backgroundDialog").showModal());
 
 $("#consolePrevChapter").addEventListener("click", () => changeChapter(-1));
