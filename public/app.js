@@ -330,7 +330,7 @@ function renderChapterDialog() {
     <h3>${escapeHtml(work.title || "作品信息")}</h3>
     <p>${escapeHtml(work.author || "未知作者")}</p>
     ${infoTags.length ? `<div class="tag-row">${infoTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
-    ${work.summaryHtml ? `<details><summary>SUMMARY</summary><div class="summary-in-dialog">${work.summaryHtml}</div></details>` : ""}
+    ${work.summaryHtml ? `<section class="summary-in-dialog"><b>简介</b><div>${work.summaryHtml}</div></section>` : ""}
   `;
   $("#chapterList").innerHTML = chapters.map((chapter, chapterIndex) => `
     <button class="chapter-item ${chapterIndex === index ? "active" : ""}" data-chapter="${chapterIndex}">
@@ -1093,7 +1093,7 @@ function updateProgressBar() {
   const ratio = chapterScrollRatio();
   $("#progressRange").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
-  $("#consoleMenuProgress").textContent = `Contents · ${Math.round(ratio * 100)}%`;
+  $("#consoleMenuProgress").textContent = `目录 · ${Math.round(ratio * 100)}%`;
   const bookmarkCount = (work.bookmarks || []).length + (work.highlights || []).length;
   $("#consoleBookmarkCount").textContent = String(bookmarkCount);
   updatePageCount();
@@ -1661,7 +1661,7 @@ $("#chapterSettingsButton").addEventListener("click", () => {
 $("#consoleLibraryButton").addEventListener("click", openReaderDialog);
 $("#consoleBookmarkPanelButton").addEventListener("click", openReaderDialog);
 $("#consoleSearchButton").addEventListener("click", () => {
-  const query = prompt("Search Book");
+  const query = prompt("搜索全文");
   if (!query) return;
   setControlsOpen(false);
   window.find?.(query);

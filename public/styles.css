@@ -749,12 +749,12 @@ body.cloud-open .cloud-section {
 
 .reader-console-bottom {
   bottom: max(14px, env(safe-area-inset-bottom));
-  left: 50%;
-  right: auto;
-  width: min(82vw, 430px);
-  transform: translateX(-50%);
+  right: max(14px, env(safe-area-inset-right));
+  left: auto;
+  width: min(68vw, 360px);
+  transform: none;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   background: transparent;
 }
@@ -770,15 +770,15 @@ body.cloud-open .cloud-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 58px;
-  padding: 0 18px;
+  min-height: 52px;
+  padding: 0 16px;
   border: 0;
   border-radius: 28px;
   background: color-mix(in srgb, #111 90%, transparent);
   color: #fff;
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(26px) saturate(1.25);
-  font-size: 0.98rem;
+  font-size: 0.96rem;
 }
 
 .console-action-row {
@@ -805,16 +805,16 @@ body.cloud-open .cloud-section {
   justify-content: space-between;
   align-items: center;
   min-width: 38px;
-  min-height: 54px;
+  min-height: 48px;
   text-align: left;
   background: color-mix(in srgb, var(--paper) 78%, transparent);
-  border-radius: 22px;
+  border-radius: 20px;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
 }
 
 .console-icon-button b {
   color: var(--text);
-  font-size: 1.2rem;
+  font-size: 1.12rem;
   font-weight: 700;
 }
 
@@ -866,12 +866,12 @@ body.cloud-open .cloud-section {
 }
 
 .compact-settings {
-  width: min(92vw, 390px);
-  max-width: 390px;
+  width: min(92vw, 430px);
+  max-width: 430px;
   gap: 0;
   overflow: hidden;
   padding: 0;
-  border-radius: 22px;
+  border-radius: 24px;
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(24px) saturate(1.2);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
@@ -879,10 +879,10 @@ body.cloud-open .cloud-section {
 
 .compact-settings h2 {
   margin: 0;
-  padding: 14px 18px;
+  padding: 18px 20px 14px;
   border-bottom: 1px solid var(--line);
   text-align: center;
-  font-size: 1.05rem;
+  font-size: 1.18rem;
 }
 
 .compact-settings > label {
@@ -996,10 +996,24 @@ body.cloud-open .cloud-section {
 }
 
 .summary-in-dialog {
-  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
   color: var(--muted);
   font-size: 13px;
   line-height: 1.7;
+}
+
+.summary-in-dialog b {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.summary-in-dialog p {
+  margin: 0 0 0.6em;
 }
 
 .chapter-progress {
@@ -1264,12 +1278,12 @@ dialog::backdrop {
   }
 
   #chapterDialog {
-    width: min(84vw, 340px);
+    width: min(94vw, 520px);
     max-width: none;
-    height: 100dvh;
+    height: min(82dvh, 720px);
     max-height: none;
-    margin: 0 auto 0 0;
-    border-radius: 0 24px 24px 0;
+    margin: auto auto max(10px, env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
   }
 
   #chapterDialog::backdrop {
@@ -1285,8 +1299,9 @@ dialog::backdrop {
   }
 
   .chapter-dialog-card {
-    max-height: 100dvh;
-    height: 100dvh;
+    max-height: min(82dvh, 720px);
+    height: min(82dvh, 720px);
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
 
   body.reading .library-panel {
@@ -1633,7 +1648,7 @@ body.shelf-dragging {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1645,16 +1660,16 @@ body.shelf-dragging {
 
 .stepper-control {
   display: grid;
-  grid-template-columns: 46px 78px 46px;
+  grid-template-columns: 50px 86px 50px;
   align-items: center;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 76%, transparent);
 }
 
 .stepper-control button {
-  min-height: 42px;
+  min-height: 44px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1663,10 +1678,22 @@ body.shelf-dragging {
 }
 
 .stepper-control output {
-  min-height: 42px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   border-inline: 1px solid var(--line);
+  font-weight: 700;
+}
+
+#readerSettingsDialog select {
+  min-height: 48px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+
+#settingsNightButton {
+  min-height: 50px;
+  border-radius: 999px;
   font-weight: 700;
 }
 

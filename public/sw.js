@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v30";
+const CACHE_NAME = "pocket-reading-vault-v31";
 const ASSETS = [
   "./",
   "./index.html",

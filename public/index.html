@@ -7,13 +7,13 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=30-books-reader-menu-20260530" />
+    <link rel="stylesheet" href="./styles.css?v=31-books-cn-compact-20260530" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Library</p>
+          <p class="eyebrow">私人书架</p>
           <h1>文库</h1>
         </div>
         <div class="top-actions">
@@ -160,23 +160,23 @@
         <div class="console-progress-row">
           <button class="console-text-button chapter-jump" id="consolePrevChapter" type="button">‹</button>
           <button class="console-main-pill" id="consoleLibraryButton" type="button">
-            <span id="consoleMenuProgress">Contents · 0%</span>
+            <span id="consoleMenuProgress">目录 · 0%</span>
             <b>☰</b>
           </button>
           <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button">›</button>
         </div>
         <div class="console-action-row">
-          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button"><span>Bookmarks & Highlights</span><b id="consoleBookmarkCount">0</b></button>
-          <button class="console-icon-button" id="consoleSearchButton" type="button"><span>Search Book</span><b>⌕</b></button>
-          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>Themes & Settings</span><b>AA</b></button>
-          <button class="console-icon-button" id="consoleBackgroundButton" type="button"><span>Background</span><b>◐</b></button>
+          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button"><span>书签与高亮</span><b id="consoleBookmarkCount">0</b></button>
+          <button class="console-icon-button" id="consoleSearchButton" type="button"><span>搜索全文</span><b>⌕</b></button>
+          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>主题与设置</span><b>大小</b></button>
+          <button class="console-icon-button" id="consoleBackgroundButton" type="button"><span>背景</span><b>◐</b></button>
         </div>
       </div>
     </div>
 
     <dialog id="readerSettingsDialog">
       <form method="dialog" class="dialog-card compact-settings">
-        <h2>AA</h2>
+        <h2>主题与设置</h2>
         <label for="settingsTurnMode">翻页方式</label>
         <select id="settingsTurnMode">
           <option value="tap">点击翻页</option>
@@ -334,6 +334,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=30-books-reader-menu-20260530" type="module"></script>
+    <script src="./app.js?v=31-books-cn-compact-20260530" type="module"></script>
   </body>
 </html>
