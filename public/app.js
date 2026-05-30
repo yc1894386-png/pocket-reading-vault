@@ -134,6 +134,20 @@ function normalizeWork(work) {
   work.customTags ||= [];
   work.note ||= "";
   work.metadata ||= {};
+  if ((!work.author || work.author === "未知作者") && /\s+-\s+/.test(work.title || "")) {
+    const parts = work.title.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      work.author = parts.pop();
+      work.title = parts.join(" - ");
+    }
+  }
+  if (!work.author || work.author === "未知作者") {
+    work.author = "作者待补";
+  }
+  if (!work.metadata.words || work.metadata.words === "字数未知") {
+    const count = textFromHtml(work.contentHtml || "").replace(/\s/g, "").length;
+    if (count) work.metadata.words = `${count} 字`;
+  }
   work.bookmarks ||= [];
   work.highlights ||= [];
   work.highlights = work.highlights.map((item) => ({
@@ -221,6 +235,7 @@ function renderFolders() {
 function renderWorks() {
   const works = filteredWorks();
   $("#workList").innerHTML = works.length ? works.map((work) => {
+    normalizeWork(work);
     const rel = work.metadata?.relationships?.[0] || work.customTags?.[0] || folderName(work.folderId || "unfiled");
     const chapters = getChapters(work).length;
     const chapterText = work.metadata?.chapters || "";
@@ -234,8 +249,8 @@ function renderWorks() {
     return `
       <button class="work-card ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}">
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
-        <p>${escapeHtml(work.author || "未知作者")} · ${escapeHtml(rel)}</p>
-        <p>${progressText} · ${chapters} 章 · ${escapeHtml(work.metadata?.words || "字数未知")}</p>
+        <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
+        <p>${progressText} · ${chapters} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
         ${customTags.length ? `<div class="mini-tag-row">${customTags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </button>
     `;
@@ -260,7 +275,7 @@ function renderReader() {
 
   $("#workFolder").textContent = folderName(work.folderId || "unfiled");
   $("#workTitle").textContent = work.title;
-  $("#workAuthor").textContent = work.author || "未知作者";
+  $("#workAuthor").textContent = work.author || "作者待补";
   $("#noteInput").value = work.note || "";
   $("#summaryBlock").innerHTML = work.summaryHtml ? `<label>简介</label><div>${work.summaryHtml}</div>` : "";
   $("#chapterTitle").textContent = `${index + 1}/${chapters.length} ${chapter.title}`;
@@ -301,6 +316,7 @@ function renderReader() {
 }
 
 function renderMetadata(work) {
+  const estimatedWords = work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`;
   const groups = [
     ["分级", work.metadata?.rating],
     ["警告", work.metadata?.warnings],
@@ -310,7 +326,7 @@ function renderMetadata(work) {
     ["角色", work.metadata?.characters],
     ["其他标签", work.metadata?.freeforms],
     ["章节", work.metadata?.chapters],
-    ["字数", work.metadata?.words],
+    ["字数", estimatedWords],
     ["状态", work.metadata?.status],
     ["语言", work.metadata?.language]
   ];
@@ -354,7 +370,7 @@ function renderChapterDialog() {
   ].filter(Boolean);
   $("#chapterWorkInfo").innerHTML = `
     <h3>${escapeHtml(work.title || "作品信息")}</h3>
-    <p>${escapeHtml(work.author || "未知作者")}</p>
+    <p>${escapeHtml(work.author || "作者待补")}</p>
     ${infoTags.length ? `<div class="tag-row">${infoTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
     ${work.summaryHtml ? `<section class="summary-in-dialog"><b>简介</b><div>${work.summaryHtml}</div></section>` : ""}
   `;
@@ -470,7 +486,7 @@ function downloadWork(work) {
 </head>
 <body>
   <h1>${escapeHtml(work.title || "未命名作品")}</h1>
-  <p class="meta">${escapeHtml(work.author || "未知作者")} · ${escapeHtml(work.metadata?.words || "")}</p>
+  <p class="meta">${escapeHtml(work.author || "作者待补")} · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
   ${work.summaryHtml ? `<section><h2>简介</h2>${work.summaryHtml}</section>` : ""}
   ${chapterHtml}
 </body>
@@ -993,6 +1009,19 @@ function plainTextToHtml(text) {
 function parseWorkHtml(html, sourceUrl = "") {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const cleanText = (value = "") => value.replace(/\s+/g, " ").trim();
+  const titleParts = (value = "") => {
+    const clean = cleanText(value)
+      .replace(/\s*\|\s*Archive[\s\S]*$/i, "")
+      .replace(/\s*-\s*Archive of Our Own[\s\S]*$/i, "")
+      .replace(/\s*-\s*AO3[\s\S]*$/i, "");
+    const parts = clean.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const author = parts.at(-1);
+      const title = parts.slice(0, -1).filter((part) => !/^chapter\s+\d+/i.test(part)).join(" - ");
+      return { title: title || parts[0], author };
+    }
+    return { title: clean, author: "" };
+  };
   const text = (...selectors) => {
     for (const selector of selectors) {
       const value = cleanText(doc.querySelector(selector)?.textContent || "");
@@ -1043,11 +1072,16 @@ function parseWorkHtml(html, sourceUrl = "") {
     const src = img.getAttribute("src");
     if (src && sourceUrl) img.src = new URL(src, sourceUrl).toString();
   });
-  let title = text("h2.title.heading", "h1.title", "h1", "title")
+  const fromTitleTag = titleParts(text("title"));
+  let title = text("h2.title.heading", "h1.title", "h1") || fromTitleTag.title;
+  title = title
     .replace(/\s+-\s+Chapter\s+\d+[\s\S]*$/i, "")
     .replace(/\s*\|\s*Archive[\s\S]*$/i, "")
     .replace(/\s*-\s*Archive of Our Own[\s\S]*$/i, "");
-  let author = text("h3.byline.heading", ".byline", "a[rel='author']", "a[rel='author'] span")
+  let author = text("h3.byline.heading", ".byline a", ".byline", "a[rel='author']", "a[rel='author'] span", "[class*='author'] a", "[class*='author']")
+    || doc.querySelector("meta[name='author']")?.getAttribute("content")
+    || fromTitleTag.author;
+  author = cleanText(author)
     .replace(/^by\s+/i, "");
   if (!author && /\s+-\s+/.test(title)) {
     const parts = title.split(/\s+-\s+/);
@@ -1055,11 +1089,11 @@ function parseWorkHtml(html, sourceUrl = "") {
     title = parts.join(" - ");
   }
   const summaryHtml = doc.querySelector("blockquote.userstuff.summary, .summary blockquote, section.summary, #summary")?.innerHTML || "";
-  const plainWords = cleanText(chapters.textContent || "").length;
+  const plainWords = cleanText(chapters.textContent || "").replace(/\s/g, "").length;
   const chaptersCount = chapters.querySelectorAll(".chapter, [id^='chapter-']").length || 1;
   return {
     title: title || "未命名作品",
-    author: author || "未知作者",
+    author: author || "作者待补",
     sourceUrl,
     summaryHtml,
     contentHtml: chapters.outerHTML,
@@ -1084,7 +1118,7 @@ function normalizeImportedWorkPayload(payload) {
   if (!payload.contentHtml) throw new Error("这个采集文件里没有正文。");
   return {
     title: payload.title || "未命名作品",
-    author: payload.author || "未知作者",
+    author: payload.author || "作者待补",
     sourceUrl: payload.sourceUrl || "",
     summaryHtml: payload.summaryHtml || "",
     contentHtml: payload.contentHtml,
@@ -1096,7 +1130,7 @@ function normalizeImportedWorkPayload(payload) {
       relationships: payload.metadata?.relationships || [],
       characters: payload.metadata?.characters || [],
       freeforms: payload.metadata?.freeforms || [],
-      words: payload.metadata?.words || `${textFromHtml(payload.contentHtml).length} 字`,
+      words: payload.metadata?.words || `${textFromHtml(payload.contentHtml).replace(/\s/g, "").length} 字`,
       chapters: payload.metadata?.chapters || "",
       status: payload.metadata?.status || "",
       language: payload.metadata?.language || ""
@@ -1172,7 +1206,7 @@ function createCollectorBookmarklet() {
     const payload = {
       collectorVersion: 1,
       title: title || "未命名作品",
-      author: author.replace(/^by\\s+/i, "") || "未知作者",
+      author: author.replace(/^by\\s+/i, "") || "作者待补",
       sourceUrl: location.href,
       summaryHtml: q("blockquote.userstuff.summary, .summary blockquote, section.summary, #summary")?.innerHTML || "",
       contentHtml: chapters.outerHTML,
@@ -1184,7 +1218,7 @@ function createCollectorBookmarklet() {
         relationships: tags(["dd.relationship.tags", "dd[class*='relationship']"], [/^relationships?$/i, /^关系$/i, /^CP$/i]),
         characters: tags(["dd.character.tags", "dd[class*='character']"], [/^characters?$/i, /^角色$/]),
         freeforms: tags(["dd.freeform.tags", "dd[class*='freeform']", "dd[class*='additional']"], [/^additional tags?$/i, /^freeforms?$/i, /^其他标签$/]),
-        words: metaText(["dd.words", "dd[class*='words']"], [/^words$/i, /^字数$/]) || clean(chapters.textContent).length + " 字",
+        words: metaText(["dd.words", "dd[class*='words']"], [/^words$/i, /^字数$/]) || clean(chapters.textContent).replace(/\\s/g, "").length + " 字",
         chapters: metaText(["dd.chapters", "dd[class*='chapters']"], [/^chapters$/i, /^章节$/]),
         status: metaText(["dd.status", "dd[class*='status']"], [/^status$/i, /^状态$/]),
         language: metaText(["dd.language", "dd[class*='language']"], [/^language$/i, /^语言$/])
@@ -2416,7 +2450,7 @@ $("#manualForm").addEventListener("submit", async (event) => {
     sourceUrl: $("#manualUrl").value.trim(),
     summaryHtml: "",
     contentHtml: `<div id="chapters"><div class="chapter">${plainTextToHtml(content)}</div></div>`,
-    metadata: { relationships: [], freeforms: [], words: `${textFromHtml(content).length} 字` }
+    metadata: { relationships: [], freeforms: [], words: `${textFromHtml(content).replace(/\s/g, "").length} 字` }
   });
   $("#manualDialog").close();
 });
