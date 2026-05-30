@@ -28,6 +28,7 @@ const defaultState = {
   readerBg: "white",
   selectedFolder: "all",
   selectedWorkId: null,
+  syncCode: "",
   pendingImports: [],
   folders: [
     { id: "all", name: "全部" },
@@ -684,14 +685,14 @@ function setCloudStatus(message) {
 }
 
 function renderCloudPanel() {
-  const signedIn = Boolean(cloudSession?.user);
+  const connected = Boolean(state.syncCode);
   if (!supabase) {
-    $("#cloudEmail").disabled = true;
-    $("#cloudPassword").disabled = true;
-    $("#cloudLoginButton").classList.remove("hidden");
-    $("#cloudStartButton").classList.remove("hidden");
-    $("#cloudPasswordLoginButton").classList.remove("hidden");
-    $("#cloudSignupButton").classList.remove("hidden");
+    $("#cloudCode").readOnly = true;
+    $("#cloudLoginButton").classList.add("hidden");
+    $("#cloudStartButton").classList.add("hidden");
+    $("#cloudGenerateButton").classList.add("hidden");
+    $("#cloudPasswordLoginButton").classList.add("hidden");
+    $("#cloudSignupButton").classList.add("hidden");
     $("#cloudSetPasswordButton").classList.add("hidden");
     $("#cloudLogoutButton").classList.add("hidden");
     $("#cloudQuickSyncButton").disabled = true;
@@ -701,19 +702,20 @@ function renderCloudPanel() {
     setCloudStatus("云端模块没加载成功，但本机导入和阅读可以继续用。");
     return;
   }
-  $("#cloudEmail").disabled = signedIn;
-  $("#cloudPassword").disabled = false;
-  $("#cloudStartButton").classList.toggle("hidden", signedIn);
-  $("#cloudLoginButton").classList.toggle("hidden", signedIn);
-  $("#cloudPasswordLoginButton").classList.toggle("hidden", signedIn);
-  $("#cloudSignupButton").classList.toggle("hidden", signedIn);
-  $("#cloudSetPasswordButton").classList.toggle("hidden", !signedIn);
-  $("#cloudLogoutButton").classList.toggle("hidden", !signedIn);
-  $("#cloudQuickSyncButton").disabled = !signedIn;
-  $("#cloudUploadButton").disabled = !signedIn;
-  $("#cloudDownloadButton").disabled = !signedIn;
-  $("#cloudUser").textContent = signedIn ? `已登录：${cloudSession.user.email || "私人账号"}` : "未开启私人同步";
-  $("#cloudAccountDetails").open = !signedIn;
+  $("#cloudCode").readOnly = connected;
+  $("#cloudCode").value = state.syncCode || $("#cloudCode").value || "";
+  $("#cloudStartButton").classList.toggle("hidden", connected);
+  $("#cloudGenerateButton").classList.toggle("hidden", connected);
+  $("#cloudLoginButton").classList.add("hidden");
+  $("#cloudPasswordLoginButton").classList.add("hidden");
+  $("#cloudSignupButton").classList.add("hidden");
+  $("#cloudSetPasswordButton").classList.add("hidden");
+  $("#cloudLogoutButton").classList.toggle("hidden", !connected);
+  $("#cloudQuickSyncButton").disabled = !connected;
+  $("#cloudUploadButton").disabled = !connected;
+  $("#cloudDownloadButton").disabled = !connected;
+  $("#cloudUser").textContent = connected ? `同步码：${state.syncCode}` : "未连接同步码";
+  $("#cloudAccountDetails").open = !connected;
 }
 
 function cloneLibraryState(value) {
@@ -756,26 +758,26 @@ function mergeLibraryState(localState, cloudState) {
 }
 
 async function getCloudState() {
-  if (!cloudSession?.user) return null;
+  if (!state.syncCode) return null;
   const { data, error } = await supabase
-    .from("library_states")
+    .from("shared_library_states")
     .select("state, updated_at")
-    .eq("user_id", cloudSession.user.id)
+    .eq("sync_code", state.syncCode)
     .maybeSingle();
   if (error) throw error;
   return data?.state ? cloneLibraryState(data.state) : null;
 }
 
 async function saveCloudNow({ silent = false } = {}) {
-  if (!cloudSession?.user || syncingCloud) return;
+  if (!state.syncCode || syncingCloud) return;
   syncingCloud = true;
   if (!silent) setCloudStatus("正在上传云端……");
   try {
     const payload = cloneLibraryState(state);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
-    const { error } = await supabase.from("library_states").upsert({
-      user_id: cloudSession.user.id,
+    const { error } = await supabase.from("shared_library_states").upsert({
+      sync_code: state.syncCode,
       state: payload,
       updated_at: new Date().toISOString()
     });
@@ -789,7 +791,7 @@ async function saveCloudNow({ silent = false } = {}) {
 }
 
 function queueCloudSave() {
-  if (!cloudSession?.user || syncingCloud) return;
+  if (!state.syncCode || syncingCloud) return;
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 1200);
 }
@@ -805,16 +807,16 @@ function stopCloudRealtime() {
 
 function startCloudRealtime() {
   stopCloudRealtime();
-  if (!supabase || !cloudSession?.user) return;
+  if (!supabase || !state.syncCode) return;
   cloudRealtimeChannel = supabase
-    .channel(`library-state-${cloudSession.user.id}`)
+    .channel(`shared-library-state-${state.syncCode}`)
     .on(
       "postgres_changes",
       {
         event: "*",
         schema: "public",
-        table: "library_states",
-        filter: `user_id=eq.${cloudSession.user.id}`
+        table: "shared_library_states",
+        filter: `sync_code=eq.${state.syncCode}`
       },
       (payload) => {
         const remoteState = payload.new?.state;
@@ -842,7 +844,7 @@ function startCloudRealtime() {
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
-  if (!cloudSession?.user) return;
+  if (!state.syncCode) return;
   setCloudStatus("正在读取云端书架……");
   const cloudState = await getCloudState();
   if (!cloudState) {
@@ -859,16 +861,14 @@ async function loadCloudIntoLocal({ merge = true } = {}) {
 }
 
 async function refreshCloudSession({ initial = false } = {}) {
-  const { data } = await supabase.auth.getSession();
-  cloudSession = data.session;
   renderCloudPanel();
-  if (cloudSession?.user) {
-    setCloudStatus("云端已连接。");
+  if (state.syncCode) {
+    setCloudStatus("同步码已连接。");
     startCloudRealtime();
     if (initial) await loadCloudIntoLocal({ merge: true });
   } else {
     stopCloudRealtime();
-    setCloudStatus("用邮箱和密码登录后，会自动同步手机和电脑。");
+    setCloudStatus("输入同一个同步码，手机和电脑会自动同步。");
   }
 }
 
@@ -1606,17 +1606,6 @@ async function boot() {
   schedulePendingImports();
   if (supabase) {
     await refreshCloudSession({ initial: true });
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      cloudSession = session;
-      renderCloudPanel();
-      if (session?.user) {
-        startCloudRealtime();
-        await loadCloudIntoLocal({ merge: true });
-      } else {
-        stopCloudRealtime();
-        setCloudStatus("已退出云端。可以用邮箱和密码重新登录。");
-      }
-    });
   } else {
     renderCloudPanel();
   }
@@ -1703,33 +1692,43 @@ function cloudErrorText(error) {
   return message;
 }
 
+function makeSyncCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const part = () => Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+  return `${part()}-${part()}-${part()}`;
+}
+
+function cleanSyncCode(value = "") {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(.{4})(?=.)/g, "$1-").slice(0, 14);
+}
+
 $("#cloudStartButton").addEventListener("click", async () => {
   if (!supabase) {
     setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
     return;
   }
-  const credentials = cloudCredentials();
-  if (!credentials) return;
-  setCloudStatus("正在开启同步……");
-  let { data, error } = await supabase.auth.signInWithPassword(credentials);
-  if (!error && data.session) {
-    await finishCloudSignIn(data.session, "同步已开启。以后这台设备会自动保存到云端。");
-    return;
+  const code = cleanSyncCode($("#cloudCode").value.trim()) || makeSyncCode();
+  state.syncCode = code;
+  $("#cloudCode").value = code;
+  try {
+    await saveState();
+    renderCloudPanel();
+    startCloudRealtime();
+    await loadCloudIntoLocal({ merge: true });
+    await saveCloudNow({ silent: true });
+    setCloudStatus("同步码已连接。手机电脑填同一个码就会同步。");
+  } catch (error) {
+    state.syncCode = "";
+    renderCloudPanel();
+    setCloudStatus(/shared_library_states|schema cache|relation/i.test(error.message)
+      ? "云端表还没建好。请先在 Supabase 运行新版 SQL。"
+      : `同步开启失败：${error.message}`);
   }
-  if (/invalid login credentials/i.test(error?.message || "")) {
-    const signup = await supabase.auth.signUp(credentials);
-    if (signup.error) {
-      setCloudStatus(`开启失败：${cloudErrorText(signup.error)}`);
-      return;
-    }
-    if (signup.data.session) {
-      await finishCloudSignIn(signup.data.session, "同步已开启。以后这台设备会自动保存到云端。");
-    } else {
-      setCloudStatus("已创建账号。请确认邮件后回到这里，再点一次「开启同步」。");
-    }
-    return;
-  }
-  setCloudStatus(`开启失败：${cloudErrorText(error)}`);
+});
+
+$("#cloudGenerateButton").addEventListener("click", () => {
+  $("#cloudCode").value = makeSyncCode();
+  setCloudStatus("已生成同步码。点「连接同步码」即可开启。");
 });
 
 $("#cloudPasswordLoginButton").addEventListener("click", async () => {
@@ -1799,19 +1798,19 @@ $("#cloudLoginButton").addEventListener("click", async () => {
 });
 
 $("#cloudLogoutButton").addEventListener("click", async () => {
-  if (!supabase) return;
   stopCloudRealtime();
-  await supabase.auth.signOut();
-  cloudSession = null;
+  state.syncCode = "";
+  $("#cloudCode").value = "";
+  await saveState();
   renderCloudPanel();
-  setCloudStatus("已退出云端。可以用邮箱和密码重新登录。");
+  setCloudStatus("已断开同步码。本机内容还在。");
 });
 
 $("#cloudUploadButton").addEventListener("click", () => saveCloudNow());
 
 $("#cloudQuickSyncButton").addEventListener("click", async () => {
-  if (!cloudSession?.user) {
-    setCloudStatus("先在账号设置里登录一次。");
+  if (!state.syncCode) {
+    setCloudStatus("先连接同步码。");
     $("#cloudAccountDetails").open = true;
     return;
   }
@@ -2159,6 +2158,8 @@ $("#workContent").addEventListener("click", (event) => {
   if (!activeWork()) return;
   const mark = event.target.closest(".reader-highlight");
   if (mark) {
+    event.preventDefault();
+    event.stopPropagation();
     showHighlightToolbar(mark);
     return;
   }

@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=36-reader-menu-cloud-20260530" />
+    <link rel="stylesheet" href="./styles.css?v=37-sync-code-highlight-ui-20260531" />
   </head>
   <body>
     <div class="app-shell">
@@ -55,19 +55,21 @@
               <h2>私人同步</h2>
             </div>
             <div class="cloud-box">
-              <p class="helper-text" id="cloudUser">未开启私人同步</p>
-              <p class="status" id="cloudStatus">用同一个邮箱和密码登录，手机和电脑会自动合并同步。</p>
+              <p class="helper-text" id="cloudUser">未连接同步码</p>
+              <p class="status" id="cloudStatus">填同一个同步码，手机和电脑就是同一个云端书架。</p>
               <details class="cloud-account-details" id="cloudAccountDetails">
-                <summary>登录与账号</summary>
-                <input id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
-                <input id="cloudPassword" type="password" placeholder="密码，至少 6 位" autocomplete="current-password" />
+                <summary>同步码</summary>
+                <input id="cloudCode" type="text" placeholder="输入同步码，或点生成" autocomplete="off" />
+                <input class="hidden" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
+                <input class="hidden" id="cloudPassword" type="password" placeholder="密码，至少 6 位" autocomplete="current-password" />
                 <div class="cloud-actions">
-                  <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">开启同步</button>
+                  <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">连接同步码</button>
+                  <button class="ghost-button" type="button" id="cloudGenerateButton">生成同步码</button>
                   <button class="ghost-button primary-cloud-action hidden" type="button" id="cloudPasswordLoginButton">密码登录</button>
                   <button class="ghost-button hidden" type="button" id="cloudSignupButton">新建账号</button>
                   <button class="ghost-button primary-cloud-action hidden" type="button" id="cloudSetPasswordButton">设置密码</button>
                   <button class="ghost-button subtle-cloud-action" type="button" id="cloudLoginButton">邮件登录（备用）</button>
-                  <button class="ghost-button hidden" type="button" id="cloudLogoutButton">退出</button>
+                  <button class="ghost-button hidden" type="button" id="cloudLogoutButton">断开同步码</button>
                 </div>
                 <div class="backup-actions">
                   <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>立即同步</button>
@@ -354,6 +356,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=36-reader-menu-cloud-20260530" type="module"></script>
+    <script src="./app.js?v=37-sync-code-highlight-ui-20260531" type="module"></script>
   </body>
 </html>
