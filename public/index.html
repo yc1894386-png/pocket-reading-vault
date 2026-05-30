@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=22-long-press-manage-20260530" />
+    <link rel="stylesheet" href="./styles.css?v=23-shelf-polish-20260530" />
   </head>
   <body>
     <div class="app-shell">
@@ -265,15 +265,14 @@
     <dialog id="workManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="workManageForm">
         <h2 id="manageWorkTitle">整理作品</h2>
-        <p class="helper-text">长按作品可以打开这里。</p>
-        <label for="manageTagInput">添加小 tag</label>
+        <p class="helper-text">长按不动打开管理；长按后上下拖动可以直接调整顺序。</p>
+        <label for="manageTagInput">小 tag</label>
+        <div class="mini-tag-row editable-tags" id="manageTagList"></div>
         <div class="inline-action-row">
           <input id="manageTagInput" maxlength="28" placeholder="例如：已读、长篇、HE" />
           <button class="ghost-button" id="manageAddTagButton" type="button">添加</button>
         </div>
         <div class="manage-actions">
-          <button class="ghost-button" id="manageMoveUpButton" type="button">上移</button>
-          <button class="ghost-button" id="manageMoveDownButton" type="button">下移</button>
           <button class="ghost-button" id="manageDownloadButton" type="button">下载</button>
           <button class="danger-button" id="manageDeleteWorkButton" type="button">删除</button>
         </div>
@@ -287,7 +286,17 @@
       <form method="dialog" class="dialog-card manage-card" id="folderManageForm">
         <h2 id="manageFolderTitle">整理文件夹</h2>
         <p class="helper-text" id="manageFolderHint">长按文件夹可以打开这里。</p>
-        <button class="danger-button" id="manageDeleteFolderButton" type="button">删除文件夹</button>
+        <div class="manage-section">
+          <span>位置</span>
+          <div class="manage-actions">
+            <button class="ghost-button" id="manageFolderLeftButton" type="button">左移</button>
+            <button class="ghost-button" id="manageFolderRightButton" type="button">右移</button>
+          </div>
+        </div>
+        <div class="manage-section danger-zone">
+          <span>危险操作</span>
+          <button class="danger-button" id="manageDeleteFolderButton" type="button">删除文件夹</button>
+        </div>
         <menu>
           <button value="cancel" class="ghost-button" formnovalidate>关闭</button>
         </menu>
@@ -312,6 +321,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=22-long-press-manage-20260530" type="module"></script>
+    <script src="./app.js?v=23-shelf-polish-20260530" type="module"></script>
   </body>
 </html>

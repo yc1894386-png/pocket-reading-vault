@@ -44,6 +44,7 @@ let managedFolderId = null;
 let longPressTimer = null;
 let longPressPoint = null;
 let suppressShelfClick = false;
+let workDrag = null;
 let cloudSession = null;
 let syncingCloud = false;
 let supabase;
@@ -89,6 +90,10 @@ function escapeHtml(value = "") {
     "\"": "&quot;",
     "'": "&#039;"
   }[char]));
+}
+
+function cssEscape(value = "") {
+  return window.CSS?.escape ? CSS.escape(value) : String(value).replace(/["\\]/g, "\\$&");
 }
 
 function textFromHtml(html = "") {
@@ -157,12 +162,16 @@ function filteredWorks() {
     .sort((a, b) => (Number(b.sortOrder || 0) - Number(a.sortOrder || 0)) || (new Date(b.importedAt) - new Date(a.importedAt)));
 }
 
+function visibleFolders() {
+  return state.folders.filter((folder) => folder.id !== "unfiled");
+}
+
 function renderFolders() {
   const countFor = (folderId) => {
     if (folderId === "all") return state.works.length;
     return state.works.filter((work) => (work.folderId || "unfiled") === folderId).length;
   };
-  $("#folderList").innerHTML = state.folders.map((folder) => `
+  $("#folderList").innerHTML = visibleFolders().map((folder) => `
     <button class="folder-card ${state.selectedFolder === folder.id ? "active" : ""}" data-folder="${folder.id}">
       <span>${escapeHtml(folder.name)}</span>
       <small>${countFor(folder.id)} 篇</small>
@@ -274,10 +283,12 @@ function renderMetadata(work) {
 }
 
 function renderMetaOptions() {
-  $("#metaFolder").innerHTML = state.folders
-    .filter((folder) => folder.id !== "all")
+  $("#metaFolder").innerHTML = [
+    `<option value="unfiled">不放入文件夹</option>`,
+    ...state.folders
+    .filter((folder) => folder.id !== "all" && folder.id !== "unfiled")
     .map((folder) => `<option value="${folder.id}">${escapeHtml(folder.name)}</option>`)
-    .join("");
+  ].join("");
 }
 
 function renderChapterDialog() {
@@ -412,7 +423,7 @@ function orderedVisibleWorks() {
   return works;
 }
 
-async function moveWorkInList(id, delta) {
+async function moveWorkInList(id, delta, { reopen = true } = {}) {
   const works = orderedVisibleWorks();
   const index = works.findIndex((work) => work.id === id);
   const targetIndex = index + delta;
@@ -426,14 +437,35 @@ async function moveWorkInList(id, delta) {
   target.updatedAt = current.updatedAt;
   await saveState();
   renderAll();
-  openWorkManageDialog(id);
+  if (reopen) openWorkManageDialog(id);
 }
 
-function refreshWorkManageButtons() {
-  const works = orderedVisibleWorks();
-  const index = works.findIndex((work) => work.id === managedWorkId);
-  $("#manageMoveUpButton").disabled = index <= 0;
-  $("#manageMoveDownButton").disabled = index < 0 || index >= works.length - 1;
+async function moveFolderInList(id, delta) {
+  if (!id || id === "all" || id === "unfiled") return;
+  const order = visibleFolders().map((folder) => folder.id).filter((folderId) => folderId !== "all");
+  const index = order.indexOf(id);
+  const targetIndex = index + delta;
+  if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
+  [order[index], order[targetIndex]] = [order[targetIndex], order[index]];
+  const fixed = state.folders.filter((folder) => folder.id === "all" || folder.id === "unfiled");
+  const custom = order.map((folderId) => state.folders.find((folder) => folder.id === folderId)).filter(Boolean);
+  state.folders = [fixed.find((folder) => folder.id === "all") || defaultState.folders[0], ...custom, fixed.find((folder) => folder.id === "unfiled") || defaultState.folders[1]];
+  await saveState();
+  renderAll();
+  openFolderManageDialog(id);
+}
+
+function renderManageTags(work) {
+  $("#manageTagList").innerHTML = (work.customTags || []).length
+    ? work.customTags.map((tag) => `<button type="button" data-remove-tag="${escapeHtml(tag)}">${escapeHtml(tag)} ×</button>`).join("")
+    : `<span class="empty-tag-note">还没有自定义 tag</span>`;
+}
+
+function refreshFolderManageButtons() {
+  const order = visibleFolders().map((folder) => folder.id).filter((id) => id !== "all");
+  const index = order.indexOf(managedFolderId);
+  $("#manageFolderLeftButton").disabled = managedFolderId === "all" || index <= 0;
+  $("#manageFolderRightButton").disabled = managedFolderId === "all" || index < 0 || index >= order.length - 1;
 }
 
 function openWorkManageDialog(id) {
@@ -442,7 +474,7 @@ function openWorkManageDialog(id) {
   managedWorkId = id;
   $("#manageWorkTitle").textContent = `整理《${work.title}》`;
   $("#manageTagInput").value = "";
-  refreshWorkManageButtons();
+  renderManageTags(work);
   if (!$("#workManageDialog").open) $("#workManageDialog").showModal();
 }
 
@@ -450,10 +482,11 @@ function openFolderManageDialog(id) {
   const folder = state.folders.find((item) => item.id === id);
   if (!folder) return;
   managedFolderId = id;
-  const locked = id === "all" || id === "unfiled";
+  const locked = id === "all";
   $("#manageFolderTitle").textContent = `整理「${folder.name}」`;
-  $("#manageFolderHint").textContent = locked ? "这个是系统文件夹，不能删除。" : "删除后，里面的作品会移动到“未分类”。";
+  $("#manageFolderHint").textContent = locked ? "“全部”固定在最前面，只用来看完整书架。" : "可以调整左右位置；删除后，里面的作品会回到完整书架里。";
   $("#manageDeleteFolderButton").disabled = locked;
+  refreshFolderManageButtons();
   if (!$("#folderManageDialog").open) $("#folderManageDialog").showModal();
 }
 
@@ -476,6 +509,56 @@ function cancelLongPressOnMove(event) {
   if (Math.abs(event.clientX - longPressPoint.x) > 8 || Math.abs(event.clientY - longPressPoint.y) > 8) {
     cancelLongPress();
   }
+}
+
+function startWorkPress(event, id) {
+  clearTimeout(longPressTimer);
+  longPressPoint = { x: event.clientX, y: event.clientY };
+  workDrag = { id, active: false, moved: false, lastY: event.clientY };
+  longPressTimer = setTimeout(() => {
+    suppressShelfClick = true;
+    if (!workDrag || workDrag.id !== id) return;
+    workDrag.active = true;
+    document.body.classList.add("shelf-dragging");
+    document.querySelector(`[data-work="${cssEscape(id)}"]`)?.classList.add("dragging");
+  }, 360);
+}
+
+async function moveDraggedWork(event) {
+  if (!workDrag) return;
+  if (!workDrag.active) {
+    const movedEarly = Math.abs(event.clientX - longPressPoint.x) > 8 || Math.abs(event.clientY - longPressPoint.y) > 8;
+    if (movedEarly) cancelWorkPress();
+    return;
+  }
+  event.preventDefault();
+  const dy = event.clientY - workDrag.lastY;
+  if (Math.abs(dy) < 42) return;
+  workDrag.moved = true;
+  workDrag.lastY = event.clientY;
+  await moveWorkInList(workDrag.id, dy > 0 ? 1 : -1, { reopen: false });
+  document.body.classList.add("shelf-dragging");
+  document.querySelector(`[data-work="${cssEscape(workDrag.id)}"]`)?.classList.add("dragging");
+}
+
+function finishWorkPress() {
+  clearTimeout(longPressTimer);
+  const drag = workDrag;
+  workDrag = null;
+  longPressPoint = null;
+  document.body.classList.remove("shelf-dragging");
+  document.querySelectorAll(".work-card.dragging").forEach((card) => card.classList.remove("dragging"));
+  if (!drag) return;
+  if (drag.active && !drag.moved) openWorkManageDialog(drag.id);
+  if (drag.active) suppressShelfClick = true;
+}
+
+function cancelWorkPress() {
+  clearTimeout(longPressTimer);
+  workDrag = null;
+  longPressPoint = null;
+  document.body.classList.remove("shelf-dragging");
+  document.querySelectorAll(".work-card.dragging").forEach((card) => card.classList.remove("dragging"));
 }
 
 function exportLibrary() {
@@ -1047,6 +1130,7 @@ async function boot() {
   state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
+  if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
   renderAll();
   if (supabase) {
     await refreshCloudSession({ initial: true });
@@ -1174,12 +1258,12 @@ $("#workList").addEventListener("click", async (event) => {
 $("#workList").addEventListener("pointerdown", (event) => {
   const button = event.target.closest("[data-work]");
   if (!button) return;
-  startLongPress(event, () => openWorkManageDialog(button.dataset.work));
+  startWorkPress(event, button.dataset.work);
 });
-$("#workList").addEventListener("pointermove", cancelLongPressOnMove);
-$("#workList").addEventListener("pointerup", cancelLongPress);
-$("#workList").addEventListener("pointerleave", cancelLongPress);
-$("#workList").addEventListener("pointercancel", cancelLongPress);
+$("#workList").addEventListener("pointermove", (event) => moveDraggedWork(event));
+$("#workList").addEventListener("pointerup", finishWorkPress);
+$("#workList").addEventListener("pointerleave", cancelWorkPress);
+$("#workList").addEventListener("pointercancel", cancelWorkPress);
 $("#workList").addEventListener("contextmenu", (event) => {
   const button = event.target.closest("[data-work]");
   if (!button) return;
@@ -1256,8 +1340,16 @@ $("#manageAddTagButton").addEventListener("click", async () => {
   openWorkManageDialog(work.id);
 });
 
-$("#manageMoveUpButton").addEventListener("click", () => moveWorkInList(managedWorkId, -1));
-$("#manageMoveDownButton").addEventListener("click", () => moveWorkInList(managedWorkId, 1));
+$("#manageTagList").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-remove-tag]");
+  const work = workById(managedWorkId);
+  if (!button || !work) return;
+  work.customTags = (work.customTags || []).filter((tag) => tag !== button.dataset.removeTag);
+  work.updatedAt = new Date().toISOString();
+  await saveState();
+  renderAll();
+  openWorkManageDialog(work.id);
+});
 
 $("#manageDownloadButton").addEventListener("click", () => {
   const work = workById(managedWorkId);
@@ -1272,8 +1364,8 @@ $("#manageDeleteWorkButton").addEventListener("click", async () => {
 
 $("#manageDeleteFolderButton").addEventListener("click", async () => {
   const folder = state.folders.find((item) => item.id === managedFolderId);
-  if (!folder || folder.id === "all" || folder.id === "unfiled") return;
-  if (!confirm(`删除文件夹「${folder.name}」？里面的作品会移动到“未分类”。`)) return;
+  if (!folder || folder.id === "all") return;
+  if (!confirm(`删除文件夹「${folder.name}」？里面的作品不会删除，只是不再放在这个文件夹里。`)) return;
   state.works.forEach((work) => {
     if ((work.folderId || "unfiled") === folder.id) work.folderId = "unfiled";
   });
@@ -1283,6 +1375,9 @@ $("#manageDeleteFolderButton").addEventListener("click", async () => {
   await saveState();
   renderAll();
 });
+
+$("#manageFolderLeftButton").addEventListener("click", () => moveFolderInList(managedFolderId, -1));
+$("#manageFolderRightButton").addEventListener("click", () => moveFolderInList(managedFolderId, 1));
 
 $("#backToList").addEventListener("click", async () => {
   await persistProgress();

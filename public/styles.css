@@ -1295,6 +1295,17 @@ dialog,
   box-shadow: none;
 }
 
+.work-card.dragging {
+  background: var(--soft);
+  outline: 1px solid var(--text);
+  opacity: 0.86;
+}
+
+body.shelf-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .work-card h3 {
   font-size: 17px;
   font-weight: 700;
@@ -1345,12 +1356,26 @@ dialog,
   line-height: 1.4;
 }
 
+.editable-tags {
+  min-height: 30px;
+}
+
+.editable-tags button,
+.empty-tag-note {
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--muted);
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
 .tag {
   border-radius: 2px;
 }
 
 .manage-card {
   width: min(92vw, 420px);
+  gap: 16px;
 }
 
 .inline-action-row {
@@ -1365,9 +1390,45 @@ dialog,
   gap: 8px;
 }
 
+.manage-section {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+}
+
+.manage-section > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.danger-zone {
+  background: transparent;
+}
+
 .manage-actions button,
 .inline-action-row button {
   min-height: 44px;
+}
+
+@media (max-width: 879px) {
+  #workManageDialog,
+  #folderManageDialog {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  #workManageDialog .dialog-card,
+  #folderManageDialog .dialog-card {
+    padding: 20px 18px max(20px, env(safe-area-inset-bottom));
+  }
 }
 
 .stepper-row {
