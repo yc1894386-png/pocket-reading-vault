@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=41-mobile-images-keys-20260531" />
+    <link rel="stylesheet" href="./styles.css?v=42-reader-less-interrupt-20260531" />
   </head>
   <body>
     <div class="app-shell">
@@ -173,7 +173,7 @@
           <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>书签与高亮</span><b id="consoleBookmarkCount">0</b></button>
           <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>⌕</b></button>
           <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>主题与字体</span><b>Aa</b></button>
-          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button"><span>加入书签</span><b>♡</b></button>
+          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>♡</b></button>
           <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>背景</span><b>◐</b></button>
         </div>
       </div>
@@ -209,6 +209,7 @@
         </div>
         <label>字体</label>
         <div class="font-choice-grid" id="fontChoiceGrid">
+          <button type="button" data-font-family="original"><b>Aa</b><span>原站格式</span></button>
           <button type="button" data-font-family="serif"><b>Aa</b><span>书籍宋体</span></button>
           <button type="button" data-font-family="system"><b>Aa</b><span>系统黑体</span></button>
           <button type="button" data-font-family="kaiti"><b>Aa</b><span>楷体</span></button>
@@ -229,6 +230,14 @@
             <output id="settingsSideMargin">20px</output>
             <button type="button" data-stepper="margin" data-delta="1">＋</button>
           </div>
+        </div>
+        <label>背景</label>
+        <div class="background-grid settings-background-grid">
+          <button class="bg-choice" type="button" data-bg="white">纯白</button>
+          <button class="bg-choice" type="button" data-bg="light">浅灰</button>
+          <button class="bg-choice" type="button" data-bg="medium">中灰</button>
+          <button class="bg-choice" type="button" data-bg="darkgray">暗灰</button>
+          <button class="bg-choice" type="button" data-bg="black">纯黑</button>
         </div>
         <button class="ghost-button" id="settingsNightButton" type="button">夜间模式</button>
         <menu>
@@ -363,6 +372,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=41-mobile-images-keys-20260531" type="module"></script>
+    <script src="./app.js?v=42-reader-less-interrupt-20260531" type="module"></script>
   </body>
 </html>

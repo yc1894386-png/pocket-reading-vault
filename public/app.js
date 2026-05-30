@@ -22,7 +22,7 @@ const CLIENT_ID = (() => {
 const defaultState = {
   theme: "light",
   readerFontSize: 18,
-  readerFontFamily: "serif",
+  readerFontFamily: "original",
   readerLineHeight: 1.8,
   readerSideMargin: 20,
   readerTurnMode: "tap",
@@ -50,6 +50,7 @@ let pageCache = { key: "", step: 1, max: 0, total: 1, current: 1 };
 let scrollRaf = 0;
 let touchStart = null;
 let suppressNextClick = false;
+let lastReaderActionAt = 0;
 let cloudTimer;
 let pendingJump = null;
 let controlsOpen = false;
@@ -484,12 +485,13 @@ function renderAll() {
 
 function readerFontFamilyValue() {
   const map = {
+    original: `inherit`,
     serif: `"Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", Georgia, serif`,
     system: `-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`,
     kaiti: `"Kaiti SC", "STKaiti", "KaiTi", "楷体", serif`,
     wenkai: `"LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", sans-serif`
   };
-  return map[state.readerFontFamily || "serif"] || map.serif;
+  return map[state.readerFontFamily || "original"] || map.original;
 }
 
 function renderSettingsLabels() {
@@ -509,7 +511,7 @@ function renderBackgroundChoices() {
 
 function renderFontChoices() {
   document.querySelectorAll("[data-font-family]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.fontFamily === (state.readerFontFamily || "serif"));
+    button.classList.toggle("active", button.dataset.fontFamily === (state.readerFontFamily || "original"));
   });
 }
 
@@ -1137,7 +1139,7 @@ function parseWorkHtml(html, sourceUrl = "") {
       .sort((a, b) => cleanText(b.textContent).length - cleanText(a.textContent).length)[0];
   }
   if (!chapters) throw new Error("这个 HTML 里没有找到 正文。请下载作品的 Entire Work / HTML 文件。");
-  chapters.querySelectorAll("script, style").forEach((node) => node.remove());
+  chapters.querySelectorAll("script").forEach((node) => node.remove());
   normalizeImages(chapters, sourceUrl);
   const fromTitleTag = titleParts(text("title"));
   let title = text("h2.title.heading", "h1.title", "h1") || fromTitleTag.title;
@@ -1258,7 +1260,7 @@ function createCollectorBookmarklet() {
     let chapters = q("#chapters, .chapters, #workskin, main") || qa(".userstuff").sort((a, b) => clean(b.textContent).length - clean(a.textContent).length)[0];
     if (!chapters) return alert("没有找到正文，请确认在作品全文页。");
     chapters = chapters.cloneNode(true);
-    qa("script, style, form", chapters).forEach((node) => node.remove());
+    qa("script, form", chapters).forEach((node) => node.remove());
     qa("img", chapters).forEach((img) => {
       const src = img.getAttribute("src") || img.getAttribute("data-src") || img.getAttribute("data-original") || img.getAttribute("data-lazy-src");
       if (src) img.setAttribute("src", new URL(src, location.href).href);
@@ -1363,6 +1365,9 @@ function pageStepRatio() {
 function turnPage(delta) {
   const work = activeWork();
   if (!work || !isPagedMode()) return;
+  lastReaderActionAt = Date.now();
+  hideSelectionToolbar();
+  if (controlsOpen) setControlsOpen(false);
   const content = $("#workContent");
   if (state.readerTurnMode === "scroll") {
     const maxY = Math.max(0, content.scrollHeight - content.clientHeight);
@@ -1671,6 +1676,7 @@ function showSelectionToolbarFromRect(rect) {
 }
 
 function updateSelectionToolbar() {
+  if (Date.now() - lastReaderActionAt < 650) return hideSelectionToolbar();
   if (!document.body.classList.contains("reading")) return hideSelectionToolbar();
   const selection = window.getSelection();
   const text = selectedReaderText();
@@ -2289,11 +2295,15 @@ document.querySelectorAll("[data-bg]").forEach((button) => {
 
 $("#workContent").addEventListener("click", (event) => {
   if (!activeWork()) return;
+  const rect = $("#workContent").getBoundingClientRect();
+  const x = (event.clientX - rect.left) / Math.max(1, rect.width);
+  const isMenuZone = x >= 0.35 && x <= 0.65;
   const mark = event.target.closest(".reader-highlight");
   if (mark) {
     event.preventDefault();
     event.stopPropagation();
-    showHighlightToolbar(mark);
+    if (isMenuZone) showHighlightToolbar(mark);
+    else if (isPagedMode() && state.readerTurnMode !== "swipe") turnPage(x < 0.5 ? -1 : 1);
     return;
   }
   if (suppressNextClick) {
@@ -2306,15 +2316,13 @@ $("#workContent").addEventListener("click", (event) => {
     setControlsOpen(!controlsOpen);
     return;
   }
-  const rect = $("#workContent").getBoundingClientRect();
-  const x = (event.clientX - rect.left) / Math.max(1, rect.width);
-  if (x >= 0.25 && x <= 0.75) {
+  if (isMenuZone) {
     setControlsOpen(!controlsOpen);
     return;
   }
   if (state.readerTurnMode === "swipe") return;
-  if (x < 0.25) turnPage(-1);
-  else if (x > 0.75) turnPage(1);
+  if (x < 0.35) turnPage(-1);
+  else if (x > 0.65) turnPage(1);
 });
 
 $("#workContent").addEventListener("mouseup", () => setTimeout(updateSelectionToolbar, 80));
@@ -2322,6 +2330,7 @@ $("#workContent").addEventListener("touchend", () => setTimeout(updateSelectionT
 
 document.addEventListener("selectionchange", () => {
   if (!document.body.classList.contains("reading")) return;
+  if (Date.now() - lastReaderActionAt < 650) return;
   clearTimeout(selectionTimer);
   selectionTimer = setTimeout(updateSelectionToolbar, 120);
 });

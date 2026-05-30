@@ -1933,6 +1933,10 @@ body.shelf-dragging {
   font-family: "Songti SC", "STSong", "SimSun", serif;
 }
 
+.font-choice-grid [data-font-family="original"] {
+  font-family: inherit;
+}
+
 .font-choice-grid [data-font-family="system"] {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
