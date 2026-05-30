@@ -688,6 +688,8 @@ body.cloud-open .cloud-section {
   display: block;
   max-width: 100%;
   height: auto;
+  break-inside: avoid;
+  object-fit: contain;
   margin: 18px auto;
   border-radius: 18px;
 }
@@ -1409,6 +1411,13 @@ dialog::backdrop {
   .work-content > *,
   .work-content p {
     break-inside: auto;
+  }
+
+  .work-content img {
+    max-width: 100%;
+    max-height: calc(100dvh - 120px);
+    margin: 1.2em auto;
+    border-radius: 14px;
   }
 
   .reading-bar {

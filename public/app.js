@@ -122,6 +122,48 @@ function textFromHtml(html = "") {
   return div.textContent || "";
 }
 
+function proxiedImageUrl(value, baseUrl = "") {
+  if (!value || /^(data:|blob:)/i.test(value)) return value;
+  try {
+    const absolute = value.startsWith("//")
+      ? `https:${value}`
+      : (baseUrl ? new URL(value, baseUrl).toString() : new URL(value, location.href).toString());
+    if (!/^https?:\/\//i.test(absolute)) return absolute;
+    if (absolute.startsWith(`${IMPORT_API_BASE}/api/image?`)) return absolute;
+    return `${IMPORT_API_BASE}/api/image?url=${encodeURIComponent(absolute)}`;
+  } catch {
+    return value;
+  }
+}
+
+function rewriteSrcset(value = "", baseUrl = "") {
+  return value.split(",").map((part) => {
+    const trimmed = part.trim();
+    if (!trimmed) return "";
+    const [rawUrl, ...rest] = trimmed.split(/\s+/);
+    return [proxiedImageUrl(rawUrl, baseUrl), ...rest].join(" ");
+  }).filter(Boolean).join(", ");
+}
+
+function normalizeImages(root, baseUrl = "") {
+  root.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src")
+      || img.getAttribute("data-src")
+      || img.getAttribute("data-original")
+      || img.getAttribute("data-lazy-src")
+      || "";
+    const srcset = img.getAttribute("srcset") || "";
+    if (src) img.setAttribute("src", proxiedImageUrl(src, baseUrl));
+    if (!src && srcset) img.setAttribute("src", proxiedImageUrl(srcset.split(",")[0].trim().split(/\s+/)[0], baseUrl));
+    if (srcset) img.setAttribute("srcset", rewriteSrcset(srcset, baseUrl));
+    img.setAttribute("loading", "lazy");
+    img.setAttribute("decoding", "async");
+    img.removeAttribute("data-src");
+    img.removeAttribute("data-original");
+    img.removeAttribute("data-lazy-src");
+  });
+}
+
 function activeWork() {
   return state.works.find((work) => work.id === state.selectedWorkId) || null;
 }
@@ -148,6 +190,12 @@ function normalizeWork(work) {
   if (!work.metadata.words || work.metadata.words === "字数未知") {
     const count = textFromHtml(work.contentHtml || "").replace(/\s/g, "").length;
     if (count) work.metadata.words = `${count} 字`;
+  }
+  if (work.contentHtml && /<img\b/i.test(work.contentHtml) && !work.contentHtml.includes(`${IMPORT_API_BASE}/api/image?`)) {
+    const contentRoot = document.createElement("div");
+    contentRoot.innerHTML = work.contentHtml;
+    normalizeImages(contentRoot, work.sourceUrl || "");
+    work.contentHtml = contentRoot.innerHTML;
   }
   work.bookmarks ||= [];
   work.highlights ||= [];
@@ -1090,10 +1138,7 @@ function parseWorkHtml(html, sourceUrl = "") {
   }
   if (!chapters) throw new Error("这个 HTML 里没有找到 正文。请下载作品的 Entire Work / HTML 文件。");
   chapters.querySelectorAll("script, style").forEach((node) => node.remove());
-  chapters.querySelectorAll("img").forEach((img) => {
-    const src = img.getAttribute("src");
-    if (src && sourceUrl) img.src = new URL(src, sourceUrl).toString();
-  });
+  normalizeImages(chapters, sourceUrl);
   const fromTitleTag = titleParts(text("title"));
   let title = text("h2.title.heading", "h1.title", "h1") || fromTitleTag.title;
   title = title
@@ -1138,12 +1183,15 @@ function parseWorkHtml(html, sourceUrl = "") {
 function normalizeImportedWorkPayload(payload) {
   if (!payload || typeof payload !== "object") throw new Error("这个采集文件格式不对。");
   if (!payload.contentHtml) throw new Error("这个采集文件里没有正文。");
+  const contentRoot = document.createElement("div");
+  contentRoot.innerHTML = payload.contentHtml;
+  normalizeImages(contentRoot, payload.sourceUrl || "");
   return {
     title: payload.title || "未命名作品",
     author: payload.author || "作者待补",
     sourceUrl: payload.sourceUrl || "",
     summaryHtml: payload.summaryHtml || "",
-    contentHtml: payload.contentHtml,
+    contentHtml: contentRoot.innerHTML,
     metadata: {
       rating: payload.metadata?.rating || "",
       categories: payload.metadata?.categories || [],
@@ -1152,7 +1200,7 @@ function normalizeImportedWorkPayload(payload) {
       relationships: payload.metadata?.relationships || [],
       characters: payload.metadata?.characters || [],
       freeforms: payload.metadata?.freeforms || [],
-      words: payload.metadata?.words || `${textFromHtml(payload.contentHtml).replace(/\s/g, "").length} 字`,
+      words: payload.metadata?.words || `${textFromHtml(contentRoot.innerHTML).replace(/\s/g, "").length} 字`,
       chapters: payload.metadata?.chapters || "",
       status: payload.metadata?.status || "",
       language: payload.metadata?.language || ""
@@ -1212,8 +1260,13 @@ function createCollectorBookmarklet() {
     chapters = chapters.cloneNode(true);
     qa("script, style, form", chapters).forEach((node) => node.remove());
     qa("img", chapters).forEach((img) => {
-      const src = img.getAttribute("src");
+      const src = img.getAttribute("src") || img.getAttribute("data-src") || img.getAttribute("data-original") || img.getAttribute("data-lazy-src");
       if (src) img.setAttribute("src", new URL(src, location.href).href);
+      const srcset = img.getAttribute("srcset");
+      if (!src && srcset) img.setAttribute("src", new URL(srcset.split(",")[0].trim().split(/\\s+/)[0], location.href).href);
+      img.removeAttribute("data-src");
+      img.removeAttribute("data-original");
+      img.removeAttribute("data-lazy-src");
     });
     let title = text("h2.title.heading", "h1.title", "h1", "title")
       .replace(/\\s+-\\s+Chapter\\s+\\d+[\\s\\S]*$/i, "")
@@ -2153,6 +2206,21 @@ $("#consoleBackgroundButton").addEventListener("click", () => $("#backgroundDial
 
 $("#consolePrevChapter").addEventListener("click", () => changeChapter(-1));
 $("#consoleNextChapter").addEventListener("click", () => changeChapter(1));
+
+document.addEventListener("keydown", (event) => {
+  if (!activeWork()) return;
+  if (event.target?.matches?.("input, textarea, select")) return;
+  const nextKeys = ["ArrowRight", "PageDown", " ", "Spacebar", "AudioVolumeDown", "VolumeDown"];
+  const prevKeys = ["ArrowLeft", "PageUp", "AudioVolumeUp", "VolumeUp"];
+  if (nextKeys.includes(event.key)) {
+    event.preventDefault();
+    turnPage(1);
+  }
+  if (prevKeys.includes(event.key)) {
+    event.preventDefault();
+    turnPage(-1);
+  }
+});
 
 $("#settingsTurnMode").addEventListener("change", async (event) => {
   state.readerTurnMode = event.target.value;
