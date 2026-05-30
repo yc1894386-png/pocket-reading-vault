@@ -1030,6 +1030,12 @@ dialog::backdrop {
     touch-action: pan-x;
   }
 
+  :root.turn-tap .work-content {
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: auto;
+  }
+
   :root.turn-scroll .work-content {
     height: 100dvh;
     overflow-x: hidden;

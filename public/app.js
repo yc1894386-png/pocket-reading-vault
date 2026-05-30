@@ -30,6 +30,7 @@ let noteTimer;
 let progressTimer;
 let snapTimer;
 let persistTimer;
+let pageCache = { key: "", step: 1, max: 0, total: 1, current: 1 };
 let cloudTimer;
 let pendingJump = null;
 let controlsOpen = false;
@@ -214,6 +215,7 @@ function renderReader() {
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
   $("#workContent").style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+  resetPageCache();
   applyHighlights(work, index);
 
   const tags = [
@@ -601,8 +603,9 @@ function chapterScrollRatio() {
       const maxY = Math.max(1, content.scrollHeight - content.clientHeight);
       return Math.max(0, Math.min(1, content.scrollTop / maxY));
     }
-    const max = Math.max(1, content.scrollWidth - content.clientWidth);
-    return Math.max(0, Math.min(1, content.scrollLeft / max));
+    const metrics = refreshPageCache();
+    if (metrics.total <= 1) return 0;
+    return Math.max(0, Math.min(1, (metrics.current - 1) / (metrics.total - 1)));
   }
   const rect = content.getBoundingClientRect();
   const start = window.scrollY + rect.top;
@@ -620,10 +623,10 @@ function scrollToChapterRatio(ratio) {
       updatePageCount();
       return;
     }
-    const max = Math.max(1, content.scrollWidth - content.clientWidth);
-    content.scrollTo({ left: max * ratio, behavior: "auto" });
+    const metrics = refreshPageCache(true);
+    const page = Math.round(Math.max(0, Math.min(1, ratio)) * (metrics.total - 1)) + 1;
+    setReaderPage(page);
     updateProgressBar();
-    updatePageCount();
     return;
   }
   const rect = content.getBoundingClientRect();
@@ -639,9 +642,8 @@ function isPagedMode() {
 }
 
 function pageStepRatio() {
-  const content = $("#workContent");
-  const max = Math.max(1, content.scrollWidth - content.clientWidth);
-  return Math.max(0.02, content.clientWidth / max);
+  const metrics = refreshPageCache();
+  return metrics.total <= 1 ? 1 : 1 / metrics.total;
 }
 
 function turnPage(delta) {
@@ -663,20 +665,67 @@ function turnPage(delta) {
     queueProgressPersist();
     return;
   }
-  const step = content.clientWidth;
-  const max = Math.max(0, content.scrollWidth - content.clientWidth);
-  if (delta > 0 && content.scrollLeft >= max - 2) {
+  const metrics = refreshPageCache();
+  if (delta > 0 && metrics.current >= metrics.total) {
     changeChapter(1);
     return;
   }
-  if (delta < 0 && content.scrollLeft <= 2) {
+  if (delta < 0 && metrics.current <= 1) {
     changeChapter(-1);
     return;
   }
-  const next = Math.max(0, Math.min(max, content.scrollLeft + step * delta));
-  content.scrollTo({ left: next, behavior: "auto" });
+  setReaderPage(metrics.current + delta);
   updateProgressBar();
   queueProgressPersist();
+}
+
+function readerPageKey() {
+  const work = activeWork();
+  const content = $("#workContent");
+  if (!work || !content) return "";
+  const chapters = getChapters(work);
+  const index = currentChapterIndex(work, chapters);
+  return [
+    work.id || state.selectedWorkId || "",
+    index,
+    content.clientWidth,
+    state.readerFontSize,
+    state.readerLineHeight,
+    state.readerSideMargin,
+    state.readerTurnMode
+  ].join("|");
+}
+
+function resetPageCache() {
+  pageCache = { key: "", step: 1, max: 0, total: 1, current: 1 };
+}
+
+function refreshPageCache(force = false) {
+  const content = $("#workContent");
+  const key = readerPageKey();
+  if (!content || !key || state.readerTurnMode === "scroll") return pageCache;
+  const step = Math.max(1, content.clientWidth);
+  if (!force && pageCache.key === key && pageCache.step === step) return pageCache;
+  const max = Math.max(0, content.scrollWidth - step);
+  const total = Math.max(1, Math.round(max / step) + 1);
+  const current = Math.min(total, Math.max(1, Math.round(content.scrollLeft / step) + 1));
+  pageCache = { key, step, max, total, current };
+  return pageCache;
+}
+
+function setReaderPage(page) {
+  const content = $("#workContent");
+  const metrics = refreshPageCache();
+  const current = Math.min(metrics.total, Math.max(1, page));
+  pageCache.current = current;
+  content.scrollLeft = Math.min(metrics.max, (current - 1) * metrics.step);
+}
+
+function syncPageFromScroll() {
+  if (!isPagedMode() || state.readerTurnMode === "scroll") return;
+  const content = $("#workContent");
+  const metrics = refreshPageCache();
+  pageCache.current = Math.min(metrics.total, Math.max(1, Math.round(content.scrollLeft / metrics.step) + 1));
 }
 
 function setControlsOpen(open) {
@@ -688,12 +737,12 @@ function setControlsOpen(open) {
 function snapToNearestPage() {
   const content = $("#workContent");
   if (!activeWork() || !isPagedMode() || state.readerTurnMode === "scroll") return;
-  const step = Math.max(1, content.clientWidth);
-  const max = Math.max(0, content.scrollWidth - content.clientWidth);
-  const target = Math.max(0, Math.min(max, Math.round(content.scrollLeft / step) * step));
+  const metrics = refreshPageCache();
+  const target = Math.max(0, Math.min(metrics.max, Math.round(content.scrollLeft / metrics.step) * metrics.step));
   if (Math.abs(target - content.scrollLeft) > 2) {
-    content.scrollTo({ left: target, behavior: "auto" });
+    content.scrollLeft = target;
   }
+  pageCache.current = Math.min(metrics.total, Math.max(1, Math.round(target / metrics.step) + 1));
 }
 
 function queueProgressPersist(delay = 700) {
@@ -719,10 +768,8 @@ function updatePageCount() {
     count.textContent = `${Math.round(chapterScrollRatio() * 100)}%`;
     return;
   }
-  const step = Math.max(1, content.clientWidth);
-  const total = isPagedMode() ? Math.max(1, Math.ceil(content.scrollWidth / step)) : 1;
-  const current = isPagedMode() ? Math.min(total, Math.max(1, Math.round(content.scrollLeft / step) + 1)) : 1;
-  count.textContent = `${current} / ${total}`;
+  const metrics = isPagedMode() ? refreshPageCache() : { current: 1, total: 1 };
+  count.textContent = `${metrics.current} / ${metrics.total}`;
 }
 
 function requestReadingFullscreen() {
@@ -1162,13 +1209,22 @@ $("#workContent").addEventListener("click", (event) => {
 });
 
 $("#workContent").addEventListener("scroll", () => {
+  syncPageFromScroll();
   updateProgressBar();
   clearTimeout(progressTimer);
   progressTimer = setTimeout(persistProgress, 900);
   clearTimeout(snapTimer);
-  if (state.readerTurnMode !== "scroll") {
+  if (state.readerTurnMode === "swipe" || state.readerTurnMode === "both") {
     snapTimer = setTimeout(snapToNearestPage, 90);
   }
+}, { passive: true });
+
+window.addEventListener("resize", () => {
+  resetPageCache();
+  requestAnimationFrame(() => {
+    scrollToChapterRatio(activeWork()?.reading?.ratio || 0);
+    updateProgressBar();
+  });
 }, { passive: true });
 
 window.addEventListener("scroll", () => {
