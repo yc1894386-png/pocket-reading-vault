@@ -912,33 +912,89 @@ function plainTextToHtml(text) {
 
 function parseWorkHtml(html, sourceUrl = "") {
   const doc = new DOMParser().parseFromString(html, "text/html");
-  const text = (selector) => doc.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim() || "";
-  const tags = (selector) => [...doc.querySelectorAll(`${selector} a`)].map((item) => item.textContent.trim()).filter(Boolean);
-  const chapters = doc.querySelector("#chapters");
+  const cleanText = (value = "") => value.replace(/\s+/g, " ").trim();
+  const text = (...selectors) => {
+    for (const selector of selectors) {
+      const value = cleanText(doc.querySelector(selector)?.textContent || "");
+      if (value) return value;
+    }
+    return "";
+  };
+  const uniq = (items) => [...new Set(items.map(cleanText).filter(Boolean))];
+  const ddByLabel = (patterns) => {
+    const labels = Array.isArray(patterns) ? patterns : [patterns];
+    for (const dt of doc.querySelectorAll("dt")) {
+      const label = cleanText(dt.textContent).replace(/:$/, "");
+      if (!labels.some((pattern) => pattern.test(label))) continue;
+      let node = dt.nextElementSibling;
+      while (node && node.tagName?.toLowerCase() !== "dd") node = node.nextElementSibling;
+      if (node) return node;
+    }
+    return null;
+  };
+  const tags = (selectors, labels = []) => {
+    const nodes = [];
+    for (const selector of Array.isArray(selectors) ? selectors : [selectors]) {
+      nodes.push(...doc.querySelectorAll(selector));
+    }
+    const labelNode = labels.length ? ddByLabel(labels) : null;
+    if (labelNode) nodes.push(labelNode);
+    const values = [];
+    for (const node of nodes) {
+      const linked = [...node.querySelectorAll("a, li")].map((item) => cleanText(item.textContent)).filter(Boolean);
+      values.push(...(linked.length ? linked : cleanText(node.textContent).split(/,\s*/)));
+    }
+    return uniq(values);
+  };
+  const metaText = (selectors, labels = []) => {
+    const direct = text(...(Array.isArray(selectors) ? selectors : [selectors]));
+    if (direct) return direct;
+    const labelNode = labels.length ? ddByLabel(labels) : null;
+    return cleanText(labelNode?.textContent || "");
+  };
+  let chapters = doc.querySelector("#chapters, .chapters, #workskin, main");
+  if (!chapters) {
+    chapters = [...doc.querySelectorAll(".userstuff")]
+      .sort((a, b) => cleanText(b.textContent).length - cleanText(a.textContent).length)[0];
+  }
   if (!chapters) throw new Error("这个 HTML 里没有找到 正文。请下载作品的 Entire Work / HTML 文件。");
   chapters.querySelectorAll("script, style").forEach((node) => node.remove());
   chapters.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src");
     if (src && sourceUrl) img.src = new URL(src, sourceUrl).toString();
   });
+  let title = text("h2.title.heading", "h1.title", "h1", "title")
+    .replace(/\s+-\s+Chapter\s+\d+[\s\S]*$/i, "")
+    .replace(/\s*\|\s*Archive[\s\S]*$/i, "")
+    .replace(/\s*-\s*Archive of Our Own[\s\S]*$/i, "");
+  let author = text("h3.byline.heading", ".byline", "a[rel='author']", "a[rel='author'] span")
+    .replace(/^by\s+/i, "");
+  if (!author && /\s+-\s+/.test(title)) {
+    const parts = title.split(/\s+-\s+/);
+    author = parts.pop() || "";
+    title = parts.join(" - ");
+  }
+  const summaryHtml = doc.querySelector("blockquote.userstuff.summary, .summary blockquote, section.summary, #summary")?.innerHTML || "";
+  const plainWords = cleanText(chapters.textContent || "").length;
+  const chaptersCount = chapters.querySelectorAll(".chapter, [id^='chapter-']").length || 1;
   return {
-    title: text("h2.title.heading") || text("title").replace(/\s*\|\s*Archive Site.*$/i, "") || "未命名作品",
-    author: text("h3.byline.heading") || "未知作者",
+    title: title || "未命名作品",
+    author: author || "未知作者",
     sourceUrl,
-    summaryHtml: doc.querySelector("blockquote.userstuff.summary")?.innerHTML || "",
+    summaryHtml,
     contentHtml: chapters.outerHTML,
     metadata: {
-      rating: text("dd.rating.tags"),
-      categories: tags("dd.category.tags"),
-      fandoms: tags("dd.fandom.tags"),
-      warnings: tags("dd.warning.tags"),
-      relationships: tags("dd.relationship.tags"),
-      characters: tags("dd.character.tags"),
-      freeforms: tags("dd.freeform.tags"),
-      words: text("dd.words"),
-      chapters: text("dd.chapters"),
-      status: text("dd.status"),
-      language: text("dd.language")
+      rating: metaText(["dd.rating.tags", "dd[class*='rating']"], [/^rating$/i, /^分级$/]),
+      categories: tags(["dd.category.tags", "dd[class*='category']"], [/^category$/i, /^分类$/]),
+      fandoms: tags(["dd.fandom.tags", "dd[class*='fandom']"], [/^fandoms?$/i, /^原作$/]),
+      warnings: tags(["dd.warning.tags", "dd[class*='warning']"], [/^archive warnings?$/i, /^warnings?$/i, /^警告$/]),
+      relationships: tags(["dd.relationship.tags", "dd[class*='relationship']"], [/^relationships?$/i, /^关系$/i, /^CP$/i]),
+      characters: tags(["dd.character.tags", "dd[class*='character']"], [/^characters?$/i, /^角色$/]),
+      freeforms: tags(["dd.freeform.tags", "dd[class*='freeform']", "dd[class*='additional']"], [/^additional tags?$/i, /^freeforms?$/i, /^其他标签$/]),
+      words: metaText(["dd.words", "dd[class*='words']"], [/^words$/i, /^字数$/]) || `${plainWords} 字`,
+      chapters: metaText(["dd.chapters", "dd[class*='chapters']"], [/^chapters$/i, /^章节$/]) || `${chaptersCount}/${chaptersCount}`,
+      status: metaText(["dd.status", "dd[class*='status']"], [/^status$/i, /^状态$/]),
+      language: metaText(["dd.language", "dd[class*='language']"], [/^language$/i, /^语言$/])
     }
   };
 }
@@ -1379,6 +1435,7 @@ $("#importForm").addEventListener("submit", async (event) => {
 
 $("#importDrawerButton").addEventListener("click", () => {
   importDrawerOpen = !importDrawerOpen;
+  if (importDrawerOpen) cloudPanelOpen = false;
   renderAll();
 });
 
@@ -1389,8 +1446,23 @@ $("#searchToggleButton").addEventListener("click", () => {
 
 $("#cloudPanelButton").addEventListener("click", () => {
   cloudPanelOpen = !cloudPanelOpen;
+  if (cloudPanelOpen) importDrawerOpen = false;
   renderAll();
 });
+
+document.addEventListener("pointerdown", (event) => {
+  if (!importDrawerOpen && !cloudPanelOpen) return;
+  const target = event.target;
+  if (
+    target.closest(".import-drawer") ||
+    target.closest(".cloud-section") ||
+    target.closest("#importDrawerButton") ||
+    target.closest("#cloudPanelButton")
+  ) return;
+  importDrawerOpen = false;
+  cloudPanelOpen = false;
+  renderAll();
+}, { passive: true });
 
 async function finishCloudSignIn(session, message = "已登录云端。") {
   cloudSession = session;
@@ -1414,6 +1486,20 @@ function cloudCredentials() {
   return { email, password };
 }
 
+function cloudErrorText(error) {
+  const message = error?.message || "未知错误";
+  if (/invalid login credentials/i.test(message)) {
+    return "邮箱或密码不对，或者这个邮箱还没注册/没确认。第一次用请点「新建账号」，注册邮件确认后再密码登录。";
+  }
+  if (/email not confirmed/i.test(message)) {
+    return "邮箱还没确认。请先打开注册邮件确认，再回这里密码登录。";
+  }
+  if (/user already registered|already registered/i.test(message)) {
+    return "这个邮箱已经注册过了，直接点「密码登录」。如果忘了密码，需要在 Supabase 后台重置。";
+  }
+  return message;
+}
+
 $("#cloudPasswordLoginButton").addEventListener("click", async () => {
   if (!supabase) {
     setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
@@ -1424,7 +1510,7 @@ $("#cloudPasswordLoginButton").addEventListener("click", async () => {
   setCloudStatus("正在密码登录……");
   const { data, error } = await supabase.auth.signInWithPassword(credentials);
   if (error) {
-    setCloudStatus(`密码登录失败：${error.message}`);
+    setCloudStatus(`密码登录失败：${cloudErrorText(error)}`);
     return;
   }
   await finishCloudSignIn(data.session, "已密码登录，实时同步已开启。");
@@ -1440,7 +1526,7 @@ $("#cloudSignupButton").addEventListener("click", async () => {
   setCloudStatus("正在注册密码账号……");
   const { data, error } = await supabase.auth.signUp(credentials);
   if (error) {
-    setCloudStatus(`注册失败：${error.message}`);
+    setCloudStatus(`注册失败：${cloudErrorText(error)}`);
     return;
   }
   if (data.session) {
