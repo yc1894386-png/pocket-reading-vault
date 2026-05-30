@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=31-books-cn-compact-20260530" />
+    <link rel="stylesheet" href="./styles.css?v=32-highlight-cloud-import-20260530" />
   </head>
   <body>
     <div class="app-shell">
@@ -54,18 +54,18 @@
               <h2>私人同步</h2>
             </div>
             <div class="cloud-box">
-              <p class="helper-text" id="cloudUser">未登录云端</p>
-              <p class="status" id="cloudStatus">登录后可同步手机和电脑。</p>
+              <p class="helper-text" id="cloudUser">未开启私人同步</p>
+              <p class="status" id="cloudStatus">用同一个邮箱和密码登录，手机和电脑会自动合并同步。</p>
               <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>立即同步</button>
               <details class="cloud-account-details" id="cloudAccountDetails">
-                <summary>账号设置</summary>
+                <summary>登录与账号</summary>
                 <input id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
                 <input id="cloudPassword" type="password" placeholder="密码，至少 6 位" autocomplete="current-password" />
                 <div class="cloud-actions">
-                  <button class="ghost-button primary-cloud-action" type="button" id="cloudPasswordLoginButton">登录</button>
-                  <button class="ghost-button" type="button" id="cloudSignupButton">注册</button>
+                  <button class="ghost-button primary-cloud-action" type="button" id="cloudPasswordLoginButton">密码登录</button>
+                  <button class="ghost-button" type="button" id="cloudSignupButton">新建账号</button>
                   <button class="ghost-button primary-cloud-action hidden" type="button" id="cloudSetPasswordButton">设置密码</button>
-                  <button class="ghost-button subtle-cloud-action" type="button" id="cloudLoginButton">邮件备用登录</button>
+                  <button class="ghost-button subtle-cloud-action" type="button" id="cloudLoginButton">邮件登录（备用）</button>
                   <button class="ghost-button hidden" type="button" id="cloudLogoutButton">退出</button>
                 </div>
                 <div class="backup-actions">
@@ -166,12 +166,23 @@
           <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button">›</button>
         </div>
         <div class="console-action-row">
+          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button"><span>加入书签</span><b>♡</b></button>
           <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button"><span>书签与高亮</span><b id="consoleBookmarkCount">0</b></button>
           <button class="console-icon-button" id="consoleSearchButton" type="button"><span>搜索全文</span><b>⌕</b></button>
           <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>主题与设置</span><b>大小</b></button>
           <button class="console-icon-button" id="consoleBackgroundButton" type="button"><span>背景</span><b>◐</b></button>
         </div>
       </div>
+    </div>
+
+    <div class="selection-toolbar hidden" id="selectionToolbar" aria-label="高亮工具">
+      <button class="highlight-dot yellow" type="button" data-highlight-color="yellow" aria-label="淡黄高亮"></button>
+      <button class="highlight-dot green" type="button" data-highlight-color="green" aria-label="淡绿高亮"></button>
+      <button class="highlight-dot blue" type="button" data-highlight-color="blue" aria-label="淡蓝高亮"></button>
+      <button class="highlight-dot pink" type="button" data-highlight-color="pink" aria-label="淡粉高亮"></button>
+      <button type="button" data-highlight-action="note">备注</button>
+      <button type="button" data-highlight-action="copy">复制</button>
+      <button type="button" data-highlight-action="delete">删除</button>
     </div>
 
     <dialog id="readerSettingsDialog">
@@ -246,8 +257,15 @@
         <div class="chapter-list" id="chapterList"></div>
         <h3>书签</h3>
         <div class="bookmark-list" id="bookmarkList"></div>
+        <h3>高亮与备注</h3>
+        <div class="bookmark-list" id="highlightList"></div>
       </div>
     </dialog>
+
+    <div class="portrait-lock hidden" id="portraitLock">
+      <div>请竖屏阅读</div>
+      <p>横屏会挡住排版，我先帮你拦住。</p>
+    </div>
 
     <dialog id="folderDialog">
       <form method="dialog" class="dialog-card" id="folderForm">
@@ -334,6 +352,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=31-books-cn-compact-20260530" type="module"></script>
+    <script src="./app.js?v=32-highlight-cloud-import-20260530" type="module"></script>
   </body>
 </html>

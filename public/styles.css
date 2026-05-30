@@ -254,6 +254,8 @@ body.import-open .import-drawer {
   right: 14px;
   z-index: 72;
   width: min(360px, calc(100vw - 28px));
+  max-height: calc(100dvh - 92px);
+  overflow: auto;
   transform: translateY(-8px);
   opacity: 0;
   pointer-events: none;
@@ -329,7 +331,9 @@ body.cloud-open .cloud-section {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: var(--soft);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(20px);
 }
 
 .cloud-box input {
@@ -696,10 +700,78 @@ body.cloud-open .cloud-section {
 }
 
 .reader-highlight {
-  border-radius: 4px;
-  background: color-mix(in srgb, #f2cf63 66%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, #f2cf63 62%, transparent);
   color: inherit;
   padding: 0 2px;
+  cursor: pointer;
+}
+
+.reader-highlight.yellow {
+  background: color-mix(in srgb, #f2d36b 64%, transparent);
+}
+
+.reader-highlight.green {
+  background: color-mix(in srgb, #b7d9ab 64%, transparent);
+}
+
+.reader-highlight.blue {
+  background: color-mix(in srgb, #afd0ee 64%, transparent);
+}
+
+.reader-highlight.pink {
+  background: color-mix(in srgb, #efbac8 62%, transparent);
+}
+
+.selection-toolbar {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 20px);
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: rgba(18, 18, 18, 0.92);
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.selection-toolbar.hidden {
+  display: none;
+}
+
+.selection-toolbar button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  padding: 0 8px;
+  font-size: 0.82rem;
+}
+
+.highlight-dot {
+  width: 24px;
+  min-width: 24px;
+  padding: 0 !important;
+}
+
+.highlight-dot.yellow {
+  background: #f2d36b;
+}
+
+.highlight-dot.green {
+  background: #b7d9ab;
+}
+
+.highlight-dot.blue {
+  background: #afd0ee;
+}
+
+.highlight-dot.pink {
+  background: #efbac8;
 }
 
 .reading-bar {
@@ -1025,6 +1097,60 @@ body.cloud-open .cloud-section {
 .bookmark-list {
   display: grid;
   gap: 10px;
+}
+
+.note-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-jump {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  box-shadow: none;
+}
+
+.mini-delete {
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.portrait-lock {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-width: 879px) {
+  body.reading .portrait-lock {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-content: center;
+    gap: 8px;
+    padding: 24px;
+    background: var(--reader-bg);
+    color: var(--reader-ink);
+    text-align: center;
+  }
+
+  body.reading .portrait-lock div {
+    font-size: 1.4rem;
+    font-weight: 850;
+  }
+
+  body.reading .portrait-lock p {
+    margin: 0;
+    color: var(--muted);
+  }
 }
 
 .chapter-item {
@@ -1379,14 +1505,14 @@ dialog::backdrop {
 button {
   min-height: 42px;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 14px;
   box-shadow: none;
 }
 
 input,
 textarea,
 select {
-  border-radius: 2px;
+  border-radius: 14px;
 }
 
 .topbar {
@@ -1417,7 +1543,7 @@ select {
   min-height: 38px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 14px;
   background: transparent;
   color: var(--text);
   box-shadow: none;
@@ -1432,7 +1558,7 @@ select {
 .panel,
 .library-panel {
   border: 0;
-  border-radius: 0;
+  border-radius: 22px;
   box-shadow: none;
 }
 
@@ -1448,7 +1574,7 @@ dialog,
 .dialog-card,
 .chapter-item,
 .bg-choice {
-  border-radius: 2px;
+  border-radius: 18px;
   box-shadow: none;
 }
 
@@ -1472,7 +1598,7 @@ dialog,
   min-width: max-content;
   min-height: 34px;
   padding: 0 12px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--soft);
   color: var(--muted);
 }
@@ -1487,18 +1613,17 @@ dialog,
 }
 
 .work-list {
-  gap: 0;
-  border-top: 1px solid var(--line);
+  gap: 10px;
+  border-top: 0;
 }
 
 .work-card {
   gap: 5px;
   min-height: 96px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  padding: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  padding: 16px;
 }
 
 .work-card.active,
@@ -1734,6 +1859,20 @@ body.shelf-dragging {
 }
 
 @media (max-width: 879px) {
+  .cloud-section {
+    top: auto;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 12px;
+    width: auto;
+    max-height: min(76dvh, 560px);
+    transform: translateY(12px);
+  }
+
+  body.cloud-open .cloud-section {
+    transform: translateY(0);
+  }
+
   .topbar {
     padding: 22px 18px 14px;
   }
