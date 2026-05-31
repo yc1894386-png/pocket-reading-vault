@@ -3056,3 +3056,94 @@ body {
   }
 }
 
+/* v51: lift above browser toolbar and align the right column */
+#readerSettingsDialog[open] {
+  inset: auto 0 96px 0 !important;
+}
+
+#readerSettingsDialog .settings-main-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.62fr) !important;
+  grid-template-areas:
+    "brightness eye"
+    "font fontName"
+    "bg turn"
+    "line side"
+    "vertical vertical" !important;
+  align-items: center !important;
+}
+
+#readerSettingsDialog .margin-stepper {
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  padding: 0 8px !important;
+}
+
+#readerSettingsDialog .margin-stepper .stepper-control {
+  grid-template-columns: 28px minmax(42px, 1fr) 28px !important;
+}
+
+#readerSettingsDialog .margin-stepper .stepper-control button {
+  font-size: 22px !important;
+}
+
+#readerSettingsDialog .margin-stepper .stepper-control output {
+  font-size: 22px !important;
+  white-space: nowrap !important;
+}
+
+#readerSettingsDialog .vertical-margin-stepper {
+  width: min(100%, 64%) !important;
+}
+
+#readerSettingsDialog .settings-background-grid {
+  min-width: 0 !important;
+}
+
+#readerSettingsDialog #settingsTurnMode {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+@media (max-width: 879px) {
+  #readerSettingsDialog[open] {
+    inset: auto 0 max(124px, calc(env(safe-area-inset-bottom) + 104px)) 0 !important;
+    width: min(calc(100vw - 10px), 560px) !important;
+  }
+
+  #readerSettingsDialog .apple-settings {
+    padding: 14px 16px 16px !important;
+  }
+
+  #readerSettingsDialog .settings-main-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(142px, 0.58fr) !important;
+    gap: 8px 10px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  #readerSettingsDialog[open] {
+    inset: auto 0 max(132px, calc(env(safe-area-inset-bottom) + 112px)) 0 !important;
+    width: 100vw !important;
+  }
+
+  #readerSettingsDialog .apple-settings {
+    padding: 12px 10px 14px !important;
+  }
+
+  #readerSettingsDialog .settings-main-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(128px, 0.56fr) !important;
+    gap: 7px 8px !important;
+  }
+
+  #readerSettingsDialog .margin-stepper {
+    padding: 0 6px !important;
+  }
+
+  #readerSettingsDialog .margin-stepper .stepper-control {
+    grid-template-columns: 24px minmax(38px, 1fr) 24px !important;
+  }
+
+  #readerSettingsDialog .margin-stepper .stepper-control output {
+    font-size: 20px !important;
+  }
+}
+
