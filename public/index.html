@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=47-reader-settings-redo-20260531" />
+    <link rel="stylesheet" href="./styles.css?v=48-reader-settings-fit-20260531" />
   </head>
   <body>
     <div class="app-shell">
@@ -250,11 +250,19 @@
             </div>
           </div>
           <div class="settings-cell stepper-row margin-stepper">
-            <span>边距</span>
+            <span>左右</span>
             <div class="stepper-control">
               <button type="button" data-stepper="margin" data-delta="-1">−</button>
               <output id="settingsSideMargin">20px</output>
               <button type="button" data-stepper="margin" data-delta="1">＋</button>
+            </div>
+          </div>
+          <div class="settings-cell stepper-row vertical-margin-stepper">
+            <span>上下</span>
+            <div class="stepper-control">
+              <button type="button" data-stepper="verticalMargin" data-delta="-1">−</button>
+              <output id="settingsVerticalMargin">42px</output>
+              <button type="button" data-stepper="verticalMargin" data-delta="1">＋</button>
             </div>
           </div>
         </div>
@@ -285,6 +293,7 @@
         <div class="dialog-head">
           <h2>阅读导航</h2>
           <div class="dialog-actions">
+            <button class="ghost-button" id="chapterBookmarkButton" type="button">书签</button>
             <button class="ghost-button" id="chapterSettingsButton" type="button">设置</button>
             <button class="ghost-button" id="closeChapterDialog" type="button">关闭</button>
           </div>
@@ -390,6 +399,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=47-reader-settings-redo-20260531" type="module"></script>
+    <script src="./app.js?v=48-reader-settings-fit-20260531" type="module"></script>
   </body>
 </html>

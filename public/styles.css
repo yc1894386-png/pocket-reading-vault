@@ -18,6 +18,7 @@
   --reader-font-family: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", Georgia, serif;
   --reader-line-height: 1.8;
   --reader-side-margin: 34px;
+  --reader-vertical-margin: 42px;
 }
 
 :root.dark {
@@ -1596,7 +1597,7 @@ dialog::backdrop {
     overflow-y: hidden;
     column-width: calc(100vw - (var(--reader-side-margin) * 2));
     column-gap: calc(var(--reader-side-margin) * 2);
-    padding: max(42px, env(safe-area-inset-top)) var(--reader-side-margin) max(42px, env(safe-area-inset-bottom));
+    padding: max(var(--reader-vertical-margin), env(safe-area-inset-top)) var(--reader-side-margin) max(var(--reader-vertical-margin), env(safe-area-inset-bottom));
     touch-action: manipulation;
     user-select: text;
     scroll-behavior: auto;
@@ -1625,7 +1626,7 @@ dialog::backdrop {
     overflow-y: auto;
     column-width: auto;
     column-gap: normal;
-    padding: max(42px, env(safe-area-inset-top)) var(--reader-side-margin) max(42px, env(safe-area-inset-bottom));
+    padding: max(var(--reader-vertical-margin), env(safe-area-inset-top)) var(--reader-side-margin) max(var(--reader-vertical-margin), env(safe-area-inset-bottom));
     touch-action: pan-y;
   }
 
@@ -2473,6 +2474,11 @@ body {
   display: flex !important;
 }
 
+#consoleLibraryButton {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 #consoleSettingsButton {
   min-height: 52px !important;
   border: 0 !important;
@@ -2490,6 +2496,7 @@ body {
 }
 
 #readerSettingsDialog {
+  box-sizing: border-box !important;
   width: min(720px, calc(100vw - 28px)) !important;
   max-width: none !important;
   max-height: min(31dvh, 320px) !important;
@@ -2513,7 +2520,9 @@ body {
 
 .settings-main-grid,
 .settings-main-grid > * {
+  box-sizing: border-box !important;
   min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .settings-main-grid {
@@ -2522,6 +2531,9 @@ body {
 }
 
 .settings-cell {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
   min-height: 46px !important;
   border-radius: 20px !important;
   background: color-mix(in srgb, var(--paper) 52%, transparent) !important;
@@ -2544,6 +2556,10 @@ body {
 }
 
 .setting-brightness input[type="range"] {
+  pointer-events: auto !important;
+  touch-action: pan-x !important;
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
   width: 100% !important;
   min-width: 0 !important;
   height: 26px !important;
@@ -2553,9 +2569,23 @@ body {
   accent-color: color-mix(in srgb, var(--reader-ink) 78%, transparent);
 }
 
+.setting-brightness input[type="range"]::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+}
+
+.setting-brightness input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+}
+
 .settings-pill,
 .settings-select-pill,
 .settings-popover summary {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
   min-height: 46px !important;
   padding: 0 14px !important;
   border: 0 !important;
@@ -2585,6 +2615,8 @@ body {
 }
 
 .apple-settings .stepper-control {
+  min-width: 0 !important;
+  max-width: 100% !important;
   grid-template-columns: 40px minmax(36px, 1fr) 40px !important;
 }
 
@@ -2616,6 +2648,14 @@ body {
   max-width: calc(100vw - 24px) !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   overflow: hidden !important;
+}
+
+.dialog-actions {
+  flex-wrap: wrap;
+}
+
+#chapterBookmarkButton {
+  min-width: 64px;
 }
 
 @media (max-width: 520px) {

@@ -25,6 +25,7 @@ const defaultState = {
   readerFontFamily: "original",
   readerLineHeight: 1.8,
   readerSideMargin: 20,
+  readerVerticalMargin: 42,
   readerBrightness: 100,
   readerEyeCare: false,
   readerTurnMode: "tap",
@@ -365,6 +366,7 @@ function renderReader() {
   $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
   $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
   $("#workContent").style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+  $("#workContent").style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
   prepareReaderImages();
   resetPageCache();
   applyHighlights(work, index);
@@ -501,6 +503,7 @@ function renderAll() {
   document.documentElement.style.setProperty("--reader-font-family", readerFontFamilyValue());
   document.documentElement.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
   document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+  document.documentElement.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
   document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
   renderFolders();
   renderWorks();
@@ -526,10 +529,12 @@ function renderSettingsLabels() {
   const font = $("#settingsFontSize");
   const line = $("#settingsLineHeight");
   const margin = $("#settingsSideMargin");
+  const verticalMargin = $("#settingsVerticalMargin");
   const brightness = $("#settingsBrightness");
   if (font) font.textContent = `${state.readerFontSize || 18}px`;
   if (line) line.textContent = `${(state.readerLineHeight || 1.8).toFixed(1)}`;
   if (margin) margin.textContent = `${state.readerSideMargin || 20}px`;
+  if (verticalMargin) verticalMargin.textContent = `${state.readerVerticalMargin || 42}px`;
   if (brightness) brightness.value = state.readerBrightness || 100;
   $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare));
 }
@@ -790,6 +795,7 @@ async function importLibraryFile(file) {
   state.readerFontFamily = nextState.readerFontFamily || state.readerFontFamily;
   state.readerLineHeight = nextState.readerLineHeight || state.readerLineHeight;
   state.readerSideMargin = nextState.readerSideMargin || state.readerSideMargin;
+  state.readerVerticalMargin = nextState.readerVerticalMargin || state.readerVerticalMargin;
   state.readerTurnMode = nextState.readerTurnMode || state.readerTurnMode;
   state.readerBg = nextState.readerBg || state.readerBg;
   state.readerBrightness = nextState.readerBrightness || state.readerBrightness;
@@ -871,6 +877,7 @@ function mergeLibraryState(localState, cloudState) {
   merged.readerFontFamily = localState.readerFontFamily || cloudState.readerFontFamily || defaultState.readerFontFamily;
   merged.readerLineHeight = localState.readerLineHeight || cloudState.readerLineHeight || defaultState.readerLineHeight;
   merged.readerSideMargin = localState.readerSideMargin || cloudState.readerSideMargin || defaultState.readerSideMargin;
+  merged.readerVerticalMargin = localState.readerVerticalMargin || cloudState.readerVerticalMargin || defaultState.readerVerticalMargin;
   merged.readerTurnMode = localState.readerTurnMode || cloudState.readerTurnMode || defaultState.readerTurnMode;
   merged.readerBg = localState.readerBg || cloudState.readerBg || defaultState.readerBg;
   merged.readerBrightness = localState.readerBrightness || cloudState.readerBrightness || defaultState.readerBrightness;
@@ -1447,6 +1454,7 @@ function readerPageKey() {
     state.readerFontFamily,
     state.readerLineHeight,
     state.readerSideMargin,
+    state.readerVerticalMargin,
     state.readerTurnMode
   ].join("|");
 }
@@ -1772,6 +1780,7 @@ async function boot() {
   state.works = (state.works || []).map(normalizeWork);
   state.readerLineHeight ||= defaultState.readerLineHeight;
   state.readerSideMargin ||= defaultState.readerSideMargin;
+  state.readerVerticalMargin ||= defaultState.readerVerticalMargin;
   state.readerTurnMode ||= defaultState.readerTurnMode;
   state.readerBg ||= defaultState.readerBg;
   state.readerBrightness ||= defaultState.readerBrightness;
@@ -1781,6 +1790,7 @@ async function boot() {
   state.readerFontSize = Math.max(12, Math.min(32, Number(state.readerFontSize || defaultState.readerFontSize)));
   state.readerLineHeight = Math.max(1.4, Math.min(2.4, Number(state.readerLineHeight || defaultState.readerLineHeight)));
   state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
+  state.readerVerticalMargin = Math.max(28, Math.min(76, Number(state.readerVerticalMargin || defaultState.readerVerticalMargin)));
   state.readerBrightness = Math.max(45, Math.min(100, Number(state.readerBrightness || defaultState.readerBrightness)));
   normalizePendingImports();
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
@@ -2264,6 +2274,11 @@ $("#chapterSettingsButton").addEventListener("click", () => {
   openSettingsDialog();
 });
 
+$("#chapterBookmarkButton").addEventListener("click", async () => {
+  await addBookmark();
+  renderChapterDialog();
+});
+
 $("#consoleLibraryButton").addEventListener("click", openReaderDialog);
 $("#consoleAddBookmarkButton").addEventListener("click", async () => {
   await addBookmark();
@@ -2314,6 +2329,9 @@ document.querySelectorAll("[data-stepper]").forEach((button) => {
     if (button.dataset.stepper === "margin") {
       state.readerSideMargin = Math.max(12, Math.min(32, (state.readerSideMargin || 20) + delta * 2));
     }
+    if (button.dataset.stepper === "verticalMargin") {
+      state.readerVerticalMargin = Math.max(28, Math.min(76, (state.readerVerticalMargin || 42) + delta * 4));
+    }
     await saveState();
     renderAll();
   });
@@ -2351,10 +2369,18 @@ $("#settingsNightButton").addEventListener("click", async () => {
   renderAll();
 });
 
-$("#settingsBrightness")?.addEventListener("input", async (event) => {
+$("#settingsBrightness")?.addEventListener("input", (event) => {
   state.readerBrightness = Math.max(45, Math.min(100, Number(event.target.value || 100)));
+  document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
+});
+
+$("#settingsBrightness")?.addEventListener("change", async () => {
   await saveState();
   renderAll();
+});
+
+$("#readerSettingsDialog")?.addEventListener("pointerdown", (event) => {
+  if (event.target?.closest?.("#settingsBrightness")) event.stopPropagation();
 });
 
 document.querySelectorAll("[data-bg]").forEach((button) => {
