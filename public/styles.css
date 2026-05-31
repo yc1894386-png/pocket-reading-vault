@@ -1242,7 +1242,7 @@ body.reading::after {
 }
 
 .bg-choice[data-bg="white"] {
-  background: #fffaf1;
+  background: #fff;
 }
 
 .bg-choice[data-bg="light"] {
@@ -1831,16 +1831,8 @@ dialog::backdrop {
 }
 
 :root.reader-bg-white {
-  --reader-bg: #fffaf1;
+  --reader-bg: #ffffff;
   --reader-ink: #000000;
-}
-
-:root.reader-bg-light,
-:root.reader-bg-paper,
-:root.reader-bg-green,
-:root.reader-bg-gray {
-  --reader-bg: #f0f0f0;
-  --reader-ink: #1a1a1a;
 }
 
 :root.reader-bg-light,
@@ -1867,9 +1859,7 @@ dialog::backdrop {
   --reader-ink: #888888;
 }
 
-:root.eye-care {
-  --reader-bg: #dfe9d1;
-  --reader-ink: #303329;
+:root.eye-care.reader-bg-medium {
   --paper: #dfe9d1;
   --soft: #d5dfc8;
 }
@@ -2670,6 +2660,93 @@ body {
 
   #readerSettingsDialog .apple-settings {
     max-height: 31dvh !important;
+  }
+}
+
+/* v49: make the reader settings panel fit one mobile screen like the reference */
+#readerSettingsDialog {
+  max-height: min(42dvh, 360px) !important;
+}
+
+#readerSettingsDialog .apple-settings {
+  max-height: min(42dvh, 360px) !important;
+  overflow: hidden !important;
+  padding: 10px clamp(12px, 4vw, 22px) max(10px, env(safe-area-inset-bottom)) !important;
+}
+
+.settings-main-grid {
+  grid-template-columns: minmax(0, 1.95fr) minmax(0, 0.95fr) !important;
+  gap: 6px !important;
+}
+
+.settings-cell {
+  min-height: 38px !important;
+  border-radius: 16px !important;
+}
+
+.setting-brightness {
+  grid-template-columns: 30px minmax(0, 1fr) !important;
+  padding: 0 12px !important;
+}
+
+.setting-brightness span {
+  font-size: 1.08rem !important;
+}
+
+.setting-brightness input[type="range"] {
+  height: 30px !important;
+}
+
+.settings-pill,
+.settings-select-pill,
+.settings-popover summary {
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  font-size: clamp(0.82rem, 3vw, 0.95rem) !important;
+}
+
+.settings-pill b {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 7px !important;
+}
+
+.apple-settings .stepper-row {
+  padding: 3px 6px !important;
+}
+
+.apple-settings .stepper-row > span {
+  min-width: 30px !important;
+  font-size: 0.78rem !important;
+}
+
+.apple-settings .stepper-control {
+  grid-template-columns: 34px minmax(32px, 1fr) 34px !important;
+}
+
+.apple-settings .stepper-control button,
+.apple-settings .stepper-control output {
+  min-height: 30px !important;
+  font-size: 0.88rem !important;
+}
+
+.apple-settings .background-grid {
+  gap: 5px !important;
+  padding: 5px 7px !important;
+}
+
+.settings-popover .font-choice-grid {
+  bottom: calc(100% + 4px) !important;
+  padding: 6px !important;
+}
+
+@media (max-width: 520px) {
+  #readerSettingsDialog {
+    max-height: 42dvh !important;
+  }
+
+  #readerSettingsDialog .apple-settings {
+    max-height: 42dvh !important;
   }
 }
 

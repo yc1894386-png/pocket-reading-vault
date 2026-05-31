@@ -494,7 +494,7 @@ function renderAll() {
     "reader-bg-dark"
   );
   document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
-  document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
+  document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare && (state.readerBg || "white") === "medium"));
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${state.readerTurnMode || "tap"}`);
   document.body.classList.toggle("import-open", importDrawerOpen);
@@ -536,7 +536,7 @@ function renderSettingsLabels() {
   if (margin) margin.textContent = `${state.readerSideMargin || 20}px`;
   if (verticalMargin) verticalMargin.textContent = `${state.readerVerticalMargin || 42}px`;
   if (brightness) brightness.value = state.readerBrightness || 100;
-  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare));
+  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare || (state.readerBg || "white") === "medium"));
 }
 
 function renderBackgroundChoices() {
@@ -2364,7 +2364,10 @@ $("#settingsSideMargin")?.addEventListener("input", async (event) => {
 });
 
 $("#settingsNightButton").addEventListener("click", async () => {
-  state.readerEyeCare = !state.readerEyeCare;
+  const next = !(state.readerEyeCare || state.readerBg === "medium");
+  state.readerEyeCare = next;
+  state.readerBg = next ? "medium" : "white";
+  state.theme = "light";
   await saveState();
   renderAll();
 });
@@ -2386,6 +2389,7 @@ $("#readerSettingsDialog")?.addEventListener("pointerdown", (event) => {
 document.querySelectorAll("[data-bg]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.readerBg = button.dataset.bg;
+    state.readerEyeCare = button.dataset.bg === "medium";
     state.theme = state.readerBg === "black" ? "dark" : "light";
     await saveState();
     renderAll();
