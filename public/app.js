@@ -25,6 +25,8 @@ const defaultState = {
   readerFontFamily: "original",
   readerLineHeight: 1.8,
   readerSideMargin: 20,
+  readerBrightness: 100,
+  readerEyeCare: false,
   readerTurnMode: "tap",
   readerBg: "white",
   selectedFolder: "all",
@@ -490,6 +492,7 @@ function renderAll() {
     "reader-bg-dark"
   );
   document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
+  document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${state.readerTurnMode || "tap"}`);
   document.body.classList.toggle("import-open", importDrawerOpen);
@@ -498,6 +501,7 @@ function renderAll() {
   document.documentElement.style.setProperty("--reader-font-family", readerFontFamilyValue());
   document.documentElement.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
   document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+  document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
   renderFolders();
   renderWorks();
   renderReader();
@@ -522,9 +526,12 @@ function renderSettingsLabels() {
   const font = $("#settingsFontSize");
   const line = $("#settingsLineHeight");
   const margin = $("#settingsSideMargin");
+  const brightness = $("#settingsBrightness");
   if (font) font.textContent = `${state.readerFontSize || 18}px`;
   if (line) line.textContent = `${(state.readerLineHeight || 1.8).toFixed(1)}`;
   if (margin) margin.textContent = `${state.readerSideMargin || 20}px`;
+  if (brightness) brightness.value = state.readerBrightness || 100;
+  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare));
 }
 
 function renderBackgroundChoices() {
@@ -785,6 +792,8 @@ async function importLibraryFile(file) {
   state.readerSideMargin = nextState.readerSideMargin || state.readerSideMargin;
   state.readerTurnMode = nextState.readerTurnMode || state.readerTurnMode;
   state.readerBg = nextState.readerBg || state.readerBg;
+  state.readerBrightness = nextState.readerBrightness || state.readerBrightness;
+  state.readerEyeCare = nextState.readerEyeCare ?? state.readerEyeCare;
   state.theme = nextState.theme || state.theme;
   await saveState();
   renderAll();
@@ -864,6 +873,8 @@ function mergeLibraryState(localState, cloudState) {
   merged.readerSideMargin = localState.readerSideMargin || cloudState.readerSideMargin || defaultState.readerSideMargin;
   merged.readerTurnMode = localState.readerTurnMode || cloudState.readerTurnMode || defaultState.readerTurnMode;
   merged.readerBg = localState.readerBg || cloudState.readerBg || defaultState.readerBg;
+  merged.readerBrightness = localState.readerBrightness || cloudState.readerBrightness || defaultState.readerBrightness;
+  merged.readerEyeCare = localState.readerEyeCare ?? cloudState.readerEyeCare ?? defaultState.readerEyeCare;
   merged.theme = localState.theme || cloudState.theme || defaultState.theme;
   merged.updatedAt = new Date().toISOString();
   return merged;
@@ -1763,11 +1774,14 @@ async function boot() {
   state.readerSideMargin ||= defaultState.readerSideMargin;
   state.readerTurnMode ||= defaultState.readerTurnMode;
   state.readerBg ||= defaultState.readerBg;
+  state.readerBrightness ||= defaultState.readerBrightness;
+  state.readerEyeCare ??= defaultState.readerEyeCare;
   if (["paper", "green", "gray"].includes(state.readerBg)) state.readerBg = "light";
   if (state.readerBg === "dark") state.readerBg = "black";
   state.readerFontSize = Math.max(12, Math.min(32, Number(state.readerFontSize || defaultState.readerFontSize)));
   state.readerLineHeight = Math.max(1.4, Math.min(2.4, Number(state.readerLineHeight || defaultState.readerLineHeight)));
   state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
+  state.readerBrightness = Math.max(45, Math.min(100, Number(state.readerBrightness || defaultState.readerBrightness)));
   normalizePendingImports();
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
@@ -2332,17 +2346,13 @@ $("#settingsSideMargin")?.addEventListener("input", async (event) => {
 });
 
 $("#settingsNightButton").addEventListener("click", async () => {
-  state.readerBg = state.readerBg === "black" ? "white" : "black";
-  state.theme = state.readerBg === "black" ? "dark" : "light";
+  state.readerEyeCare = !state.readerEyeCare;
   await saveState();
   renderAll();
 });
 
-$("#settingsBrightnessButton").addEventListener("click", async () => {
-  const choices = ["white", "light", "medium", "darkgray", "black"];
-  const current = choices.indexOf(state.readerBg || "white");
-  state.readerBg = choices[(current + 1) % choices.length];
-  state.theme = state.readerBg === "black" ? "dark" : "light";
+$("#settingsBrightness")?.addEventListener("input", async (event) => {
+  state.readerBrightness = Math.max(45, Math.min(100, Number(event.target.value || 100)));
   await saveState();
   renderAll();
 });

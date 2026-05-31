@@ -856,6 +856,15 @@ body.cloud-open .cloud-section {
   pointer-events: none;
 }
 
+body.reading::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  pointer-events: none;
+  background: rgba(0, 0, 0, var(--reader-dim-opacity));
+}
+
 .reader-console-top,
 .reader-console-bottom {
   position: absolute;
@@ -1232,23 +1241,23 @@ body.cloud-open .cloud-section {
 }
 
 .bg-choice[data-bg="white"] {
-  background: #fff;
+  background: #fffaf1;
 }
 
 .bg-choice[data-bg="light"] {
-  background: #f0f0f0;
+  background: #f5ecd9;
 }
 
 .bg-choice[data-bg="medium"] {
-  background: #a0a0a0;
+  background: #dfe9d1;
 }
 
 .bg-choice[data-bg="darkgray"] {
-  background: #333;
+  background: linear-gradient(135deg, #b8977c, #544238);
 }
 
 .bg-choice[data-bg="black"] {
-  background: #000;
+  background: #202020;
 }
 
 .chapter-dialog-card {
@@ -1800,6 +1809,7 @@ dialog::backdrop {
   --soft: #f5f5f5;
   --reader-bg: #ffffff;
   --reader-ink: #000000;
+  --reader-dim-opacity: 0;
   --shadow: none;
 }
 
@@ -1820,7 +1830,7 @@ dialog::backdrop {
 }
 
 :root.reader-bg-white {
-  --reader-bg: #ffffff;
+  --reader-bg: #fffaf1;
   --reader-ink: #000000;
 }
 
@@ -1832,20 +1842,35 @@ dialog::backdrop {
   --reader-ink: #1a1a1a;
 }
 
+:root.reader-bg-light,
+:root.reader-bg-paper,
+:root.reader-bg-green,
+:root.reader-bg-gray {
+  --reader-bg: #f5ecd9;
+  --reader-ink: #20201c;
+}
+
 :root.reader-bg-medium {
-  --reader-bg: #a0a0a0;
-  --reader-ink: #111111;
+  --reader-bg: #e7eddc;
+  --reader-ink: #2d2d27;
 }
 
 :root.reader-bg-darkgray {
-  --reader-bg: #333333;
-  --reader-ink: #cccccc;
+  --reader-bg: #3a332d;
+  --reader-ink: #ddd2c4;
 }
 
 :root.reader-bg-black,
 :root.reader-bg-dark {
   --reader-bg: #000000;
   --reader-ink: #888888;
+}
+
+:root.eye-care {
+  --reader-bg: #dfe9d1;
+  --reader-ink: #303329;
+  --paper: #dfe9d1;
+  --soft: #d5dfc8;
 }
 
 button {
@@ -2252,18 +2277,17 @@ body.shelf-dragging {
   background: transparent;
 }
 
-#consoleLibraryButton,
 #consoleBookmarkPanelButton,
 #consoleSearchButton,
 #consoleAddBookmarkButton,
 #consoleBackgroundButton,
 #consolePrevChapter,
 #consoleNextChapter,
-.console-progress-row,
 body.reading #readingBar {
   display: none !important;
 }
 
+#consoleLibraryButton,
 #consoleSettingsButton {
   display: flex !important;
 }
@@ -2418,6 +2442,194 @@ body.reading #readingBar {
   .settings-popover .font-choice-grid {
     width: min(78vw, 320px);
     bottom: calc(100% + 6px);
+  }
+}
+
+/* v47 final override: keep the reader menu tiny and prevent settings overflow */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.reader-console-bottom {
+  width: min(58vw, 240px) !important;
+  max-width: calc(100vw - 28px) !important;
+  gap: 8px !important;
+}
+
+.console-progress-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+}
+
+.console-action-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+}
+
+#consoleLibraryButton,
+#consoleSettingsButton {
+  display: flex !important;
+}
+
+#consoleSettingsButton {
+  min-height: 52px !important;
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: color-mix(in srgb, var(--paper) 82%, transparent) !important;
+}
+
+#consoleSettingsButton span {
+  font-weight: 800 !important;
+}
+
+#consoleSettingsButton b {
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 1.12rem !important;
+}
+
+#readerSettingsDialog {
+  width: min(720px, calc(100vw - 28px)) !important;
+  max-width: none !important;
+  max-height: min(31dvh, 320px) !important;
+  margin: auto auto max(0px, env(safe-area-inset-bottom)) !important;
+  border-radius: 24px 24px 0 0 !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+
+#readerSettingsDialog .apple-settings {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: min(31dvh, 320px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 12px clamp(12px, 4vw, 22px) max(12px, env(safe-area-inset-bottom)) !important;
+  border-radius: 24px 24px 0 0 !important;
+  background: color-mix(in srgb, var(--reader-bg) 92%, #fff 8%) !important;
+}
+
+.settings-main-grid,
+.settings-main-grid > * {
+  min-width: 0 !important;
+}
+
+.settings-main-grid {
+  grid-template-columns: minmax(0, 1.82fr) minmax(0, 0.95fr) !important;
+  gap: 10px !important;
+}
+
+.settings-cell {
+  min-height: 46px !important;
+  border-radius: 20px !important;
+  background: color-mix(in srgb, var(--paper) 52%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.setting-brightness {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 14px !important;
+}
+
+.setting-brightness span {
+  display: grid !important;
+  place-items: center !important;
+  color: color-mix(in srgb, var(--reader-ink) 58%, transparent) !important;
+  font-size: 1.35rem !important;
+}
+
+.setting-brightness input[type="range"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 26px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  accent-color: color-mix(in srgb, var(--reader-ink) 78%, transparent);
+}
+
+.settings-pill,
+.settings-select-pill,
+.settings-popover summary {
+  min-height: 46px !important;
+  padding: 0 14px !important;
+  border: 0 !important;
+  font-size: clamp(0.88rem, 3.2vw, 1rem) !important;
+}
+
+#settingsNightButton b {
+  opacity: 0;
+}
+
+#settingsNightButton.active {
+  color: #4f7d45 !important;
+}
+
+#settingsNightButton.active b {
+  opacity: 1;
+}
+
+.apple-settings .stepper-row {
+  padding: 4px 8px !important;
+}
+
+.apple-settings .stepper-row > span {
+  min-width: 34px !important;
+  padding-left: 2px !important;
+  color: color-mix(in srgb, var(--reader-ink) 64%, transparent) !important;
+}
+
+.apple-settings .stepper-control {
+  grid-template-columns: 40px minmax(36px, 1fr) 40px !important;
+}
+
+.apple-settings .stepper-control button,
+.apple-settings .stepper-control output {
+  min-height: 36px !important;
+  font-size: clamp(0.9rem, 3.1vw, 1rem) !important;
+}
+
+.apple-settings .background-grid {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+  overflow: hidden !important;
+  padding: 6px 8px !important;
+}
+
+.apple-settings .bg-choice {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+}
+
+.settings-popover .font-choice-grid {
+  right: 0 !important;
+  width: min(86vw, 360px) !important;
+  max-width: calc(100vw - 24px) !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 520px) {
+  .reader-console-bottom {
+    width: min(62vw, 232px) !important;
+  }
+
+  #readerSettingsDialog {
+    width: 100vw !important;
+    max-height: 31dvh !important;
+  }
+
+  #readerSettingsDialog .apple-settings {
+    max-height: 31dvh !important;
   }
 }
 
