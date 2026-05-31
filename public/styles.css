@@ -1022,6 +1022,163 @@ body.cloud-open .cloud-section {
   font-size: 1.18rem;
 }
 
+.apple-settings {
+  width: min(92vw, 560px);
+  max-width: 560px;
+  padding: 10px;
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--reader-bg) 78%, transparent);
+}
+
+.apple-settings h2 {
+  display: none;
+}
+
+.settings-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(132px, 0.95fr);
+  gap: 10px;
+}
+
+.settings-cell {
+  min-height: 58px;
+  border: 0;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--paper) 58%, transparent);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 28%, transparent);
+  backdrop-filter: blur(18px) saturate(1.1);
+}
+
+.setting-brightness {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 1.55rem;
+}
+
+.settings-pill,
+.settings-select-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.settings-pill b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 62%, transparent);
+  color: var(--reader-bg);
+  font-size: 0.9rem;
+}
+
+.settings-select-pill {
+  width: 100%;
+  appearance: none;
+}
+
+.apple-settings .stepper-row {
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 0;
+}
+
+.apple-settings .stepper-row > span {
+  min-width: 42px;
+  padding-left: 8px;
+  color: var(--text);
+  font-size: 0.94rem;
+}
+
+.apple-settings .stepper-control {
+  width: 100%;
+  grid-template-columns: 54px minmax(48px, 1fr) 54px;
+  border: 0;
+  background: transparent;
+}
+
+.apple-settings .stepper-control button,
+.apple-settings .stepper-control output {
+  border: 0;
+  min-height: 42px;
+  color: var(--text);
+}
+
+.apple-settings .stepper-control output {
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  font-size: 1.18rem;
+}
+
+.settings-popover {
+  position: relative;
+  display: block;
+}
+
+.settings-popover summary {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 16px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.settings-popover summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-popover .font-choice-grid {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  width: min(76vw, 330px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 8px;
+  border: 0;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.settings-popover:not([open]) .font-choice-grid {
+  display: none;
+}
+
+.apple-settings .background-grid {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.apple-settings .bg-choice {
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  border: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 10%, transparent);
+}
+
+.apple-settings .bg-choice.active::after {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+.apple-settings menu {
+  display: none;
+}
+
 .compact-settings > label {
   padding: 14px 18px 6px;
   color: var(--muted);
@@ -2135,6 +2292,95 @@ body.shelf-dragging {
 
   #chapterDialog {
     border-radius: 0 2px 2px 0;
+  }
+}
+
+@media (max-width: 879px) {
+  #readerSettingsDialog {
+    width: min(88vw, 520px);
+    max-height: min(31dvh, 330px);
+    margin: auto max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) auto;
+    border-radius: 28px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #readerSettingsDialog .apple-settings {
+    width: 100%;
+    max-width: none;
+    max-height: min(31dvh, 330px);
+    overflow: auto;
+    padding: 8px;
+    border-radius: 28px;
+    background: color-mix(in srgb, var(--reader-bg) 72%, transparent);
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(26px) saturate(1.25);
+  }
+
+  .settings-main-grid {
+    grid-template-columns: minmax(0, 1.85fr) minmax(116px, 0.9fr);
+    gap: 8px;
+  }
+
+  .settings-cell {
+    min-height: 52px;
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--paper) 50%, transparent);
+  }
+
+  .settings-pill,
+  .settings-select-pill,
+  .settings-popover summary {
+    min-height: 52px;
+    padding: 0 13px;
+    font-size: 0.96rem;
+  }
+
+  .setting-brightness {
+    min-height: 52px;
+    font-size: 1.45rem;
+  }
+
+  .apple-settings .stepper-row {
+    padding: 6px 8px;
+  }
+
+  .apple-settings .stepper-row > span {
+    min-width: 36px;
+    padding-left: 4px;
+    font-size: 0.84rem;
+  }
+
+  .apple-settings .stepper-control {
+    grid-template-columns: 42px minmax(42px, 1fr) 42px;
+  }
+
+  .apple-settings .stepper-control button,
+  .apple-settings .stepper-control output {
+    min-height: 38px;
+    font-size: 0.96rem;
+  }
+
+  .apple-settings .background-grid {
+    gap: 8px;
+    padding: 6px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .apple-settings .background-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .apple-settings .bg-choice {
+    width: 42px;
+    min-width: 42px;
+    min-height: 42px;
+  }
+
+  .settings-popover .font-choice-grid {
+    width: min(78vw, 320px);
+    bottom: calc(100% + 6px);
   }
 }
 

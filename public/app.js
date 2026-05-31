@@ -2338,6 +2338,15 @@ $("#settingsNightButton").addEventListener("click", async () => {
   renderAll();
 });
 
+$("#settingsBrightnessButton").addEventListener("click", async () => {
+  const choices = ["white", "light", "medium", "darkgray", "black"];
+  const current = choices.indexOf(state.readerBg || "white");
+  state.readerBg = choices[(current + 1) % choices.length];
+  state.theme = state.readerBg === "black" ? "dark" : "light";
+  await saveState();
+  renderAll();
+});
+
 document.querySelectorAll("[data-bg]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.readerBg = button.dataset.bg;

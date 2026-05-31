@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=43-image-preview-fast-settings-20260531" />
+    <link rel="stylesheet" href="./styles.css?v=44-apple-settings-panel-20260531" />
   </head>
   <body>
     <div class="app-shell">
@@ -200,56 +200,61 @@
     </dialog>
 
     <dialog id="readerSettingsDialog">
-      <form method="dialog" class="dialog-card compact-settings">
+      <form method="dialog" class="dialog-card compact-settings apple-settings">
         <h2>主题与设置</h2>
-        <label for="settingsTurnMode">翻页方式</label>
-        <select id="settingsTurnMode">
-          <option value="tap">点击翻页</option>
-          <option value="swipe">滑动翻页</option>
-          <option value="both">点击 + 滑动</option>
-          <option value="scroll">连续滚动</option>
-        </select>
-        <div class="stepper-row">
-          <span>字号</span>
-          <div class="stepper-control">
-            <button type="button" data-stepper="font" data-delta="-1">−</button>
-            <output id="settingsFontSize">18px</output>
-            <button type="button" data-stepper="font" data-delta="1">＋</button>
+        <div class="settings-main-grid">
+          <button class="settings-cell setting-brightness" id="settingsBrightnessButton" type="button" aria-label="切换背景亮度"><span>☀</span></button>
+          <button class="settings-cell settings-pill" id="settingsNightButton" type="button"><span>护眼</span><b>✓</b></button>
+
+          <div class="settings-cell stepper-row font-stepper">
+            <div class="stepper-control">
+              <button type="button" data-stepper="font" data-delta="-1">A-</button>
+              <output id="settingsFontSize">18px</output>
+              <button type="button" data-stepper="font" data-delta="1">A+</button>
+            </div>
+          </div>
+          <details class="settings-cell settings-pill settings-popover">
+            <summary>系统字体 ›</summary>
+            <div class="font-choice-grid" id="fontChoiceGrid">
+              <button type="button" data-font-family="original"><b>Aa</b><span>原站</span></button>
+              <button type="button" data-font-family="serif"><b>Aa</b><span>宋体</span></button>
+              <button type="button" data-font-family="system"><b>Aa</b><span>黑体</span></button>
+              <button type="button" data-font-family="kaiti"><b>Aa</b><span>楷体</span></button>
+              <button type="button" data-font-family="wenkai"><b>Aa</b><span>文楷</span></button>
+            </div>
+          </details>
+
+          <div class="settings-cell background-grid settings-background-grid">
+            <button class="bg-choice" type="button" data-bg="white">纯白</button>
+            <button class="bg-choice" type="button" data-bg="light">浅灰</button>
+            <button class="bg-choice" type="button" data-bg="medium">中灰</button>
+            <button class="bg-choice" type="button" data-bg="darkgray">暗灰</button>
+            <button class="bg-choice" type="button" data-bg="black">纯黑</button>
+          </div>
+          <select class="settings-cell settings-select-pill" id="settingsTurnMode" aria-label="翻页方式">
+            <option value="tap">点击翻页</option>
+            <option value="swipe">滑动翻页</option>
+            <option value="both">点击 + 滑动</option>
+            <option value="scroll">连续滚动</option>
+          </select>
+
+          <div class="settings-cell stepper-row line-stepper">
+            <span>间距</span>
+            <div class="stepper-control">
+              <button type="button" data-stepper="line" data-delta="-1">−</button>
+              <output id="settingsLineHeight">1.8</output>
+              <button type="button" data-stepper="line" data-delta="1">＋</button>
+            </div>
+          </div>
+          <div class="settings-cell stepper-row margin-stepper">
+            <span>边距</span>
+            <div class="stepper-control">
+              <button type="button" data-stepper="margin" data-delta="-1">−</button>
+              <output id="settingsSideMargin">20px</output>
+              <button type="button" data-stepper="margin" data-delta="1">＋</button>
+            </div>
           </div>
         </div>
-        <label>字体</label>
-        <div class="font-choice-grid" id="fontChoiceGrid">
-          <button type="button" data-font-family="original"><b>Aa</b><span>原站格式</span></button>
-          <button type="button" data-font-family="serif"><b>Aa</b><span>书籍宋体</span></button>
-          <button type="button" data-font-family="system"><b>Aa</b><span>系统黑体</span></button>
-          <button type="button" data-font-family="kaiti"><b>Aa</b><span>楷体</span></button>
-          <button type="button" data-font-family="wenkai"><b>Aa</b><span>圆润手写</span></button>
-        </div>
-        <div class="stepper-row">
-          <span>行距</span>
-          <div class="stepper-control">
-            <button type="button" data-stepper="line" data-delta="-1">−</button>
-            <output id="settingsLineHeight">1.8</output>
-            <button type="button" data-stepper="line" data-delta="1">＋</button>
-          </div>
-        </div>
-        <div class="stepper-row">
-          <span>页边距</span>
-          <div class="stepper-control">
-            <button type="button" data-stepper="margin" data-delta="-1">−</button>
-            <output id="settingsSideMargin">20px</output>
-            <button type="button" data-stepper="margin" data-delta="1">＋</button>
-          </div>
-        </div>
-        <label>背景</label>
-        <div class="background-grid settings-background-grid">
-          <button class="bg-choice" type="button" data-bg="white">纯白</button>
-          <button class="bg-choice" type="button" data-bg="light">浅灰</button>
-          <button class="bg-choice" type="button" data-bg="medium">中灰</button>
-          <button class="bg-choice" type="button" data-bg="darkgray">暗灰</button>
-          <button class="bg-choice" type="button" data-bg="black">纯黑</button>
-        </div>
-        <button class="ghost-button" id="settingsNightButton" type="button">夜间模式</button>
         <menu>
           <button value="close">完成</button>
         </menu>
@@ -382,6 +387,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=43-image-preview-fast-settings-20260531" type="module"></script>
+    <script src="./app.js?v=44-apple-settings-panel-20260531" type="module"></script>
   </body>
 </html>
