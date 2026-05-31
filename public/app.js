@@ -1552,6 +1552,7 @@ function updatePageCount() {
 }
 
 function requestReadingFullscreen() {
+  screen.orientation?.lock?.("portrait").catch(() => {});
   if (!isPagedMode() || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
   document.documentElement.requestFullscreen()
     .then(() => screen.orientation?.lock?.("portrait").catch(() => {}))
@@ -1613,6 +1614,19 @@ async function addBookmark() {
   work.updatedAt = new Date().toISOString();
   await saveState();
   updateProgressBar();
+}
+
+let bookmarkSaving = false;
+
+async function addBookmarkFromControl(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  if (bookmarkSaving) return;
+  bookmarkSaving = true;
+  await addBookmark();
+  window.setTimeout(() => {
+    bookmarkSaving = false;
+  }, 180);
 }
 
 function applyHighlights(work, chapterIndex) {
@@ -2234,7 +2248,7 @@ $("#fontIncrease").addEventListener("click", async () => {
 $("#prevChapter").addEventListener("click", () => changeChapter(-1));
 $("#nextChapter").addEventListener("click", () => changeChapter(1));
 $("#highlightButton").addEventListener("click", () => addHighlightFromSelection("yellow"));
-$("#bookmarkButton").addEventListener("click", addBookmark);
+$("#bookmarkButton").addEventListener("pointerdown", addBookmarkFromControl);
 
 $("#progressRange").addEventListener("input", (event) => {
   const ratio = Number(event.target.value) / 1000;
@@ -2260,6 +2274,7 @@ $("#consoleBackButton").addEventListener("click", async () => {
 });
 
 function openSettingsDialog() {
+  setControlsOpen(false);
   $("#settingsTurnMode").value = state.readerTurnMode || "tap";
   renderSettingsLabels();
   $("#readerSettingsDialog").showModal();
@@ -2274,14 +2289,14 @@ $("#chapterSettingsButton").addEventListener("click", () => {
   openSettingsDialog();
 });
 
-$("#chapterBookmarkButton").addEventListener("click", async () => {
-  await addBookmark();
+$("#chapterBookmarkButton").addEventListener("pointerdown", async (event) => {
+  await addBookmarkFromControl(event);
   renderChapterDialog();
 });
 
 $("#consoleLibraryButton").addEventListener("click", openReaderDialog);
-$("#consoleAddBookmarkButton").addEventListener("click", async () => {
-  await addBookmark();
+$("#consoleAddBookmarkButton").addEventListener("pointerdown", async (event) => {
+  await addBookmarkFromControl(event);
   setControlsOpen(false);
 });
 $("#consoleBookmarkPanelButton").addEventListener("click", openReaderDialog);
