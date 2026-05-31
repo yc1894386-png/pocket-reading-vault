@@ -2252,6 +2252,22 @@ body.shelf-dragging {
   background: transparent;
 }
 
+#consoleLibraryButton,
+#consoleBookmarkPanelButton,
+#consoleSearchButton,
+#consoleAddBookmarkButton,
+#consoleBackgroundButton,
+#consolePrevChapter,
+#consoleNextChapter,
+.console-progress-row,
+body.reading #readingBar {
+  display: none !important;
+}
+
+#consoleSettingsButton {
+  display: flex !important;
+}
+
 @media (min-width: 880px) {
   .layout {
     grid-template-columns: 400px minmax(0, 1fr);
