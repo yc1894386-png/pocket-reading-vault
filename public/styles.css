@@ -878,7 +878,7 @@ body.cloud-open .cloud-section {
   bottom: max(14px, env(safe-area-inset-bottom));
   right: max(14px, env(safe-area-inset-right));
   left: auto;
-  width: min(66vw, 300px);
+  width: min(42vw, 180px);
   transform: none;
   display: grid;
   gap: 7px;
@@ -933,11 +933,11 @@ body.cloud-open .cloud-section {
   justify-content: space-between;
   align-items: center;
   min-width: 0;
-  min-height: 46px;
-  padding: 0 14px;
+  min-height: 50px;
+  padding: 0 16px;
   text-align: left;
   background: color-mix(in srgb, var(--paper) 82%, transparent);
-  border-radius: 22px;
+  border-radius: 24px;
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.11);
 }
 
@@ -950,7 +950,8 @@ body.cloud-open .cloud-section {
 .console-icon-button span {
   overflow: hidden;
   color: var(--text);
-  font-size: 0.92rem;
+  font-size: 1rem;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2259,6 +2260,24 @@ body.shelf-dragging {
 }
 
 @media (max-width: 879px) {
+  .reader-console-bottom {
+    width: min(38vw, 168px);
+  }
+
+  .console-action-row {
+    gap: 0;
+  }
+
+  .console-icon-button {
+    min-height: 50px;
+    border-radius: 25px;
+  }
+
+  .console-icon-button[hidden],
+  .console-progress-row[hidden] {
+    display: none !important;
+  }
+
   .cloud-section {
     top: auto;
     right: 12px;
@@ -2297,47 +2316,49 @@ body.shelf-dragging {
 
 @media (max-width: 879px) {
   #readerSettingsDialog {
-    width: min(88vw, 520px);
-    max-height: min(31dvh, 330px);
-    margin: auto max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) auto;
-    border-radius: 28px;
-    background: transparent;
+    width: 100vw;
+    max-width: none;
+    max-height: 32dvh;
+    margin: auto 0 0;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--reader-bg) 96%, transparent);
     box-shadow: none;
   }
 
   #readerSettingsDialog .apple-settings {
     width: 100%;
     max-width: none;
-    max-height: min(31dvh, 330px);
+    max-height: 32dvh;
     overflow: auto;
-    padding: 8px;
-    border-radius: 28px;
-    background: color-mix(in srgb, var(--reader-bg) 72%, transparent);
-    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.18);
-    backdrop-filter: blur(26px) saturate(1.25);
+    padding: 12px max(18px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--reader-bg) 96%, transparent);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(20px) saturate(1.12);
   }
 
   .settings-main-grid {
-    grid-template-columns: minmax(0, 1.85fr) minmax(116px, 0.9fr);
-    gap: 8px;
+    grid-template-columns: minmax(0, 1.9fr) minmax(112px, 0.8fr);
+    gap: 10px;
   }
 
   .settings-cell {
-    min-height: 52px;
-    border-radius: 22px;
-    background: color-mix(in srgb, var(--paper) 50%, transparent);
+    min-height: 48px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--paper) 42%, transparent);
   }
 
   .settings-pill,
   .settings-select-pill,
   .settings-popover summary {
-    min-height: 52px;
-    padding: 0 13px;
+    min-height: 48px;
+    padding: 0 14px;
     font-size: 0.96rem;
   }
 
   .setting-brightness {
-    min-height: 52px;
+    min-height: 48px;
     font-size: 1.45rem;
   }
 
@@ -2362,8 +2383,8 @@ body.shelf-dragging {
   }
 
   .apple-settings .background-grid {
-    gap: 8px;
-    padding: 6px 10px;
+    gap: 12px;
+    padding: 4px 10px;
     overflow-x: auto;
     scrollbar-width: none;
   }

@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=44-apple-settings-panel-20260531" />
+    <link rel="stylesheet" href="./styles.css?v=45-bottom-settings-only-20260531" />
   </head>
   <body>
     <div class="app-shell">
@@ -161,7 +161,7 @@
         <button class="console-text-button" id="consoleBackButton" type="button">‹</button>
       </div>
       <div class="reader-console-bottom">
-        <div class="console-progress-row">
+        <div class="console-progress-row" hidden>
           <button class="console-text-button chapter-jump" id="consolePrevChapter" type="button" hidden>‹</button>
           <button class="console-main-pill" id="consoleLibraryButton" type="button">
             <span id="consoleMenuProgress">目录 · 0%</span>
@@ -172,7 +172,7 @@
         <div class="console-action-row">
           <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>书签与高亮</span><b id="consoleBookmarkCount">0</b></button>
           <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>⌕</b></button>
-          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>主题与字体</span><b>Aa</b></button>
+          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>设置</span><b>Aa</b></button>
           <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>♡</b></button>
           <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>背景</span><b>◐</b></button>
         </div>
@@ -387,6 +387,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=44-apple-settings-panel-20260531" type="module"></script>
+    <script src="./app.js?v=45-bottom-settings-only-20260531" type="module"></script>
   </body>
 </html>
