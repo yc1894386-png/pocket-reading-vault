@@ -529,10 +529,13 @@ function renderSettingsLabels() {
   const font = $("#settingsFontSize");
   const line = $("#settingsLineHeight");
   const margin = $("#settingsSideMargin");
+  const marginValue = $("#settingsSideMarginValue");
   const verticalMargin = $("#settingsVerticalMargin");
   const brightness = $("#settingsBrightness");
   if (font) font.textContent = "54";
+  if (line) line.textContent = Number(state.readerLineHeight || 1.8).toFixed(1);
   if (margin) margin.textContent = "›";
+  if (marginValue) marginValue.textContent = `${state.readerSideMargin || 20}px`;
   if (verticalMargin) verticalMargin.textContent = `${state.readerVerticalMargin || 42}px`;
   if (brightness) brightness.value = state.readerBrightness || 100;
   $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare || (state.readerBg || "white") === "medium"));
@@ -2302,6 +2305,10 @@ $("#settingsNightTabButton")?.addEventListener("click", () => {
 
 $("#settingsBackgroundShortcut")?.addEventListener("click", () => {
   $("#backgroundDialog")?.showModal();
+});
+
+$("#settingsSpacingButton")?.addEventListener("click", () => {
+  $("#settingsSpacingPanel")?.toggleAttribute("hidden");
 });
 
 $("#chapterBookmarkButton").addEventListener("pointerdown", async (event) => {

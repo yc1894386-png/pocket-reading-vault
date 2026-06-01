@@ -5671,3 +5671,253 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   }
 }
 
+/* v60: remove extra footer, fix old id styles, and make spacing editable */
+#readerSettingsDialog .reader-settings-v59 {
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom)) !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 *,
+#readerSettingsDialog .reader-settings-v59 #settingsNightButton,
+#readerSettingsDialog .reader-settings-v59 #settingsBrightness,
+#readerSettingsDialog .reader-settings-v59 .rs-v59-card,
+#readerSettingsDialog .reader-settings-v59 .rs-v59-bg-dots {
+  grid-area: auto !important;
+}
+
+#readerSettingsDialog .rs-v59-grid {
+  gap: 12px !important;
+}
+
+#readerSettingsDialog .rs-v59-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+#readerSettingsDialog .rs-v59-card {
+  height: 54px !important;
+  min-height: 54px !important;
+  border-radius: 12px !important;
+  background: #f2f2f2 !important;
+  color: #666666 !important;
+  transform: none !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 32px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 0 14px !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsBrightness {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsBrightness::-webkit-slider-runnable-track {
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #d8d8d8 0 45%, #ffffff 45% 100%) !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsBrightness::-webkit-slider-thumb {
+  width: 18px !important;
+  height: 18px !important;
+  margin-top: -4px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #777777 !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsBrightness::-moz-range-track {
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #d8d8d8 0 45%, #ffffff 45% 100%) !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsBrightness::-moz-range-thumb {
+  width: 18px !important;
+  height: 18px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #777777 !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness span {
+  color: #999999 !important;
+  font-size: 24px !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsNightButton {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: 100% !important;
+  height: 54px !important;
+  min-height: 54px !important;
+  padding: 0 18px !important;
+  border-radius: 12px !important;
+  background: #f2f2f2 !important;
+  color: #666666 !important;
+  transform: none !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsNightButton b {
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px !important;
+  border-radius: 8px !important;
+  background: #dddddd !important;
+  color: transparent !important;
+  opacity: 1 !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 #settingsNightButton.active b {
+  background: #bdbdbd !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: 10px !important;
+  height: 54px !important;
+  min-height: 54px !important;
+  padding: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button {
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="white"] {
+  background: #ffffff !important;
+  border: 2px solid #6f6f6f !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="light"] {
+  background: #efe6dd !important;
+  border: 1px solid #eadfd4 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="medium"] {
+  background: #dde8d2 !important;
+  border: 1px solid #cfdcc2 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="black"] {
+  background: #2a2a2a !important;
+  border: 1px solid #1f1f1f !important;
+}
+
+#readerSettingsDialog .rs-v59-secondary,
+#readerSettingsDialog .rs-v59-tabs {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel[hidden] {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel > div {
+  display: grid !important;
+  grid-template-columns: 64px 44px minmax(0, 1fr) 44px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 46px !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  background: #f2f2f2 !important;
+  color: #666666 !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel span,
+#readerSettingsDialog .rs-v59-spacing-panel output {
+  font-weight: 700 !important;
+  font-size: 16px !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel output {
+  text-align: center !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel button {
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 34px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #666666 !important;
+  box-shadow: none !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 430px) {
+  #readerSettingsDialog .reader-settings-v59 {
+    padding: 12px 18px calc(14px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #readerSettingsDialog .rs-v59-grid {
+    gap: 10px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-row {
+    gap: 10px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-card,
+  #readerSettingsDialog .reader-settings-v59 #settingsNightButton,
+  #readerSettingsDialog .rs-v59-bg-dots {
+    height: 52px !important;
+    min-height: 52px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-bg-dots {
+    gap: 6px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-bg-dots button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-spacing-panel > div {
+    grid-template-columns: 56px 38px minmax(0, 1fr) 38px !important;
+  }
+}
+
