@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=58-settings-panel-spec-20260601" />
+    <link rel="stylesheet" href="./styles.css?v=59-clean-settings-panel-20260601" />
   </head>
   <body>
     <div class="app-shell">
@@ -200,20 +200,19 @@
     </dialog>
 
     <dialog id="readerSettingsDialog">
-      <form method="dialog" class="dialog-card compact-settings apple-settings">
-        <h2>主题与设置</h2>
-        <div class="settings-main-grid settings-rows">
-          <div class="settings-row">
-            <label class="settings-cell setting-brightness" for="settingsBrightness">
-              <span>☀</span>
+      <form method="dialog" class="reader-settings-v59">
+        <div class="rs-v59-grid">
+          <div class="rs-v59-row">
+            <label class="rs-v59-card rs-v59-brightness" for="settingsBrightness">
               <input id="settingsBrightness" type="range" min="45" max="100" step="1" value="100" />
+              <span>☀</span>
             </label>
-            <button class="settings-cell settings-pill" id="settingsNightButton" type="button"><span>护眼</span><b>✓</b></button>
+            <button class="rs-v59-card rs-v59-toggle" id="settingsNightButton" type="button"><span>护眼</span><b></b></button>
           </div>
 
-          <div class="settings-row">
-            <div class="settings-cell stepper-row font-stepper">
-              <div class="stepper-control">
+          <div class="rs-v59-row">
+            <div class="rs-v59-card rs-v59-font-stepper">
+              <div>
                 <button type="button" data-stepper="font" data-delta="-1">A-</button>
                 <span class="font-size-ghost">51</span>
                 <output id="settingsFontSize">54</output>
@@ -221,9 +220,9 @@
                 <button type="button" data-stepper="font" data-delta="1">A+</button>
               </div>
             </div>
-            <details class="settings-cell settings-pill settings-popover">
+            <details class="rs-v59-card rs-v59-font-details">
               <summary>系统字体 ›</summary>
-              <div class="font-choice-grid" id="fontChoiceGrid">
+              <div class="rs-v59-font-menu" id="fontChoiceGrid">
                 <button type="button" data-font-family="original"><b>Aa</b><span>原站</span></button>
                 <button type="button" data-font-family="serif"><b>Aa</b><span>宋体</span></button>
                 <button type="button" data-font-family="system"><b>Aa</b><span>黑体</span></button>
@@ -233,21 +232,19 @@
             </details>
           </div>
 
-          <div class="settings-row">
-            <div class="settings-cell background-grid settings-background-grid">
-              <button class="bg-choice" type="button" data-bg="white">纯白</button>
-              <button class="bg-choice" type="button" data-bg="light">浅灰</button>
-              <button class="bg-choice" type="button" data-bg="medium">护眼</button>
-              <button class="bg-choice" type="button" data-bg="darkgray">深灰</button>
-              <button class="bg-choice" type="button" data-bg="black">纯黑</button>
+          <div class="rs-v59-row">
+            <div class="rs-v59-bg-dots">
+              <button type="button" data-bg="white">纯白</button>
+              <button type="button" data-bg="light">浅灰</button>
+              <button type="button" data-bg="medium">护眼</button>
+              <button type="button" data-bg="black">纯黑</button>
             </div>
-            <button class="settings-cell settings-pill settings-jump-pill" id="settingsBackgroundShortcut" type="button"><span>背景</span><b>›</b></button>
+            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>背景</span><b>›</b></button>
           </div>
 
-          <div class="settings-row">
-            <div class="settings-cell stepper-row line-stepper">
-              <span>翻页</span>
-              <div class="stepper-control">
+          <div class="rs-v59-row">
+            <div class="rs-v59-card rs-v59-turn">
+              <div>
                 <button type="button" data-turn-mode="tap">覆盖</button>
                 <button type="button" data-turn-mode="swipe">仿真</button>
                 <button type="button" data-turn-mode="both">上下</button>
@@ -260,30 +257,26 @@
                 <option value="scroll">无</option>
               </select>
             </div>
-            <div class="settings-cell stepper-row margin-stepper">
+            <button class="rs-v59-card rs-v59-jump rs-v59-margin" type="button">
               <span>间距</span>
-              <div class="stepper-control">
-                <button type="button"></button>
-                <output id="settingsSideMargin">›</output>
-                <button type="button"></button>
-              </div>
-            </div>
+              <output id="settingsSideMargin">›</output>
+            </button>
           </div>
 
-          <div class="settings-cell stepper-row vertical-margin-stepper" hidden>
+          <div class="rs-v59-card vertical-margin-stepper" hidden>
             <span>上下</span>
-            <div class="stepper-control">
+            <div>
               <button type="button" data-stepper="verticalMargin" data-delta="-1">−</button>
               <output id="settingsVerticalMargin">42px</output>
               <button type="button" data-stepper="verticalMargin" data-delta="1">＋</button>
             </div>
           </div>
         </div>
-        <div class="settings-secondary-row">
-          <button type="button" class="settings-text-link disabled">开启自动阅读 ▶</button>
-          <button type="button" class="settings-text-link">更多设置项</button>
+        <div class="rs-v59-secondary">
+          <button type="button">开启自动阅读 ▶</button>
+          <button type="button">更多设置项</button>
         </div>
-        <div class="settings-bottom-tabs">
+        <div class="rs-v59-tabs">
           <button type="button" id="settingsTocButton"><b>☰</b><span>目录</span></button>
           <button type="button" id="settingsNightTabButton"><b>☾</b><span>夜间</span></button>
           <button type="button" class="active"><b>⌾</b><span>设置</span></button>
@@ -418,6 +411,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=58-settings-panel-spec-20260601" type="module"></script>
+    <script src="./app.js?v=59-clean-settings-panel-20260601" type="module"></script>
   </body>
 </html>

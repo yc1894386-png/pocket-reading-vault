@@ -5230,3 +5230,444 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   }
 }
 
+/* v59: rebuilt settings panel without legacy class conflicts */
+#readerSettingsDialog[open] {
+  position: fixed !important;
+  inset: auto 0 0 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  z-index: 520 !important;
+}
+
+#readerSettingsDialog::backdrop {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+#readerSettingsDialog .reader-settings-v59,
+#readerSettingsDialog .reader-settings-v59 * {
+  box-sizing: border-box !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 {
+  width: min(100vw, 560px) !important;
+  max-width: 100vw !important;
+  margin: 0 auto !important;
+  padding: 12px 18px calc(8px + env(safe-area-inset-bottom)) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  color: #666666 !important;
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.05) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  overflow: visible !important;
+}
+
+#readerSettingsDialog .rs-v59-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+#readerSettingsDialog .rs-v59-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-card {
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  margin: 0 !important;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: #f2f2f2 !important;
+  color: #666666 !important;
+  box-shadow: none !important;
+  font: 700 17px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  text-decoration: none !important;
+  overflow: hidden !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 30px !important;
+  gap: 8px !important;
+  padding: 0 12px !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness input {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  accent-color: #d8d8d8 !important;
+  touch-action: pan-x !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness span {
+  display: grid !important;
+  place-items: center !important;
+  color: #9a9a9a !important;
+  font-size: 23px !important;
+  line-height: 1 !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness input::-webkit-slider-runnable-track {
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #dedede 0 25%, #ffffff 25% 100%) !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness input::-webkit-slider-thumb {
+  width: 18px !important;
+  height: 18px !important;
+  margin-top: -4px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #666666 !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness input::-moz-range-track {
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #dedede 0 25%, #ffffff 25% 100%) !important;
+}
+
+#readerSettingsDialog .rs-v59-brightness input::-moz-range-thumb {
+  width: 18px !important;
+  height: 18px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #666666 !important;
+}
+
+#readerSettingsDialog .rs-v59-toggle,
+#readerSettingsDialog .rs-v59-jump,
+#readerSettingsDialog .rs-v59-font-details > summary {
+  justify-content: space-between !important;
+}
+
+#readerSettingsDialog .rs-v59-toggle b {
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px !important;
+  border-radius: 8px !important;
+  background: #dddddd !important;
+  color: transparent !important;
+}
+
+#readerSettingsDialog .rs-v59-toggle.active b {
+  background: #bdbdbd !important;
+}
+
+#readerSettingsDialog .rs-v59-toggle.active b::after {
+  content: "✓";
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1;
+}
+
+#readerSettingsDialog .rs-v59-font-stepper,
+#readerSettingsDialog .rs-v59-turn {
+  display: block !important;
+  padding: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-font-stepper > div {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+#readerSettingsDialog .rs-v59-font-stepper button,
+#readerSettingsDialog .rs-v59-font-stepper output,
+#readerSettingsDialog .rs-v59-font-stepper span {
+  display: grid !important;
+  place-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(102, 102, 102, 0.5) !important;
+  box-shadow: none !important;
+  font: 700 17px/1 Georgia, "Times New Roman", serif !important;
+}
+
+#readerSettingsDialog .rs-v59-font-stepper output,
+#readerSettingsDialog .rs-v59-font-stepper button:first-child,
+#readerSettingsDialog .rs-v59-font-stepper button:last-child {
+  color: #666666 !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+
+#readerSettingsDialog .rs-v59-font-details {
+  position: relative !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+#readerSettingsDialog .rs-v59-font-details summary {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 50px !important;
+  padding: 0 16px !important;
+  list-style: none !important;
+  cursor: pointer !important;
+}
+
+#readerSettingsDialog .rs-v59-font-details summary::-webkit-details-marker {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-font-menu {
+  position: absolute !important;
+  right: 0 !important;
+  bottom: calc(100% + 10px) !important;
+  z-index: 3 !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: min(88vw, 340px) !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+#readerSettingsDialog .rs-v59-font-menu button {
+  min-height: 44px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: #f2f2f2 !important;
+  color: #666666 !important;
+  font-weight: 700 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  place-items: center !important;
+  height: 50px !important;
+  min-width: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button {
+  display: block !important;
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  min-height: 42px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="white"] {
+  background: #ffffff !important;
+  border: 2px solid #666666 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="light"] {
+  background: #f2e2d2 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="medium"] {
+  background:
+    radial-gradient(circle at 31% 70%, #d96e27 0 20%, transparent 21%),
+    linear-gradient(158deg, transparent 45%, #d9772f 46% 64%, #9a6e57 65% 100%),
+    linear-gradient(180deg, #c9dde5 0 49%, #df8d35 50% 100%) !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="black"] {
+  background:
+    radial-gradient(circle at 67% 50%, #d8d8d8 0 22%, #777777 23% 24%, transparent 25%),
+    radial-gradient(circle at 56% 42%, #9a9a9a 0 5%, transparent 6%),
+    radial-gradient(circle at 62% 63%, #666666 0 4%, transparent 5%),
+    linear-gradient(135deg, #101010 0%, #303030 100%) !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button.active::after {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-jump b,
+#readerSettingsDialog .rs-v59-margin output {
+  color: #9a9a9a !important;
+  font-size: 25px !important;
+  font-weight: 800 !important;
+}
+
+#readerSettingsDialog .rs-v59-turn > div {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+#readerSettingsDialog .rs-v59-turn button {
+  display: grid !important;
+  place-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(102, 102, 102, 0.38) !important;
+  box-shadow: none !important;
+  font: 700 17px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+}
+
+#readerSettingsDialog .rs-v59-turn button.active {
+  color: #666666 !important;
+  font-weight: 800 !important;
+}
+
+#readerSettingsDialog .rs-v59-secondary {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: center !important;
+  margin: 12px 0 6px !important;
+}
+
+#readerSettingsDialog .rs-v59-secondary::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  width: 1px;
+  height: 22px;
+  background: #eeeeee;
+}
+
+#readerSettingsDialog .rs-v59-secondary button {
+  min-height: 42px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #999999 !important;
+  box-shadow: none !important;
+  font: 700 16px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+}
+
+#readerSettingsDialog .rs-v59-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  background: #ffffff !important;
+}
+
+#readerSettingsDialog .rs-v59-tabs button {
+  display: grid !important;
+  place-items: center !important;
+  gap: 2px !important;
+  min-height: 50px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #666666 !important;
+  box-shadow: none !important;
+}
+
+#readerSettingsDialog .rs-v59-tabs b {
+  font-size: 25px !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+}
+
+#readerSettingsDialog .rs-v59-tabs span {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+#readerSettingsDialog .rs-v59-tabs button.active {
+  color: #222222 !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 [hidden] {
+  display: none !important;
+}
+
+@media (max-width: 430px) {
+  #readerSettingsDialog .reader-settings-v59 {
+    padding: 12px 18px calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #readerSettingsDialog .rs-v59-grid {
+    gap: 10px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-row {
+    gap: 10px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-card,
+  #readerSettingsDialog .rs-v59-font-details summary,
+  #readerSettingsDialog .rs-v59-bg-dots {
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-bg-dots button {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-card,
+  #readerSettingsDialog .rs-v59-turn button {
+    font-size: 16px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-font-stepper output,
+  #readerSettingsDialog .rs-v59-font-stepper button:first-child,
+  #readerSettingsDialog .rs-v59-font-stepper button:last-child {
+    font-size: 19px !important;
+  }
+
+  #readerSettingsDialog .rs-v59-secondary button {
+    font-size: 15px !important;
+  }
+}
+
