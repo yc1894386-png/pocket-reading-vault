@@ -1676,7 +1676,7 @@ function selectedReaderText() {
 async function addHighlightFromSelection(color = "yellow", note = "") {
   const work = activeWork();
   const selection = window.getSelection();
-  const text = selectedReaderText();
+  const text = selectedReaderText() || activeSelectionText;
   if (!text || text.length < 2) return;
   normalizeWork(work);
   const chapterIndex = currentChapterIndex(work);
@@ -1731,7 +1731,7 @@ function showSelectionToolbarFromRect(rect) {
   if (!toolbar || !rect) return;
   const width = toolbar.offsetWidth || 280;
   const left = Math.max(10, Math.min(window.innerWidth - width - 10, rect.left + rect.width / 2 - width / 2));
-  const top = Math.max(12, rect.top - 56);
+  const top = rect.top > 70 ? rect.top - 56 : Math.min(window.innerHeight - 58, rect.bottom + 12);
   toolbar.style.left = `${left}px`;
   toolbar.style.top = `${top}px`;
   toolbar.classList.remove("hidden");
@@ -1746,7 +1746,8 @@ function updateSelectionToolbar() {
   activeHighlightId = null;
   activeSelectionText = text;
   const range = selection.getRangeAt(0);
-  showSelectionToolbarFromRect(range.getBoundingClientRect());
+  const rect = Array.from(range.getClientRects()).find((item) => item.width > 0 && item.height > 0) || range.getBoundingClientRect();
+  showSelectionToolbarFromRect(rect);
 }
 
 function showHighlightToolbar(mark) {
@@ -2463,8 +2464,8 @@ $("#workContent").addEventListener("click", (event) => {
   if (mark) {
     event.preventDefault();
     event.stopPropagation();
-    if (isMenuZone) showHighlightToolbar(mark);
-    else if (isPagedMode() && state.readerTurnMode !== "swipe") turnPage(x < 0.5 ? -1 : 1);
+    suppressNextClick = false;
+    showHighlightToolbar(mark);
     return;
   }
   if (suppressNextClick) {
@@ -2486,8 +2487,21 @@ $("#workContent").addEventListener("click", (event) => {
   else if (x > 0.65) turnPage(1);
 });
 
+$("#workContent").addEventListener("pointerdown", (event) => {
+  const mark = event.target.closest(".reader-highlight");
+  if (!mark) return;
+  event.preventDefault();
+  event.stopPropagation();
+  suppressNextClick = true;
+  showHighlightToolbar(mark);
+});
+
 $("#workContent").addEventListener("mouseup", () => setTimeout(updateSelectionToolbar, 80));
-$("#workContent").addEventListener("touchend", () => setTimeout(updateSelectionToolbar, 120));
+$("#workContent").addEventListener("touchend", () => {
+  setTimeout(updateSelectionToolbar, 80);
+  setTimeout(updateSelectionToolbar, 220);
+  setTimeout(updateSelectionToolbar, 420);
+});
 
 document.addEventListener("selectionchange", () => {
   if (!document.body.classList.contains("reading")) return;
@@ -2496,11 +2510,24 @@ document.addEventListener("selectionchange", () => {
   selectionTimer = setTimeout(updateSelectionToolbar, 120);
 });
 
-$("#selectionToolbar").addEventListener("click", async (event) => {
+async function handleSelectionToolbarAction(event) {
+  event.preventDefault();
   event.stopPropagation();
   const colorButton = event.target.closest("[data-highlight-color]");
   const actionButton = event.target.closest("[data-highlight-action]");
   if (colorButton) {
+    if (activeHighlightId) {
+      const work = activeWork();
+      const highlight = work?.highlights?.find((item) => item.id === activeHighlightId);
+      if (highlight) {
+        highlight.color = colorButton.dataset.highlightColor || "yellow";
+        work.updatedAt = new Date().toISOString();
+        hideSelectionToolbar();
+        await saveState();
+        renderAll();
+      }
+      return;
+    }
     await addHighlightFromSelection(colorButton.dataset.highlightColor || "yellow");
     return;
   }
@@ -2540,7 +2567,9 @@ $("#selectionToolbar").addEventListener("click", async (event) => {
     if (match) await removeHighlight(match.id);
     else hideSelectionToolbar();
   }
-});
+}
+
+$("#selectionToolbar").addEventListener("pointerdown", handleSelectionToolbarAction);
 
 $("#closeImagePreview").addEventListener("click", () => $("#imagePreviewDialog").close());
 $("#downloadPreviewImage").addEventListener("click", downloadPreviewImage);
