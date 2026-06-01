@@ -4422,3 +4422,170 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   }
 }
 
+/* v56: real row layout, no grid-area collapse */
+#readerSettingsDialog .settings-rows {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+#readerSettingsDialog .settings-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.62fr) minmax(118px, 0.86fr) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#readerSettingsDialog .settings-row > *,
+#readerSettingsDialog .settings-rows > .vertical-margin-stepper {
+  grid-area: auto !important;
+}
+
+#readerSettingsDialog .settings-cell,
+#readerSettingsDialog .settings-pill,
+#readerSettingsDialog .settings-select-pill,
+#readerSettingsDialog .settings-popover summary {
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  min-height: 50px !important;
+  height: 50px !important;
+  border-radius: 24px !important;
+  background: #f1f1f1 !important;
+  color: #202020 !important;
+  overflow: hidden !important;
+}
+
+#readerSettingsDialog .setting-brightness {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  padding: 0 18px !important;
+}
+
+#readerSettingsDialog .font-stepper,
+#readerSettingsDialog .line-stepper,
+#readerSettingsDialog .margin-stepper {
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) !important;
+  padding: 0 14px !important;
+}
+
+#readerSettingsDialog .font-stepper {
+  grid-template-columns: 1fr !important;
+  padding: 0 6px !important;
+}
+
+#readerSettingsDialog .stepper-control {
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#readerSettingsDialog .font-stepper .stepper-control {
+  grid-template-columns: 48px minmax(68px, 1fr) 48px !important;
+}
+
+#readerSettingsDialog .line-stepper .stepper-control {
+  grid-template-columns: 38px minmax(44px, 1fr) 38px !important;
+}
+
+#readerSettingsDialog .margin-stepper .stepper-control {
+  grid-template-columns: 24px minmax(36px, 1fr) 24px !important;
+}
+
+#readerSettingsDialog .settings-background-grid {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 16px !important;
+}
+
+#readerSettingsDialog .settings-background-grid .bg-choice {
+  flex: 0 0 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+}
+
+#readerSettingsDialog #settingsNightButton,
+#readerSettingsDialog .settings-popover summary,
+#readerSettingsDialog #settingsTurnMode {
+  justify-content: center !important;
+  padding: 0 12px !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+#readerSettingsDialog .vertical-margin-stepper {
+  display: none !important;
+}
+
+#readerSettingsDialog .settings-secondary-row {
+  margin: 16px 0 8px !important;
+}
+
+@media (max-width: 430px) {
+  #readerSettingsDialog .apple-settings {
+    padding: 12px 12px calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #readerSettingsDialog .settings-rows {
+    gap: 9px !important;
+  }
+
+  #readerSettingsDialog .settings-row {
+    grid-template-columns: minmax(0, 1.6fr) minmax(108px, 0.84fr) !important;
+    gap: 10px !important;
+  }
+
+  #readerSettingsDialog .settings-cell,
+  #readerSettingsDialog .settings-pill,
+  #readerSettingsDialog .settings-select-pill,
+  #readerSettingsDialog .settings-popover summary {
+    min-height: 48px !important;
+    height: 48px !important;
+  }
+
+  #readerSettingsDialog .setting-brightness {
+    grid-template-columns: 32px minmax(0, 1fr) !important;
+    padding: 0 16px !important;
+  }
+
+  #readerSettingsDialog .font-stepper .stepper-control {
+    grid-template-columns: 42px minmax(58px, 1fr) 42px !important;
+  }
+
+  #readerSettingsDialog .line-stepper {
+    grid-template-columns: 46px minmax(0, 1fr) !important;
+    padding: 0 11px !important;
+  }
+
+  #readerSettingsDialog .margin-stepper {
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    padding: 0 10px !important;
+  }
+
+  #readerSettingsDialog .line-stepper .stepper-control {
+    grid-template-columns: 30px minmax(38px, 1fr) 30px !important;
+  }
+
+  #readerSettingsDialog .margin-stepper .stepper-control {
+    grid-template-columns: 20px minmax(34px, 1fr) 20px !important;
+  }
+
+  #readerSettingsDialog .settings-background-grid {
+    padding: 0 13px !important;
+  }
+
+  #readerSettingsDialog .settings-background-grid .bg-choice {
+    flex-basis: 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+  }
+}
+
