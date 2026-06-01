@@ -3,6 +3,7 @@
   "short_name": "书架",
   "start_url": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f7f3ee",
   "theme_color": "#316b62",
   "icons": [

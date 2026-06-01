@@ -531,12 +531,14 @@ function renderSettingsLabels() {
   const margin = $("#settingsSideMargin");
   const verticalMargin = $("#settingsVerticalMargin");
   const brightness = $("#settingsBrightness");
-  if (font) font.textContent = `${state.readerFontSize || 18}px`;
-  if (line) line.textContent = `${(state.readerLineHeight || 1.8).toFixed(1)}`;
-  if (margin) margin.textContent = `${state.readerSideMargin || 20}px`;
+  if (font) font.textContent = "54";
+  if (margin) margin.textContent = "›";
   if (verticalMargin) verticalMargin.textContent = `${state.readerVerticalMargin || 42}px`;
   if (brightness) brightness.value = state.readerBrightness || 100;
   $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare || (state.readerBg || "white") === "medium"));
+  document.querySelectorAll("[data-turn-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.turnMode === (state.readerTurnMode || "tap"));
+  });
 }
 
 function renderBackgroundChoices() {
@@ -2298,6 +2300,10 @@ $("#settingsNightTabButton")?.addEventListener("click", () => {
   $("#settingsNightButton").click();
 });
 
+$("#settingsBackgroundShortcut")?.addEventListener("click", () => {
+  $("#backgroundDialog")?.showModal();
+});
+
 $("#chapterBookmarkButton").addEventListener("pointerdown", async (event) => {
   await addBookmarkFromControl(event);
   renderChapterDialog();
@@ -2339,6 +2345,17 @@ $("#settingsTurnMode").addEventListener("change", async (event) => {
   state.readerTurnMode = event.target.value;
   await saveState();
   renderAll();
+});
+
+document.querySelectorAll("[data-turn-mode]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const mode = button.dataset.turnMode || "tap";
+    state.readerTurnMode = mode;
+    const select = $("#settingsTurnMode");
+    if (select) select.value = mode;
+    await saveState();
+    renderAll();
+  });
 });
 
 document.querySelectorAll("[data-stepper]").forEach((button) => {

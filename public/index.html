@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=56-settings-real-rows-20260601" />
+    <link rel="stylesheet" href="./styles.css?v=58-settings-panel-spec-20260601" />
   </head>
   <body>
     <div class="app-shell">
@@ -215,7 +215,9 @@
             <div class="settings-cell stepper-row font-stepper">
               <div class="stepper-control">
                 <button type="button" data-stepper="font" data-delta="-1">A-</button>
-                <output id="settingsFontSize">18px</output>
+                <span class="font-size-ghost">51</span>
+                <output id="settingsFontSize">54</output>
+                <span class="font-size-ghost">57</span>
                 <button type="button" data-stepper="font" data-delta="1">A+</button>
               </div>
             </div>
@@ -239,34 +241,36 @@
               <button class="bg-choice" type="button" data-bg="darkgray">深灰</button>
               <button class="bg-choice" type="button" data-bg="black">纯黑</button>
             </div>
-            <select class="settings-cell settings-select-pill" id="settingsTurnMode" aria-label="翻页方式">
-              <option value="tap">点击翻页</option>
-              <option value="swipe">滑动翻页</option>
-              <option value="both">点击 + 滑动</option>
-              <option value="scroll">连续滚动</option>
-            </select>
+            <button class="settings-cell settings-pill settings-jump-pill" id="settingsBackgroundShortcut" type="button"><span>背景</span><b>›</b></button>
           </div>
 
           <div class="settings-row">
             <div class="settings-cell stepper-row line-stepper">
-              <span>间距</span>
+              <span>翻页</span>
               <div class="stepper-control">
-                <button type="button" data-stepper="line" data-delta="-1">−</button>
-                <output id="settingsLineHeight">1.8</output>
-                <button type="button" data-stepper="line" data-delta="1">＋</button>
+                <button type="button" data-turn-mode="tap">覆盖</button>
+                <button type="button" data-turn-mode="swipe">仿真</button>
+                <button type="button" data-turn-mode="both">上下</button>
+                <button type="button" data-turn-mode="scroll">无</button>
               </div>
+              <select id="settingsTurnMode" aria-label="翻页方式" hidden>
+                <option value="tap">覆盖</option>
+                <option value="swipe">仿真</option>
+                <option value="both">上下</option>
+                <option value="scroll">无</option>
+              </select>
             </div>
             <div class="settings-cell stepper-row margin-stepper">
-              <span>左右</span>
+              <span>间距</span>
               <div class="stepper-control">
-                <button type="button" data-stepper="margin" data-delta="-1">−</button>
-                <output id="settingsSideMargin">20px</output>
-                <button type="button" data-stepper="margin" data-delta="1">＋</button>
+                <button type="button"></button>
+                <output id="settingsSideMargin">›</output>
+                <button type="button"></button>
               </div>
             </div>
           </div>
 
-          <div class="settings-cell stepper-row vertical-margin-stepper">
+          <div class="settings-cell stepper-row vertical-margin-stepper" hidden>
             <span>上下</span>
             <div class="stepper-control">
               <button type="button" data-stepper="verticalMargin" data-delta="-1">−</button>
@@ -414,6 +418,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=56-settings-real-rows-20260601" type="module"></script>
+    <script src="./app.js?v=58-settings-panel-spec-20260601" type="module"></script>
   </body>
 </html>
