@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v53-bottom-settings-portrait-dark";
+const CACHE_NAME = "pocket-reading-vault-v55-apple-white-settings";
 const ASSETS = [
   "./",
   "./index.html",

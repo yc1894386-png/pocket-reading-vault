@@ -2289,6 +2289,15 @@ $("#chapterSettingsButton").addEventListener("click", () => {
   openSettingsDialog();
 });
 
+$("#settingsTocButton")?.addEventListener("click", () => {
+  $("#readerSettingsDialog").close();
+  openReaderDialog();
+});
+
+$("#settingsNightTabButton")?.addEventListener("click", () => {
+  $("#settingsNightButton").click();
+});
+
 $("#chapterBookmarkButton").addEventListener("pointerdown", async (event) => {
   await addBookmarkFromControl(event);
   renderChapterDialog();

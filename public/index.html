@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=53-bottom-settings-portrait-dark-20260531" />
+    <link rel="stylesheet" href="./styles.css?v=55-apple-white-settings-20260601" />
   </head>
   <body>
     <div class="app-shell">
@@ -266,6 +266,15 @@
             </div>
           </div>
         </div>
+        <div class="settings-secondary-row">
+          <button type="button" class="settings-text-link disabled">开启自动阅读 ▶</button>
+          <button type="button" class="settings-text-link">更多设置项</button>
+        </div>
+        <div class="settings-bottom-tabs">
+          <button type="button" id="settingsTocButton"><b>☰</b><span>目录</span></button>
+          <button type="button" id="settingsNightTabButton"><b>☾</b><span>夜间</span></button>
+          <button type="button" class="active"><b>⌾</b><span>设置</span></button>
+        </div>
       </form>
     </dialog>
 
@@ -396,6 +405,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=53-bottom-settings-portrait-dark-20260531" type="module"></script>
+    <script src="./app.js?v=55-apple-white-settings-20260601" type="module"></script>
   </body>
 </html>
