@@ -5709,6 +5709,49 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   min-height: 30px !important;
 }
 
+/* v63: keep highlight actions away from the browser copy/paste bubble */
+@media (max-width: 879px) {
+  .selection-toolbar {
+    position: fixed !important;
+    right: 12px !important;
+    bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+    left: 12px !important;
+    top: auto !important;
+    z-index: 2147483647 !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, 34px) repeat(3, minmax(48px, 1fr)) !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+    max-width: none !important;
+    width: auto !important;
+    padding: 10px 12px !important;
+    border-radius: 18px !important;
+    background: rgba(18, 18, 18, 0.94) !important;
+    transform: none !important;
+  }
+
+  .selection-toolbar.hidden {
+    display: none !important;
+  }
+
+  .selection-toolbar button {
+    min-width: 0 !important;
+    min-height: 38px !important;
+    padding: 0 10px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+  }
+
+  .selection-toolbar .highlight-dot {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+  }
+}
+
 /* v60: remove extra footer, fix old id styles, and make spacing editable */
 #readerSettingsDialog .reader-settings-v59 {
   padding: 12px 18px calc(14px + env(safe-area-inset-bottom)) !important;
@@ -5956,6 +5999,46 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
 
   #readerSettingsDialog .rs-v59-spacing-panel > div {
     grid-template-columns: 56px 38px minmax(0, 1fr) 38px !important;
+  }
+}
+
+/* v62: three clear reading modes and steadier mobile turning */
+#readerSettingsDialog .rs-v59-turn > div {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+#readerSettingsDialog .rs-v59-turn button[data-turn-mode="scroll"] {
+  color: rgba(102, 102, 102, 0.38) !important;
+}
+
+#readerSettingsDialog .rs-v59-turn button.active {
+  color: #666666 !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 879px) {
+  :root.turn-tap .work-content {
+    touch-action: pan-y pinch-zoom !important;
+    scroll-behavior: auto !important;
+  }
+
+  :root.turn-swipe .work-content {
+    touch-action: pan-y pinch-zoom !important;
+    scroll-behavior: smooth !important;
+  }
+
+  :root.turn-scroll .work-content {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    column-width: auto !important;
+    column-gap: normal !important;
+    touch-action: pan-y pinch-zoom !important;
+    scroll-behavior: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .work-content.page-turning {
+    filter: saturate(0.98);
   }
 }
 
