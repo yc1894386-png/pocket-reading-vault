@@ -6199,3 +6199,52 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   }
 }
 
+/* v69: stop highlight/bookmark controls from floating across the page */
+body:not(.reading) .selection-toolbar {
+  display: none !important;
+}
+
+.selection-toolbar {
+  position: fixed !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  top: max(86px, calc(16px + env(safe-area-inset-top))) !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: max-content !important;
+  max-width: calc(100vw - 28px) !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(18, 18, 18, 0.92) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22) !important;
+  backdrop-filter: blur(18px) saturate(1.06) !important;
+}
+
+.selection-toolbar.hidden {
+  display: none !important;
+}
+
+@media (min-width: 880px) {
+  .reader-console-top {
+    display: none !important;
+  }
+
+  .selection-toolbar {
+    left: calc(50% + 190px) !important;
+    top: 116px !important;
+  }
+}
+
+@media (max-width: 879px) {
+  .selection-toolbar {
+    top: max(76px, calc(14px + env(safe-area-inset-top))) !important;
+    gap: 6px !important;
+  }
+}
+
