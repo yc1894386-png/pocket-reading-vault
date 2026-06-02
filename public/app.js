@@ -76,6 +76,10 @@ let activeSelectionText = "";
 let activeSelectionRange = null;
 let previewImageUrl = "";
 
+function lockPortraitMode() {
+  screen.orientation?.lock?.("portrait").catch(() => {});
+}
+
 function openDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1593,15 +1597,14 @@ function updatePageCount() {
 }
 
 function requestReadingFullscreen() {
-  screen.orientation?.lock?.("portrait").catch(() => {});
+  lockPortraitMode();
   if (!isPagedMode() || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
   document.documentElement.requestFullscreen()
-    .then(() => screen.orientation?.lock?.("portrait").catch(() => {}))
+    .then(lockPortraitMode)
     .catch(() => {});
 }
 
 function exitReadingFullscreen() {
-  screen.orientation?.unlock?.();
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 }
 
@@ -2834,6 +2837,10 @@ $("#manualForm").addEventListener("submit", async (event) => {
   });
   $("#manualDialog").close();
 });
+
+lockPortraitMode();
+window.addEventListener("orientationchange", () => setTimeout(lockPortraitMode, 80));
+screen.orientation?.addEventListener?.("change", lockPortraitMode);
 
 boot().catch((error) => {
   $("#importStatus").textContent = `启动失败：${error.message}`;

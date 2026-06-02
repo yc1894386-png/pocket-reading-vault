@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v66-import-fallback";
+const CACHE_NAME = "pocket-reading-vault-v67-fixed-desktop-portrait";
 const ASSETS = [
   "./",
   "./index.html",
