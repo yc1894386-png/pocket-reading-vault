@@ -64,6 +64,7 @@ let cloudPanelOpen = false;
 let managedWorkId = null;
 let managedFolderId = null;
 let readerNavTab = "chapters";
+let highlightLibraryWorkId = null;
 let longPressTimer = null;
 let longPressPoint = null;
 let suppressShelfClick = false;
@@ -441,7 +442,7 @@ function renderMetaOptions() {
 }
 
 function renderReaderNavTabs() {
-  const tabs = ["chapters", "bookmarks", "highlights"];
+  const tabs = ["chapters", "highlights"];
   if (!tabs.includes(readerNavTab)) readerNavTab = "chapters";
   document.querySelectorAll("[data-reader-tab]").forEach((button) => {
     button.classList.toggle("active", button.dataset.readerTab === readerNavTab);
@@ -449,6 +450,48 @@ function renderReaderNavTabs() {
   document.querySelectorAll("[data-reader-section]").forEach((section) => {
     section.hidden = section.dataset.readerSection !== readerNavTab;
   });
+}
+
+function worksWithHighlights() {
+  return (state.works || [])
+    .map(normalizeWork)
+    .filter((work) => (work.highlights || []).length)
+    .sort((a, b) => {
+      const at = Math.max(...(a.highlights || []).map((item) => new Date(item.createdAt || a.updatedAt || 0).getTime()));
+      const bt = Math.max(...(b.highlights || []).map((item) => new Date(item.createdAt || b.updatedAt || 0).getTime()));
+      return bt - at;
+    });
+}
+
+function renderHighlightLibrary() {
+  const works = worksWithHighlights();
+  const selected = highlightLibraryWorkId ? state.works.find((work) => work.id === highlightLibraryWorkId) : null;
+  $("#highlightLibraryBack").hidden = !selected;
+  $("#highlightLibraryTitle").textContent = selected ? selected.title : "高亮库";
+  $("#highlightLibraryHint").textContent = selected
+    ? `${selected.author || "作者待补"} · ${(selected.highlights || []).length} 条高亮`
+    : "按作品收纳你划过的句子。";
+
+  if (!selected) {
+    $("#highlightLibraryList").innerHTML = works.length ? works.map((work) => `
+      <button type="button" class="highlight-work-row" data-highlight-work="${work.id}">
+        <span>${escapeHtml(work.title || "未命名作品")}</span>
+        <small>${escapeHtml(work.author || "作者待补")} · ${(work.highlights || []).length} 条</small>
+      </button>
+    `).join("") : `<p class="status">还没有高亮。</p>`;
+    return;
+  }
+
+  const highlights = [...(selected.highlights || [])].sort((a, b) => Number(a.chapterIndex || 0) - Number(b.chapterIndex || 0));
+  $("#highlightLibraryList").innerHTML = highlights.length ? highlights.map((highlight) => `
+    <article class="highlight-passage-row" data-library-highlight="${highlight.id}">
+      <button type="button" class="note-jump" data-library-highlight-jump="${highlight.id}">
+        <mark class="reader-highlight ${escapeHtml(highlight.color || "yellow")}">${escapeHtml(highlight.text || "")}</mark>
+        <small>${highlight.note ? escapeHtml(highlight.note) : "无备注"} · 第 ${Number(highlight.chapterIndex || 0) + 1} 章</small>
+      </button>
+      <button type="button" class="mini-delete" data-library-delete-highlight="${highlight.id}">删除</button>
+    </article>
+  `).join("") : `<p class="status">这本还没有高亮。</p>`;
 }
 
 function renderChapterDialog() {
@@ -1592,7 +1635,7 @@ function updateProgressBar() {
   $("#progressRange").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
   $("#consoleMenuProgress").textContent = `目录 · ${Math.round(ratio * 100)}%`;
-  const bookmarkCount = (work.bookmarks || []).length + (work.highlights || []).length;
+  const bookmarkCount = (work.highlights || []).length;
   $("#consoleBookmarkCount").textContent = String(bookmarkCount);
   updatePageCount();
 }
@@ -1767,12 +1810,25 @@ async function addHighlightFromSelection(color = "yellow", note = "") {
 async function removeHighlight(id) {
   const work = activeWork();
   if (!work) return;
+  if (!confirm("删除这条高亮吗？")) return;
   work.highlights = (work.highlights || []).filter((item) => item.id !== id);
   work.updatedAt = new Date().toISOString();
   activeHighlightId = null;
   hideSelectionToolbar();
   await saveState();
   renderAll();
+}
+
+async function removeHighlightFromWork(workId, highlightId) {
+  const work = state.works.find((item) => item.id === workId);
+  if (!work) return;
+  if (!confirm("删除这条高亮吗？")) return;
+  work.highlights = (work.highlights || []).filter((item) => item.id !== highlightId);
+  work.updatedAt = new Date().toISOString();
+  await saveState();
+  renderAll();
+  if (!(work.highlights || []).length) highlightLibraryWorkId = null;
+  renderHighlightLibrary();
 }
 
 async function removeBookmark(id) {
@@ -1933,9 +1989,10 @@ $("#importDrawerButton").addEventListener("click", () => {
   renderAll();
 });
 
-$("#searchToggleButton").addEventListener("click", () => {
-  $("#searchInput").focus();
-  $("#searchInput").scrollIntoView({ block: "center", behavior: "smooth" });
+$("#highlightLibraryButton").addEventListener("click", () => {
+  highlightLibraryWorkId = null;
+  renderHighlightLibrary();
+  $("#highlightLibraryDialog").showModal();
 });
 
 $("#cloudPanelButton").addEventListener("click", () => {
@@ -2401,7 +2458,7 @@ $("#settingsSpacingButton")?.addEventListener("click", () => {
   $("#settingsSpacingPanel")?.toggleAttribute("hidden");
 });
 
-$("#chapterBookmarkButton").addEventListener("pointerdown", async (event) => {
+$("#chapterBookmarkButton")?.addEventListener("pointerdown", async (event) => {
   await addBookmarkFromControl(event);
   readerNavTab = "bookmarks";
   renderChapterDialog();
@@ -2419,7 +2476,7 @@ $("#consoleAddBookmarkButton").addEventListener("pointerdown", async (event) => 
   await addBookmarkFromControl(event);
   setControlsOpen(false);
 });
-$("#consoleBookmarkPanelButton").addEventListener("click", () => openReaderDialog("bookmarks"));
+$("#consoleBookmarkPanelButton").addEventListener("click", () => openReaderDialog("highlights"));
 $("#consoleSearchButton").addEventListener("click", () => {
   const query = prompt("搜索全文");
   if (!query) return;
@@ -2799,10 +2856,44 @@ $("#highlightList").addEventListener("click", (event) => {
   goToChapter(highlight.chapterIndex, 0);
 });
 
+$("#highlightLibraryBack").addEventListener("click", () => {
+  highlightLibraryWorkId = null;
+  renderHighlightLibrary();
+});
+
+$("#closeHighlightLibrary").addEventListener("click", () => $("#highlightLibraryDialog").close());
+
+$("#highlightLibraryList").addEventListener("click", async (event) => {
+  const workButton = event.target.closest("[data-highlight-work]");
+  if (workButton) {
+    highlightLibraryWorkId = workButton.dataset.highlightWork;
+    renderHighlightLibrary();
+    return;
+  }
+
+  const selected = highlightLibraryWorkId ? state.works.find((work) => work.id === highlightLibraryWorkId) : null;
+  if (!selected) return;
+
+  const deleteButton = event.target.closest("[data-library-delete-highlight]");
+  if (deleteButton) {
+    await removeHighlightFromWork(selected.id, deleteButton.dataset.libraryDeleteHighlight);
+    return;
+  }
+
+  const jumpButton = event.target.closest("[data-library-highlight-jump]");
+  if (!jumpButton) return;
+  const highlight = selected.highlights?.find((item) => item.id === jumpButton.dataset.libraryHighlightJump);
+  if (!highlight) return;
+  state.selectedWorkId = selected.id;
+  $("#highlightLibraryDialog").close();
+  goToChapter(highlight.chapterIndex, 0);
+});
+
 [
   "#readerSettingsDialog",
   "#backgroundDialog",
   "#chapterDialog",
+  "#highlightLibraryDialog",
   "#workManageDialog",
   "#folderManageDialog",
   "#folderDialog",

@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=69-stable-highlight-toolbar-20260602" />
+    <link rel="stylesheet" href="./styles.css?v=70-highlights-library-20260602" />
   </head>
   <body>
     <div class="app-shell">
@@ -17,7 +17,7 @@
           <h1>文库</h1>
         </div>
         <div class="top-actions">
-          <button class="cloud-mini" id="searchToggleButton" type="button" title="搜索" aria-label="搜索">⌕</button>
+          <button class="cloud-mini" id="highlightLibraryButton" type="button" title="高亮库" aria-label="高亮库">▰</button>
           <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步">☁</button>
           <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="导入作品" aria-label="导入作品">＋</button>
           <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
@@ -151,7 +151,7 @@
       <button class="ghost-button" id="barTocButton">目录</button>
       <input id="progressRange" type="range" min="0" max="1000" value="0" />
       <span id="progressText">0%</span>
-      <button class="ghost-button" id="bookmarkButton">书签</button>
+      <button class="ghost-button" id="bookmarkButton" hidden>书签</button>
     </nav>
 
     <div class="reader-page-count hidden" id="readerPageCount">1 / 1</div>
@@ -159,7 +159,7 @@
     <div class="reader-console hidden" id="readerConsole">
       <div class="reader-console-top">
         <button class="console-text-button" id="consoleBackButton" type="button">‹</button>
-        <button class="console-text-button" id="consoleTopBookmarkButton" type="button">书签</button>
+        <button class="console-text-button" id="consoleTopBookmarkButton" type="button" hidden>书签</button>
       </div>
       <div class="reader-console-bottom">
         <div class="console-progress-row">
@@ -307,7 +307,6 @@
         <div class="dialog-head">
           <h2>阅读导航</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" id="chapterBookmarkButton" type="button">书签</button>
             <button class="ghost-button" id="chapterSettingsButton" type="button">设置</button>
             <button class="ghost-button" id="closeChapterDialog" type="button">关闭</button>
           </div>
@@ -316,7 +315,6 @@
         <section class="chapter-work-info" id="chapterWorkInfo"></section>
         <div class="reader-nav-tabs" id="readerNavTabs">
           <button type="button" data-reader-tab="chapters">章节</button>
-          <button type="button" data-reader-tab="bookmarks">书签</button>
           <button type="button" data-reader-tab="highlights">高亮</button>
         </div>
         <section class="reader-nav-section" data-reader-section="chapters">
@@ -328,6 +326,20 @@
         <section class="reader-nav-section" data-reader-section="highlights">
           <div class="bookmark-list" id="highlightList"></div>
         </section>
+      </div>
+    </dialog>
+
+    <dialog id="highlightLibraryDialog">
+      <div class="dialog-card highlight-library-card">
+        <div class="dialog-head">
+          <h2 id="highlightLibraryTitle">高亮库</h2>
+          <div class="dialog-actions">
+            <button class="ghost-button" id="highlightLibraryBack" type="button" hidden>返回</button>
+            <button class="ghost-button" id="closeHighlightLibrary" type="button">关闭</button>
+          </div>
+        </div>
+        <p class="helper-text" id="highlightLibraryHint">按作品收纳你划过的句子。</p>
+        <div class="highlight-library-list" id="highlightLibraryList"></div>
       </div>
     </dialog>
 
@@ -421,6 +433,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=69-stable-highlight-toolbar-20260602" type="module"></script>
+    <script src="./app.js?v=70-highlights-library-20260602" type="module"></script>
   </body>
 </html>

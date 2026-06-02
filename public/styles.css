@@ -1328,7 +1328,7 @@ body.reading::after {
 
 .reader-nav-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding: 4px;
   border-radius: 999px;
@@ -1353,6 +1353,61 @@ body.reading::after {
 
 .reader-nav-section[hidden] {
   display: none !important;
+}
+
+#bookmarkButton,
+#consoleTopBookmarkButton,
+#consoleAddBookmarkButton,
+#chapterBookmarkButton,
+[data-reader-tab="bookmarks"],
+[data-reader-section="bookmarks"] {
+  display: none !important;
+}
+
+.highlight-library-card {
+  width: min(680px, calc(100vw - 26px));
+  max-height: min(78dvh, 720px);
+  overflow: auto;
+}
+
+.highlight-library-list {
+  display: grid;
+  gap: 10px;
+}
+
+.highlight-work-row,
+.highlight-passage-row {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  min-height: 66px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--soft);
+  color: var(--text);
+  text-align: left;
+  box-shadow: none;
+}
+
+.highlight-work-row span {
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.highlight-work-row small,
+.highlight-passage-row small {
+  color: var(--muted);
+}
+
+.highlight-passage-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.highlight-passage-row .note-jump {
+  display: grid;
+  gap: 8px;
 }
 
 .chapter-list,
@@ -6246,5 +6301,42 @@ body:not(.reading) .selection-toolbar {
     top: max(76px, calc(14px + env(safe-area-inset-top))) !important;
     gap: 6px !important;
   }
+}
+
+/* v70: highlights only, bookmark UI removed */
+.reader-nav-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#bookmarkButton,
+#consoleTopBookmarkButton,
+#consoleAddBookmarkButton,
+#chapterBookmarkButton,
+[data-reader-tab="bookmarks"],
+[data-reader-section="bookmarks"] {
+  display: none !important;
+}
+
+#highlightLibraryButton {
+  font-size: 1.05rem !important;
+  color: var(--text) !important;
+}
+
+.highlight-library-card {
+  width: min(680px, calc(100vw - 26px)) !important;
+  max-height: min(78dvh, 720px) !important;
+  overflow: auto !important;
+}
+
+.highlight-library-list {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.highlight-work-row,
+.highlight-passage-row {
+  width: 100% !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
 }
 
