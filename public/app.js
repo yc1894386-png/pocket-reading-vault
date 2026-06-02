@@ -268,13 +268,71 @@ function getChapters(work) {
   const root = host.querySelector("#chapters") || host;
   let nodes = [...root.children].filter((node) => node.classList?.contains("chapter") || /^chapter-/.test(node.id || ""));
   if (!nodes.length) nodes = [...root.querySelectorAll(".chapter")];
-  if (!nodes.length) return [{ title: "全文", html: root.innerHTML || work.contentHtml || "" }];
-
-  return nodes.map((node, index) => {
-    const heading = node.querySelector(".title, h2, h3, h4");
+  let chapters = nodes.map((node, index) => {
+    const heading = node.querySelector(".title, h2, h3, h4") || (/^H[2-4]$/i.test(node.tagName || "") ? node : null);
     const title = heading?.textContent?.replace(/\s+/g, " ").trim() || `第 ${index + 1} 章`;
     return { title, html: node.outerHTML };
   });
+  if (chapters.length > 1) return chapters;
+
+  const loose = splitLooseChapters(root);
+  if (loose.length > chapters.length) return loose;
+  if (nodes.length === 1) {
+    const nestedLoose = splitLooseChapters(nodes[0]);
+    if (nestedLoose.length > chapters.length) return nestedLoose;
+  }
+  return chapters.length ? chapters : [{ title: "全文", html: root.innerHTML || work.contentHtml || "" }];
+}
+
+function isLooseChapterStart(node) {
+  if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+  const tag = (node.tagName || "").toLowerCase();
+  const className = node.className?.toString() || "";
+  const id = node.id || "";
+  const text = node.textContent?.replace(/\s+/g, " ").trim() || "";
+  if (/^chapter-/i.test(id) || /\bchapter\b/i.test(className)) return true;
+  const heading = node.querySelector?.(":scope > .title, :scope > h2, :scope > h3, :scope > h4");
+  const headingText = heading?.textContent?.replace(/\s+/g, " ").trim() || "";
+  if (headingText && (/(title|heading|chapter|module|group)/i.test(className) || /^(chapter|part|第\s*[\d一二三四五六七八九十百]+|[\d一二三四五六七八九十百]+[\s.、-]*(章|节|回)?)/i.test(headingText))) {
+    return true;
+  }
+  if (!/^h[2-4]$/.test(tag)) return false;
+  if (/(title|heading|chapter)/i.test(className)) return true;
+  return /^(chapter|part|第\s*[\d一二三四五六七八九十百]+|[\d一二三四五六七八九十百]+[\s.、-]*(章|节|回)?)/i.test(text);
+}
+
+function looseChapterTitle(node, fallback) {
+  const heading = node?.matches?.("h2, h3, h4, .title")
+    ? node
+    : node?.querySelector?.(":scope > .title, :scope > h2, :scope > h3, :scope > h4, .title, h2, h3, h4");
+  return heading?.textContent?.replace(/\s+/g, " ").trim() || fallback;
+}
+
+function splitLooseChapters(root) {
+  const children = [...root.children].filter((node) => !/^(script|style)$/i.test(node.tagName || ""));
+  const starts = children.filter(isLooseChapterStart);
+  if (starts.length < 2) return [];
+  const groups = [];
+  let current = [];
+  for (const child of children) {
+    if (isLooseChapterStart(child) && current.length) {
+      groups.push(current);
+      current = [child];
+    } else {
+      current.push(child);
+    }
+  }
+  if (current.length) groups.push(current);
+  return groups
+    .filter((group) => group.some((node) => (node.textContent || "").replace(/\s/g, "").length > 20))
+    .map((group, index) => {
+      const heading = looseChapterTitle(group.find((node) => isLooseChapterStart(node)), `第 ${index + 1} 章`);
+      const html = group.map((node) => node.outerHTML).join("");
+      return {
+        title: heading,
+        html: `<div class="chapter" id="chapter-loose-${index + 1}">${html}</div>`
+      };
+    });
 }
 
 function currentChapterIndex(work, chapters = getChapters(work)) {

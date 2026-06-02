@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v71-desktop-reader-layout";
+const CACHE_NAME = "pocket-reading-vault-v72-chapter-split-fix";
 const ASSETS = [
   "./",
   "./index.html",
