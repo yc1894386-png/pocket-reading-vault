@@ -54,6 +54,7 @@ let scrollRaf = 0;
 let touchStart = null;
 let suppressNextClick = false;
 let lastReaderActionAt = 0;
+let lastTouchSelectionAt = 0;
 let pageTurnAnimation = 0;
 let cloudTimer;
 let pendingJump = null;
@@ -62,6 +63,7 @@ let importDrawerOpen = false;
 let cloudPanelOpen = false;
 let managedWorkId = null;
 let managedFolderId = null;
+let readerNavTab = "chapters";
 let longPressTimer = null;
 let longPressPoint = null;
 let suppressShelfClick = false;
@@ -438,6 +440,17 @@ function renderMetaOptions() {
   $("#manageFolderSelect").innerHTML = options;
 }
 
+function renderReaderNavTabs() {
+  const tabs = ["chapters", "bookmarks", "highlights"];
+  if (!tabs.includes(readerNavTab)) readerNavTab = "chapters";
+  document.querySelectorAll("[data-reader-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.readerTab === readerNavTab);
+  });
+  document.querySelectorAll("[data-reader-section]").forEach((section) => {
+    section.hidden = section.dataset.readerSection !== readerNavTab;
+  });
+}
+
 function renderChapterDialog() {
   const work = activeWork();
   if (!work) return;
@@ -484,6 +497,7 @@ function renderChapterDialog() {
       <button type="button" class="mini-delete" data-delete-highlight="${highlight.id}">删除</button>
     </div>
   `).join("") : `<p class="status">还没有高亮。</p>`;
+  renderReaderNavTabs();
 }
 
 function renderAll() {
@@ -1789,15 +1803,24 @@ function hideSelectionToolbar() {
   activeSelectionRange = null;
 }
 
-function showSelectionToolbarFromRect(rect) {
+function showSelectionToolbarFromRect(rect, { mode = "selection" } = {}) {
   const toolbar = $("#selectionToolbar");
   if (!toolbar || !rect) return;
-  const width = toolbar.offsetWidth || 280;
+  toolbar.classList.toggle("highlight-existing", mode === "highlight");
+  toolbar.classList.remove("hidden");
+  const isMobile = window.matchMedia("(max-width: 879px)").matches;
+  const width = Math.min(toolbar.offsetWidth || (isMobile ? 286 : 280), window.innerWidth - 20);
   const left = Math.max(10, Math.min(window.innerWidth - width - 10, rect.left + rect.width / 2 - width / 2));
-  const top = rect.top > 70 ? rect.top - 56 : Math.min(window.innerHeight - 58, rect.bottom + 12);
+  let top;
+  if (isMobile) {
+    const below = rect.bottom + 18;
+    const above = rect.top - 58;
+    top = below + 52 < window.innerHeight ? below : Math.max(14, above);
+  } else {
+    top = rect.top > 70 ? rect.top - 56 : Math.min(window.innerHeight - 58, rect.bottom + 12);
+  }
   toolbar.style.left = `${left}px`;
   toolbar.style.top = `${top}px`;
-  toolbar.classList.remove("hidden");
 }
 
 function updateSelectionToolbar() {
@@ -1820,7 +1843,7 @@ function showHighlightToolbar(mark) {
   activeSelectionRange = null;
   const selection = window.getSelection();
   selection?.removeAllRanges();
-  showSelectionToolbarFromRect(mark.getBoundingClientRect());
+  showSelectionToolbarFromRect(mark.getBoundingClientRect(), { mode: "highlight" });
 }
 
 function openImagePreview(img) {
@@ -2380,15 +2403,23 @@ $("#settingsSpacingButton")?.addEventListener("click", () => {
 
 $("#chapterBookmarkButton").addEventListener("pointerdown", async (event) => {
   await addBookmarkFromControl(event);
+  readerNavTab = "bookmarks";
   renderChapterDialog();
 });
 
-$("#consoleLibraryButton").addEventListener("click", openReaderDialog);
+$("#readerNavTabs").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-reader-tab]");
+  if (!button) return;
+  readerNavTab = button.dataset.readerTab || "chapters";
+  renderReaderNavTabs();
+});
+
+$("#consoleLibraryButton").addEventListener("click", () => openReaderDialog("chapters"));
 $("#consoleAddBookmarkButton").addEventListener("pointerdown", async (event) => {
   await addBookmarkFromControl(event);
   setControlsOpen(false);
 });
-$("#consoleBookmarkPanelButton").addEventListener("click", openReaderDialog);
+$("#consoleBookmarkPanelButton").addEventListener("click", () => openReaderDialog("bookmarks"));
 $("#consoleSearchButton").addEventListener("click", () => {
   const query = prompt("搜索全文");
   if (!query) return;
@@ -2568,16 +2599,18 @@ $("#workContent").addEventListener("pointerdown", (event) => {
 
 $("#workContent").addEventListener("mouseup", () => setTimeout(updateSelectionToolbar, 80));
 $("#workContent").addEventListener("touchend", () => {
-  setTimeout(updateSelectionToolbar, 80);
-  setTimeout(updateSelectionToolbar, 220);
-  setTimeout(updateSelectionToolbar, 420);
+  lastTouchSelectionAt = Date.now();
+  setTimeout(updateSelectionToolbar, 360);
+  setTimeout(updateSelectionToolbar, 680);
+  setTimeout(updateSelectionToolbar, 980);
 });
 
 document.addEventListener("selectionchange", () => {
   if (!document.body.classList.contains("reading")) return;
   if (Date.now() - lastReaderActionAt < 650) return;
   clearTimeout(selectionTimer);
-  selectionTimer = setTimeout(updateSelectionToolbar, 120);
+  const delay = Date.now() - lastTouchSelectionAt < 900 ? 520 : 120;
+  selectionTimer = setTimeout(updateSelectionToolbar, delay);
 });
 
 async function handleSelectionToolbarAction(event) {
@@ -2714,13 +2747,14 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && activeWork()) persistProgress();
 });
 
-function openReaderDialog() {
+function openReaderDialog(tab = "chapters") {
+  readerNavTab = tab;
   renderChapterDialog();
   $("#chapterDialog").showModal();
 }
 
-$("#openChapterDialog").addEventListener("click", openReaderDialog);
-$("#barTocButton").addEventListener("click", openReaderDialog);
+$("#openChapterDialog").addEventListener("click", () => openReaderDialog("chapters"));
+$("#barTocButton").addEventListener("click", () => openReaderDialog("chapters"));
 $("#closeChapterDialog").addEventListener("click", () => $("#chapterDialog").close());
 
 $("#chapterList").addEventListener("click", (event) => {

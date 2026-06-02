@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=67-fixed-desktop-portrait-20260602" />
+    <link rel="stylesheet" href="./styles.css?v=68-apple-highlight-bookmark-tabs-20260602" />
   </head>
   <body>
     <div class="app-shell">
@@ -314,12 +314,20 @@
         </div>
         <p class="chapter-progress" id="chapterProgressText"></p>
         <section class="chapter-work-info" id="chapterWorkInfo"></section>
-        <h3>章节</h3>
-        <div class="chapter-list" id="chapterList"></div>
-        <h3>书签</h3>
-        <div class="bookmark-list" id="bookmarkList"></div>
-        <h3>高亮与备注</h3>
-        <div class="bookmark-list" id="highlightList"></div>
+        <div class="reader-nav-tabs" id="readerNavTabs">
+          <button type="button" data-reader-tab="chapters">章节</button>
+          <button type="button" data-reader-tab="bookmarks">书签</button>
+          <button type="button" data-reader-tab="highlights">高亮</button>
+        </div>
+        <section class="reader-nav-section" data-reader-section="chapters">
+          <div class="chapter-list" id="chapterList"></div>
+        </section>
+        <section class="reader-nav-section" data-reader-section="bookmarks">
+          <div class="bookmark-list" id="bookmarkList"></div>
+        </section>
+        <section class="reader-nav-section" data-reader-section="highlights">
+          <div class="bookmark-list" id="highlightList"></div>
+        </section>
       </div>
     </dialog>
 
@@ -413,6 +421,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=67-fixed-desktop-portrait-20260602" type="module"></script>
+    <script src="./app.js?v=68-apple-highlight-bookmark-tabs-20260602" type="module"></script>
   </body>
 </html>

@@ -1326,6 +1326,35 @@ body.reading::after {
   color: var(--muted);
 }
 
+.reader-nav-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+.reader-nav-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.reader-nav-tabs button.active {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.reader-nav-section[hidden] {
+  display: none !important;
+}
+
 .chapter-list,
 .bookmark-list {
   display: grid;
@@ -5713,22 +5742,21 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
 @media (max-width: 879px) {
   .selection-toolbar {
     position: fixed !important;
-    right: max(18px, env(safe-area-inset-right)) !important;
-    bottom: calc(72px + env(safe-area-inset-bottom)) !important;
-    left: max(18px, env(safe-area-inset-left)) !important;
-    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
     z-index: 2147483647 !important;
-    display: grid !important;
-    grid-template-columns: repeat(4, 34px) repeat(3, minmax(48px, 1fr)) !important;
+    display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 8px !important;
-    max-width: 520px !important;
+    gap: 6px !important;
+    max-width: calc(100vw - 20px) !important;
     width: auto !important;
-    margin: 0 auto !important;
-    padding: 9px 12px !important;
-    border-radius: 20px !important;
-    background: rgba(18, 18, 18, 0.94) !important;
+    margin: 0 !important;
+    padding: 7px 9px !important;
+    border-radius: 999px !important;
+    background: rgba(18, 18, 18, 0.92) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24) !important;
+    backdrop-filter: blur(18px) saturate(1.06) !important;
     transform: none !important;
   }
 
@@ -5738,18 +5766,27 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
 
   .selection-toolbar button {
     min-width: 0 !important;
-    min-height: 38px !important;
-    padding: 0 10px !important;
-    font-size: 14px !important;
+    min-height: 32px !important;
+    padding: 0 9px !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
   }
 
   .selection-toolbar .highlight-dot {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
     padding: 0 !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .selection-toolbar.highlight-existing .highlight-dot {
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    opacity: 0.72 !important;
   }
 }
 

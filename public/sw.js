@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v67-fixed-desktop-portrait";
+const CACHE_NAME = "pocket-reading-vault-v68-apple-highlight-bookmark-tabs";
 const ASSETS = [
   "./",
   "./index.html",
