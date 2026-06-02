@@ -268,9 +268,15 @@ function getWorkId(parsed) {
   return parsed.pathname.match(/\/works\/(\d+)/i)?.[1] || "";
 }
 
-function getDownloadUrl(parsed) {
+function getDownloadUrls(parsed) {
   const workId = getWorkId(parsed);
-  return workId ? `https://${downloadHost}/downloads/${workId}/fic.html` : "";
+  if (!workId) return [];
+  return [
+    `https://${downloadHost}/downloads/${workId}/work.html`,
+    `https://${sourceHost}/downloads/${workId}/work.html`,
+    `https://${downloadHost}/downloads/${workId}/fic.html`,
+    `https://${sourceHost}/downloads/${workId}/fic.html`
+  ];
 }
 
 function requestHeaders(url) {
@@ -329,10 +335,10 @@ async function fetchFirstAvailable(candidates) {
 
   const statuses = errors.map((error) => error.status).filter(Boolean);
   if (statuses.includes(429)) {
-    throw new Error("原站正在限流（429），它觉得访问太频繁了。先等 5 到 10 分钟再试；如果急着保存，请在原站点 Download → HTML 后回这里导入 HTML 文件。");
+    throw new Error("原站正在限流（429），它觉得访问太频繁了。我已经试过作品页和备用 HTML 下载源；先等 5 到 10 分钟再试。如果急着保存，请在原站点 Download → HTML 后回这里导入 HTML 文件。");
   }
   if (statuses.includes(403)) {
-    throw new Error("原站或 HTML 下载源拒绝访问（403）。这通常是站点临时防护，不是链接错了；请稍后重试，或用 Download → HTML 文件导入。");
+    throw new Error("原站或 HTML 下载源拒绝访问（403）。这通常是站点临时防护，不是链接错了；我已经试过多个备用下载地址。请稍后重试，或用 Download → HTML 文件导入。");
   }
   if (statuses.includes(525)) {
     throw new Error("原站返回了 525，备用 HTML 下载源也没有成功。可以稍后再试，或先用原站 Download → HTML 导入。");
@@ -347,8 +353,9 @@ async function importSource(url) {
   const cached = importCache.get(cacheKey);
   if (cached && Date.now() - cached.at < 1000 * 60 * 60 * 12) return cached.work;
   const candidates = [{ url: parsed.toString(), label: "原站" }];
-  const downloadUrl = getDownloadUrl(parsed);
-  if (downloadUrl) candidates.push({ url: downloadUrl, label: "HTML 下载源" });
+  for (const downloadUrl of getDownloadUrls(parsed)) {
+    candidates.push({ url: downloadUrl, label: "HTML 下载源" });
+  }
 
   const result = await fetchFirstAvailable(candidates);
   const work = parseSourceWork(result.html, result.url);

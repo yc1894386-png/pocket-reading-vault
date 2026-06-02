@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v63-highlight-bottom-tools";
+const CACHE_NAME = "pocket-reading-vault-v66-import-fallback";
 const ASSETS = [
   "./",
   "./index.html",

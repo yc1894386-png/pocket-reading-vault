@@ -54,6 +54,7 @@ let scrollRaf = 0;
 let touchStart = null;
 let suppressNextClick = false;
 let lastReaderActionAt = 0;
+let pageTurnAnimation = 0;
 let cloudTimer;
 let pendingJump = null;
 let controlsOpen = false;
@@ -1062,7 +1063,7 @@ async function importFromSource(url) {
     }
     if (/403|429|限流|拒绝访问/i.test(error.message)) {
       await addPendingImport(url, error.message);
-      throw new Error("原站现在挡住了这次读取。我已把链接放进后台导入，会自动重试；你不用反复点。");
+      throw new Error(`${error.message} 我已把链接放进后台导入，会自动重试；你不用反复点。`);
     }
     throw error;
   }
@@ -1452,7 +1453,7 @@ function turnPage(delta) {
   }
   setReaderPage(metrics.current + delta, mode === "swipe");
   updateProgressBar();
-  queueProgressPersist(mode === "swipe" ? 320 : 180);
+  queueProgressPersist(mode === "swipe" ? 180 : 140);
 }
 
 function readerPageKey() {
@@ -1497,11 +1498,28 @@ function setReaderPage(page, animate = false) {
   const current = Math.min(metrics.total, Math.max(1, page));
   pageCache.current = current;
   const left = Math.min(metrics.max, (current - 1) * metrics.step);
-  if (animate && content.scrollTo) {
+  if (animate) {
+    cancelAnimationFrame(pageTurnAnimation);
     content.classList.add("page-turning");
-    content.scrollTo({ left, behavior: "smooth" });
-    window.setTimeout(() => content.classList.remove("page-turning"), 260);
+    const start = content.scrollLeft;
+    const distance = left - start;
+    const duration = 120;
+    const startedAt = performance.now();
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+    const step = (now) => {
+      const ratio = Math.min(1, (now - startedAt) / duration);
+      content.scrollLeft = start + distance * easeOut(ratio);
+      if (ratio < 1) {
+        pageTurnAnimation = requestAnimationFrame(step);
+      } else {
+        content.scrollLeft = left;
+        content.classList.remove("page-turning");
+      }
+    };
+    pageTurnAnimation = requestAnimationFrame(step);
   } else {
+    cancelAnimationFrame(pageTurnAnimation);
+    content.classList.remove("page-turning");
     content.scrollLeft = left;
   }
 }
@@ -1523,7 +1541,8 @@ function scheduleReaderScrollUpdate() {
 }
 
 function canUseSwipeTurn() {
-  return isPagedMode() && normalizedTurnMode() === "swipe";
+  const mode = normalizedTurnMode();
+  return isPagedMode() && (mode === "tap" || mode === "swipe");
 }
 
 function setControlsOpen(open) {
@@ -2298,6 +2317,7 @@ $("#prevChapter").addEventListener("click", () => changeChapter(-1));
 $("#nextChapter").addEventListener("click", () => changeChapter(1));
 $("#highlightButton").addEventListener("click", () => addHighlightFromSelection("yellow"));
 $("#bookmarkButton").addEventListener("pointerdown", addBookmarkFromControl);
+$("#consoleTopBookmarkButton")?.addEventListener("pointerdown", addBookmarkFromControl);
 
 $("#progressRange").addEventListener("input", (event) => {
   const ratio = Number(event.target.value) / 1000;
@@ -2650,7 +2670,7 @@ $("#workContent").addEventListener("touchend", (event) => {
   const dx = touch.clientX - touchStart.x;
   const dy = touch.clientY - touchStart.y;
   const elapsed = Date.now() - touchStart.at;
-  const isSwipe = Math.abs(dx) >= 42 && Math.abs(dx) > Math.abs(dy) * 1.2 && elapsed < 700;
+  const isSwipe = Math.abs(dx) >= 28 && Math.abs(dx) > Math.abs(dy) * 1.08 && elapsed < 850;
   touchStart = null;
   if (!isSwipe) return;
   suppressNextClick = true;

@@ -5713,9 +5713,9 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
 @media (max-width: 879px) {
   .selection-toolbar {
     position: fixed !important;
-    right: 12px !important;
-    bottom: calc(18px + env(safe-area-inset-bottom)) !important;
-    left: 12px !important;
+    right: max(18px, env(safe-area-inset-right)) !important;
+    bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    left: max(18px, env(safe-area-inset-left)) !important;
     top: auto !important;
     z-index: 2147483647 !important;
     display: grid !important;
@@ -5723,10 +5723,11 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
     justify-content: center !important;
     align-items: center !important;
     gap: 8px !important;
-    max-width: none !important;
+    max-width: 520px !important;
     width: auto !important;
-    padding: 10px 12px !important;
-    border-radius: 18px !important;
+    margin: 0 auto !important;
+    padding: 9px 12px !important;
+    border-radius: 20px !important;
     background: rgba(18, 18, 18, 0.94) !important;
     transform: none !important;
   }
@@ -5749,6 +5750,38 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
     height: 32px !important;
     min-height: 32px !important;
     padding: 0 !important;
+  }
+}
+
+/* v64: faster simulated turn, cover mode also accepts swipes */
+@media (max-width: 879px) {
+  :root.turn-tap .work-content,
+  :root.turn-swipe .work-content {
+    touch-action: pan-y pinch-zoom !important;
+  }
+
+  :root.turn-swipe .work-content {
+    scroll-behavior: auto !important;
+  }
+
+  .work-content.page-turning {
+    will-change: scroll-position;
+  }
+
+  #bookmarkButton {
+    display: none !important;
+  }
+
+  .reading-bar {
+    grid-template-columns: auto minmax(0, 1fr) 44px !important;
+  }
+
+  #consoleTopBookmarkButton {
+    margin-left: auto !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    font-size: 0.9rem !important;
   }
 }
 
