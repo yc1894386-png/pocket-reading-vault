@@ -6340,3 +6340,116 @@ body:not(.reading) .selection-toolbar {
   box-shadow: none !important;
 }
 
+/* v71: desktop returns to left phone shelf + full-width web reader */
+@media (min-width: 880px) {
+  html,
+  body {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: 72px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .topbar {
+    position: static !important;
+    height: 72px !important;
+    box-sizing: border-box !important;
+  }
+
+  .layout {
+    display: grid !important;
+    grid-template-columns: 420px minmax(0, 1fr) !important;
+    gap: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+  }
+
+  .library-panel {
+    width: 420px !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    position: static !important;
+    box-sizing: border-box !important;
+    padding: 24px 28px 36px !important;
+    border: 0 !important;
+    border-right: 1px solid var(--line) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .reader-panel {
+    position: relative !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: var(--bg) !important;
+  }
+
+  .reader {
+    max-width: none !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 44px 96px !important;
+    box-sizing: border-box !important;
+  }
+
+  .reader-actions {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    margin: 0 -44px 18px !important;
+    padding: 12px 44px !important;
+    border-bottom: 1px solid var(--line) !important;
+    background: color-mix(in srgb, var(--bg) 96%, transparent) !important;
+    backdrop-filter: blur(14px) !important;
+  }
+
+  .reader-actions #backToList {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .work-header,
+  .chapter-strip,
+  .metadata-block,
+  .notes-block,
+  .summary-block,
+  .chapter-heading {
+    max-width: 920px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .work-content {
+    max-width: 920px !important;
+    margin: 0 auto !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .reader-console,
+  .reading-bar,
+  .reader-page-count {
+    display: none !important;
+  }
+}
+
