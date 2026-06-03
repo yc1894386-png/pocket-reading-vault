@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v76-image-referrer-retry";
+const CACHE_NAME = "pocket-reading-vault-v77-batch-organizer-ui";
 const ASSETS = [
   "./",
   "./index.html",

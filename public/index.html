@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=76-image-referrer-retry-20260603" />
+    <link rel="stylesheet" href="./styles.css?v=77-batch-organizer-ui-20260603" />
   </head>
   <body>
     <div class="app-shell">
@@ -46,8 +46,8 @@
             <div class="section-title">
               <h2>文库</h2>
               <div class="section-actions">
-                <button class="tiny-button" id="batchManageButton" title="批量整理" aria-label="批量整理" type="button">批量</button>
-                <button class="tiny-button" id="newFolderButton" title="新建文件夹" aria-label="新建文件夹">＋</button>
+                <button class="tiny-button" id="batchManageButton" title="批量整理" aria-label="批量整理" type="button">＋</button>
+                <button class="tiny-button" id="newFolderButton" title="新建分组" aria-label="新建分组">新建</button>
               </div>
             </div>
             <div class="folder-list" id="folderList"></div>
@@ -400,23 +400,26 @@
 
     <dialog id="batchGroupDialog">
       <form method="dialog" class="dialog-card batch-card" id="batchGroupForm">
-        <div class="dialog-head">
-          <h2>批量整理</h2>
-          <button value="cancel" class="ghost-button" formnovalidate>关闭</button>
+        <div class="batch-head">
+          <div>
+            <h2>批量整理</h2>
+            <p id="batchCountText">已选 0 篇</p>
+          </div>
+          <button value="cancel" class="ghost-button batch-close" formnovalidate>关闭</button>
         </div>
-        <input id="batchSearchInput" type="search" placeholder="搜索标题、作者、CP、备注" />
+        <div class="batch-search-wrap">
+          <input id="batchSearchInput" type="search" placeholder="搜索标题、作者、CP、备注" />
+        </div>
         <div class="batch-toolbar">
-          <button class="ghost-button" id="batchSelectAllButton" type="button">全选</button>
+          <button class="ghost-button" id="batchSelectAllButton" type="button">全选当前</button>
           <button class="ghost-button" id="batchClearButton" type="button">清空</button>
-          <span id="batchCountText">已选 0 篇</span>
         </div>
         <div class="batch-work-list" id="batchWorkList"></div>
-        <label>加入分组</label>
-        <div class="batch-folder-list" id="batchFolderList"></div>
-        <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
-          <button value="save">确认</button>
-        </menu>
+        <div class="batch-footer">
+          <label>加入分组</label>
+          <div class="batch-folder-list" id="batchFolderList"></div>
+          <button value="save" id="batchSubmitButton">确认移动</button>
+        </div>
       </form>
     </dialog>
 
@@ -458,6 +461,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=76-image-referrer-retry-20260603" type="module"></script>
+    <script src="./app.js?v=77-batch-organizer-ui-20260603" type="module"></script>
   </body>
 </html>

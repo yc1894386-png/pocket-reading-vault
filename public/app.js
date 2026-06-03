@@ -907,11 +907,13 @@ function batchSearchWorks() {
 
 function renderBatchGroupDialog() {
   const works = batchSearchWorks();
-  $("#batchCountText").textContent = `已选 ${batchSelectedWorkIds.size} 篇`;
+  const selectedCount = batchSelectedWorkIds.size;
+  $("#batchCountText").textContent = selectedCount ? `已选 ${selectedCount} 篇` : `共 ${state.works.length} 篇`;
   $("#batchWorkList").innerHTML = works.length ? works.map((work) => {
     const checked = batchSelectedWorkIds.has(work.id) ? "checked" : "";
+    const selectedClass = checked ? "selected" : "";
     return `
-      <label class="batch-work-row">
+      <label class="batch-work-row ${selectedClass}">
         <input type="checkbox" value="${work.id}" ${checked} />
         <span>
           <b>${escapeHtml(work.title || "未命名作品")}</b>
@@ -924,18 +926,20 @@ function renderBatchGroupDialog() {
   const folders = state.folders.filter((folder) => folder.id !== "all" && folder.id !== "unfiled");
   $("#batchFolderList").innerHTML = folders.map((folder) => {
     const checked = batchSelectedFolderIds.has(folder.id) ? "checked" : "";
+    const selectedClass = checked ? "selected" : "";
     return `
-      <label class="batch-folder-chip">
+      <label class="batch-folder-chip ${selectedClass}">
         <input type="checkbox" value="${folder.id}" ${checked} />
         <span>${escapeHtml(folder.name)}</span>
       </label>
     `;
   }).join("");
+  $("#batchSubmitButton").disabled = !batchSelectedWorkIds.size || !batchSelectedFolderIds.size;
 }
 
 async function openBatchGroupDialog() {
   ensureFolderNames(["CA", "想看", "看完"]);
-  batchSelectedWorkIds = new Set(filteredWorks().map((work) => work.id));
+  batchSelectedWorkIds = new Set();
   batchSelectedFolderIds = new Set();
   $("#batchSearchInput").value = $("#searchInput").value.trim();
   await saveState();
