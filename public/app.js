@@ -145,8 +145,14 @@ function proxiedImageUrl(value, baseUrl = "") {
       ? `https:${value}`
       : (baseUrl ? new URL(value, baseUrl).toString() : new URL(value, location.href).toString());
     if (!/^https?:\/\//i.test(absolute)) return absolute;
-    if (absolute.startsWith(`${IMPORT_API_BASE}/api/image?`)) return absolute;
-    return `${IMPORT_API_BASE}/api/image?url=${encodeURIComponent(absolute)}`;
+    if (absolute.startsWith(`${IMPORT_API_BASE}/api/image?`)) {
+      const proxyUrl = new URL(absolute);
+      if (baseUrl && !proxyUrl.searchParams.get("ref")) proxyUrl.searchParams.set("ref", baseUrl);
+      return proxyUrl.toString();
+    }
+    const params = new URLSearchParams({ url: absolute });
+    if (baseUrl) params.set("ref", baseUrl);
+    return `${IMPORT_API_BASE}/api/image?${params.toString()}`;
   } catch {
     return value;
   }
@@ -159,6 +165,28 @@ function originalImageUrlFromProxy(value = "") {
       return parsed.searchParams.get("url") || "";
     }
   } catch {}
+  return "";
+}
+
+function retryImageUrl(img, work) {
+  const current = img.currentSrc || img.src || "";
+  const original = img.getAttribute("data-original-src") || originalImageUrlFromProxy(current) || current;
+  if (!original) return "";
+  if (img.dataset.proxyRetry !== "1") {
+    img.dataset.proxyRetry = "1";
+    const retry = proxiedImageUrl(original, work?.sourceUrl || "");
+    try {
+      const retryUrl = new URL(retry);
+      retryUrl.searchParams.set("retry", Date.now().toString());
+      return retryUrl.toString();
+    } catch {
+      return retry;
+    }
+  }
+  if (img.dataset.directImageTried !== "1" && /^https?:\/\//i.test(original)) {
+    img.dataset.directImageTried = "1";
+    return original;
+  }
   return "";
 }
 
@@ -196,19 +224,28 @@ function normalizeImages(root, baseUrl = "") {
 }
 
 function prepareReaderImages() {
+  const work = activeWork();
   const images = [...$("#workContent").querySelectorAll("img")];
   images.forEach((img, index) => {
+    const original = img.getAttribute("data-original-src") || originalImageUrlFromProxy(img.getAttribute("src") || "") || img.getAttribute("src") || "";
+    if (original) {
+      img.setAttribute("data-original-src", original);
+      const refreshed = proxiedImageUrl(original, work?.sourceUrl || "");
+      if (refreshed && refreshed !== img.getAttribute("src")) img.setAttribute("src", refreshed);
+    }
     img.classList.add("reader-image");
     img.setAttribute("role", "button");
     img.setAttribute("tabindex", "0");
     img.setAttribute("title", "点开查看图片");
     img.addEventListener("error", () => {
-      if (img.dataset.directImageTried === "1") return;
-      const direct = img.getAttribute("data-original-src") || originalImageUrlFromProxy(img.currentSrc || img.src);
-      if (!direct || direct === img.src) return;
-      img.dataset.directImageTried = "1";
-      img.src = direct;
-    }, { once: true });
+      const next = retryImageUrl(img, work);
+      if (next && next !== img.src) {
+        img.src = next;
+        return;
+      }
+      img.classList.add("reader-image-broken");
+      img.alt = img.alt || "图片暂时加载不了，点开可重试";
+    });
     if (index < 3) {
       img.loading = "eager";
       img.setAttribute("fetchpriority", "high");

@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v75-batch-cloud-image-highlight";
+const CACHE_NAME = "pocket-reading-vault-v76-image-referrer-retry";
 const ASSETS = [
   "./",
   "./index.html",

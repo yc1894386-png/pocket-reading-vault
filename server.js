@@ -118,7 +118,9 @@ function isProxyableImageUrl(value = "") {
 function proxiedImageUrl(value, baseUrl) {
   const absolute = absoluteUrl(value, baseUrl);
   if (!isProxyableImageUrl(absolute)) return absolute;
-  return `${publicBaseUrl}/api/image?url=${encodeURIComponent(absolute)}`;
+  const params = new URLSearchParams({ url: absolute });
+  if (baseUrl) params.set("ref", baseUrl);
+  return `${publicBaseUrl}/api/image?${params.toString()}`;
 }
 
 function rewriteSrcset(value = "", baseUrl) {
@@ -161,27 +163,62 @@ function cleanWorkHtml(html, sourceUrl) {
     .replace(/\bhref=["']([^"']+)["']/gi, (_, url) => `href="${absoluteUrl(url, sourceUrl)}"`);
 }
 
-async function proxyImage(targetUrl) {
+function validReferer(value = "") {
+  try {
+    const parsed = new URL(value);
+    return /^https?:$/i.test(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+async function fetchImageAttempt(targetUrl, referer, signal) {
+  const headers = {
+    "accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+    "origin": `https://${sourceHost}`,
+    "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+  };
+  if (referer) headers.referer = referer;
+  return fetch(targetUrl, {
+    redirect: "follow",
+    signal,
+    headers
+  });
+}
+
+async function proxyImage(targetUrl, refererUrl = "") {
   if (!isProxyableImageUrl(targetUrl)) {
     const error = new Error("不支持这个图片地址。");
     error.status = 400;
     throw error;
   }
-  const cached = imageCache.get(targetUrl);
+  const referer = validReferer(refererUrl);
+  const cached = imageCache.get(`${targetUrl}|${referer}`);
   if (cached && Date.now() - cached.at < 1000 * 60 * 60 * 24) return cached;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch(targetUrl, {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        "accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-        "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-        "referer": new URL(targetUrl).origin,
-        "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    const targetOrigin = new URL(targetUrl).origin;
+    const referers = [...new Set([
+      referer,
+      `https://${sourceHost}/`,
+      targetOrigin,
+      ""
+    ].filter((item) => item !== undefined))];
+    let response;
+    let lastError;
+    for (const nextReferer of referers) {
+      try {
+        response = await fetchImageAttempt(targetUrl, nextReferer, controller.signal);
+        if (response.ok) break;
+        lastError = new Error(`图片源返回了 ${response.status}`);
+        lastError.status = response.status;
+      } catch (error) {
+        lastError = error;
       }
-    });
+    }
+    if (!response || !response.ok) throw lastError || new Error("图片暂时不能读取。");
     if (!response.ok) {
       const error = new Error(`图片源返回了 ${response.status}`);
       error.status = response.status;
@@ -190,7 +227,7 @@ async function proxyImage(targetUrl) {
     const type = response.headers.get("content-type") || "application/octet-stream";
     const bytes = Buffer.from(await response.arrayBuffer());
     const image = { type, bytes, at: Date.now() };
-    imageCache.set(targetUrl, image);
+    imageCache.set(`${targetUrl}|${referer}`, image);
     if (imageCache.size > 160) imageCache.delete(imageCache.keys().next().value);
     return image;
   } finally {
@@ -387,9 +424,10 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/image") {
       const source = url.searchParams.get("url");
+      const referer = url.searchParams.get("ref") || "";
       if (!source) return sendText(res, 400, "缺少图片地址。");
       try {
-        const image = await proxyImage(source);
+        const image = await proxyImage(source, referer);
         res.writeHead(200, {
           "content-type": image.type,
           "access-control-allow-origin": "*",

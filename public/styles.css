@@ -702,6 +702,13 @@ body.cloud-open .cloud-section {
   cursor: zoom-in;
 }
 
+.work-content img.reader-image-broken {
+  min-height: 96px;
+  padding: 28px 16px;
+  border: 1px dashed var(--line);
+  background: var(--soft);
+}
+
 .image-preview-dialog {
   width: 100vw;
   max-width: none;
