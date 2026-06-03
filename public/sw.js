@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v72-chapter-split-fix";
+const CACHE_NAME = "pocket-reading-vault-v75-batch-cloud-image-highlight";
 const ASSETS = [
   "./",
   "./index.html",

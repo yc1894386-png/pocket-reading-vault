@@ -63,6 +63,8 @@ let importDrawerOpen = false;
 let cloudPanelOpen = false;
 let managedWorkId = null;
 let managedFolderId = null;
+let batchSelectedWorkIds = new Set();
+let batchSelectedFolderIds = new Set();
 let readerNavTab = "chapters";
 let highlightLibraryWorkId = null;
 let longPressTimer = null;
@@ -150,6 +152,16 @@ function proxiedImageUrl(value, baseUrl = "") {
   }
 }
 
+function originalImageUrlFromProxy(value = "") {
+  try {
+    const parsed = new URL(value, location.href);
+    if (parsed.origin === new URL(IMPORT_API_BASE).origin && parsed.pathname === "/api/image") {
+      return parsed.searchParams.get("url") || "";
+    }
+  } catch {}
+  return "";
+}
+
 function rewriteSrcset(value = "", baseUrl = "") {
   return value.split(",").map((part) => {
     const trimmed = part.trim();
@@ -167,6 +179,10 @@ function normalizeImages(root, baseUrl = "") {
       || img.getAttribute("data-lazy-src")
       || "";
     const srcset = img.getAttribute("srcset") || "";
+    const original = src || (srcset ? srcset.split(",")[0].trim().split(/\s+/)[0] : "");
+    if (original && !img.getAttribute("data-original-src")) {
+      img.setAttribute("data-original-src", originalImageUrlFromProxy(original) || original);
+    }
     if (src) img.setAttribute("src", proxiedImageUrl(src, baseUrl));
     if (!src && srcset) img.setAttribute("src", proxiedImageUrl(srcset.split(",")[0].trim().split(/\s+/)[0], baseUrl));
     if (srcset) img.setAttribute("srcset", rewriteSrcset(srcset, baseUrl));
@@ -186,6 +202,13 @@ function prepareReaderImages() {
     img.setAttribute("role", "button");
     img.setAttribute("tabindex", "0");
     img.setAttribute("title", "点开查看图片");
+    img.addEventListener("error", () => {
+      if (img.dataset.directImageTried === "1") return;
+      const direct = img.getAttribute("data-original-src") || originalImageUrlFromProxy(img.currentSrc || img.src);
+      if (!direct || direct === img.src) return;
+      img.dataset.directImageTried = "1";
+      img.src = direct;
+    }, { once: true });
     if (index < 3) {
       img.loading = "eager";
       img.setAttribute("fetchpriority", "high");
@@ -208,8 +231,43 @@ function folderName(id) {
   return state.folders.find((folder) => folder.id === id)?.name || "未分类";
 }
 
+function ensureFolderNames(names = []) {
+  const ids = [];
+  for (const name of names) {
+    const existing = state.folders.find((folder) => folder.name === name);
+    if (existing) {
+      ids.push(existing.id);
+      continue;
+    }
+    const folder = { id: uid(), name };
+    state.folders.push(folder);
+    ids.push(folder.id);
+  }
+  return ids;
+}
+
+function workFolderIds(work) {
+  normalizeWork(work);
+  return [...new Set([...(work.folderIds || []), work.folderId].filter((id) => id && id !== "unfiled"))];
+}
+
+function workInFolder(work, folderId) {
+  if (folderId === "all") return true;
+  return workFolderIds(work).includes(folderId);
+}
+
+function folderNamesForWork(work) {
+  const names = workFolderIds(work).map(folderName).filter((name) => name && name !== "未分类");
+  return names.length ? names.join(" / ") : "未分组";
+}
+
 function normalizeWork(work) {
   work.folderId ||= "unfiled";
+  work.folderIds ||= [];
+  if (work.folderId && work.folderId !== "unfiled" && !work.folderIds.includes(work.folderId)) {
+    work.folderIds.push(work.folderId);
+  }
+  work.folderIds = [...new Set((work.folderIds || []).filter((id) => id && id !== "all" && id !== "unfiled"))];
   work.customTags ||= [];
   work.note ||= "";
   work.metadata ||= {};
@@ -343,7 +401,7 @@ function currentChapterIndex(work, chapters = getChapters(work)) {
 function filteredWorks() {
   const query = $("#searchInput").value.trim().toLowerCase();
   return state.works
-    .filter((work) => state.selectedFolder === "all" || (work.folderId || "unfiled") === state.selectedFolder)
+    .filter((work) => workInFolder(work, state.selectedFolder))
     .filter((work) => {
       if (!query) return true;
       const haystack = [
@@ -365,7 +423,7 @@ function visibleFolders() {
 function renderFolders() {
   const countFor = (folderId) => {
     if (folderId === "all") return state.works.length;
-    return state.works.filter((work) => (work.folderId || "unfiled") === folderId).length;
+    return state.works.filter((work) => workInFolder(work, folderId)).length;
   };
   $("#folderList").innerHTML = visibleFolders().map((folder) => `
     <button class="folder-card ${state.selectedFolder === folder.id ? "active" : ""}" data-folder="${folder.id}">
@@ -379,7 +437,7 @@ function renderWorks() {
   const works = filteredWorks();
   $("#workList").innerHTML = works.length ? works.map((work) => {
     normalizeWork(work);
-    const rel = work.metadata?.relationships?.[0] || work.customTags?.[0] || folderName(work.folderId || "unfiled");
+    const rel = work.metadata?.relationships?.[0] || work.customTags?.[0] || folderNamesForWork(work);
     const chapters = getChapters(work).length;
     const chapterText = work.metadata?.chapters || "";
     const complete = /(\d+)\s*\/\s*\1/.test(chapterText) || /complete|完结/i.test(work.metadata?.status || "");
@@ -416,7 +474,7 @@ function renderReader() {
   work.reading.chapterIndex = index;
   const chapter = chapters[index];
 
-  $("#workFolder").textContent = folderName(work.folderId || "unfiled");
+  $("#workFolder").textContent = folderNamesForWork(work);
   $("#workTitle").textContent = work.title;
   $("#workAuthor").textContent = work.author || "作者待补";
   $("#noteInput").value = work.note || "";
@@ -791,6 +849,64 @@ function renderManageTags(work) {
     : `<span class="empty-tag-note">还没有自定义 tag</span>`;
 }
 
+function batchSearchWorks() {
+  const query = $("#batchSearchInput")?.value.trim().toLowerCase() || "";
+  return state.works
+    .map(normalizeWork)
+    .filter((work) => {
+      if (!query) return true;
+      const haystack = [
+        work.title,
+        work.author,
+        work.note,
+        ...(work.customTags || []),
+        ...(work.metadata?.relationships || []),
+        ...(work.metadata?.fandoms || [])
+      ].join(" ").toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => (Number(b.sortOrder || 0) - Number(a.sortOrder || 0)) || (new Date(b.importedAt) - new Date(a.importedAt)));
+}
+
+function renderBatchGroupDialog() {
+  const works = batchSearchWorks();
+  $("#batchCountText").textContent = `已选 ${batchSelectedWorkIds.size} 篇`;
+  $("#batchWorkList").innerHTML = works.length ? works.map((work) => {
+    const checked = batchSelectedWorkIds.has(work.id) ? "checked" : "";
+    return `
+      <label class="batch-work-row">
+        <input type="checkbox" value="${work.id}" ${checked} />
+        <span>
+          <b>${escapeHtml(work.title || "未命名作品")}</b>
+          <small>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(folderNamesForWork(work))}</small>
+        </span>
+      </label>
+    `;
+  }).join("") : `<p class="status">没有找到文章。</p>`;
+
+  const folders = state.folders.filter((folder) => folder.id !== "all" && folder.id !== "unfiled");
+  $("#batchFolderList").innerHTML = folders.map((folder) => {
+    const checked = batchSelectedFolderIds.has(folder.id) ? "checked" : "";
+    return `
+      <label class="batch-folder-chip">
+        <input type="checkbox" value="${folder.id}" ${checked} />
+        <span>${escapeHtml(folder.name)}</span>
+      </label>
+    `;
+  }).join("");
+}
+
+async function openBatchGroupDialog() {
+  ensureFolderNames(["CA", "想看", "看完"]);
+  batchSelectedWorkIds = new Set(filteredWorks().map((work) => work.id));
+  batchSelectedFolderIds = new Set();
+  $("#batchSearchInput").value = $("#searchInput").value.trim();
+  await saveState();
+  renderAll();
+  renderBatchGroupDialog();
+  $("#batchGroupDialog").showModal();
+}
+
 function refreshFolderManageButtons() {
   const order = visibleFolders().map((folder) => folder.id).filter((id) => id !== "all");
   const index = order.indexOf(managedFolderId);
@@ -803,7 +919,7 @@ function openWorkManageDialog(id) {
   if (!work) return;
   managedWorkId = id;
   $("#manageWorkTitle").textContent = "整理";
-  $("#manageFolderSelect").value = work.folderId || "unfiled";
+  $("#manageFolderSelect").value = work.folderId && work.folderId !== "unfiled" ? work.folderId : (workFolderIds(work)[0] || "unfiled");
   $("#manageTagInput").value = "";
   renderManageTags(work);
   if (!$("#workManageDialog").open) $("#workManageDialog").showModal();
@@ -944,6 +1060,49 @@ function setCloudStatus(message) {
   if (node) node.textContent = message;
 }
 
+function cloudRestErrorText(error) {
+  const message = error?.message || "未知错误";
+  if (/failed to fetch|network|load failed/i.test(message)) {
+    return "连不上云端。请确认手机/电脑能打开 Supabase，或稍后重试。";
+  }
+  if (/shared_library_states|schema cache|relation|404/i.test(message)) {
+    return "云端同步表还没建好。需要在 Supabase 运行同步码 SQL。";
+  }
+  if (/row-level security|permission|401|403|unauthorized|forbidden/i.test(message)) {
+    return "云端表权限没放行。需要在 Supabase 运行新版同步码 SQL。";
+  }
+  return message;
+}
+
+async function supabaseRest(path, { method = "GET", query = "", body = null, prefer = "" } = {}) {
+  const url = `${SUPABASE_URL}/rest/v1/${path}${query}`;
+  const headers = {
+    apikey: SUPABASE_KEY,
+    authorization: `Bearer ${SUPABASE_KEY}`,
+    accept: "application/json"
+  };
+  if (body !== null) headers["content-type"] = "application/json";
+  if (prefer) headers.prefer = prefer;
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: body === null ? undefined : JSON.stringify(body)
+  });
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const json = await response.json();
+      detail = json.message || json.details || JSON.stringify(json);
+    } catch {
+      detail = await response.text();
+    }
+    throw new Error(`${response.status} ${detail}`.trim());
+  }
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
 function renderCloudPanel() {
   const connected = Boolean(state.syncCode);
   if (!supabase) {
@@ -1023,13 +1182,10 @@ function mergeLibraryState(localState, cloudState) {
 
 async function getCloudState() {
   if (!state.syncCode) return null;
-  const { data, error } = await supabase
-    .from("shared_library_states")
-    .select("state, updated_at")
-    .eq("sync_code", state.syncCode)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.state ? cloneLibraryState(data.state) : null;
+  const query = `?select=state,updated_at&sync_code=eq.${encodeURIComponent(state.syncCode)}&limit=1`;
+  const rows = await supabaseRest("shared_library_states", { query });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  return row?.state ? cloneLibraryState(row.state) : null;
 }
 
 async function saveCloudNow({ silent = false } = {}) {
@@ -1040,15 +1196,19 @@ async function saveCloudNow({ silent = false } = {}) {
     const payload = cloneLibraryState(state);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
-    const { error } = await supabase.from("shared_library_states").upsert({
-      sync_code: state.syncCode,
-      state: payload,
-      updated_at: new Date().toISOString()
+    await supabaseRest("shared_library_states", {
+      method: "POST",
+      query: "?on_conflict=sync_code",
+      prefer: "resolution=merge-duplicates,return=minimal",
+      body: {
+        sync_code: state.syncCode,
+        state: payload,
+        updated_at: new Date().toISOString()
+      }
     });
-    if (error) throw error;
     setCloudStatus(`云端已保存：${new Date().toLocaleTimeString()}`);
   } catch (error) {
-    setCloudStatus(`云端保存失败：${error.message}`);
+    setCloudStatus(`云端保存失败：${cloudRestErrorText(error)}`);
   } finally {
     syncingCloud = false;
   }
@@ -1061,50 +1221,31 @@ function queueCloudSave() {
 }
 
 function stopCloudRealtime() {
-  clearTimeout(cloudRealtimeTimer);
+  clearInterval(cloudRealtimeTimer);
   cloudRealtimeTimer = null;
-  if (cloudRealtimeChannel && supabase) {
-    supabase.removeChannel(cloudRealtimeChannel);
-  }
   cloudRealtimeChannel = null;
 }
 
 function startCloudRealtime() {
   stopCloudRealtime();
   if (!supabase || !state.syncCode) return;
-  cloudRealtimeChannel = supabase
-    .channel(`shared-library-state-${state.syncCode}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "shared_library_states",
-        filter: `sync_code=eq.${state.syncCode}`
-      },
-      (payload) => {
-        const remoteState = payload.new?.state;
-        if (!remoteState || remoteState._lastWriter === CLIENT_ID || syncingCloud) return;
-        clearTimeout(cloudRealtimeTimer);
-        cloudRealtimeTimer = setTimeout(async () => {
-          try {
-            syncingCloud = true;
-            state = mergeLibraryState(state, cloneLibraryState(remoteState));
-            await dbSet("library", state);
-            syncingCloud = false;
-            renderAll();
-            setCloudStatus(`已自动同步：${new Date().toLocaleTimeString()}`);
-          } catch (error) {
-            syncingCloud = false;
-            setCloudStatus(`自动同步失败：${error.message}`);
-          }
-        }, 350);
-      }
-    )
-    .subscribe((status) => {
-      if (status === "SUBSCRIBED") setCloudStatus("实时同步已开启。");
-      if (status === "CHANNEL_ERROR") setCloudStatus("实时同步暂不可用，请确认 Supabase Realtime 已开启。");
-    });
+  cloudRealtimeTimer = setInterval(async () => {
+    if (syncingCloud || !state.syncCode) return;
+    try {
+      const remoteState = await getCloudState();
+      if (!remoteState || remoteState._lastWriter === CLIENT_ID) return;
+      syncingCloud = true;
+      state = mergeLibraryState(state, remoteState);
+      await dbSet("library", state);
+      syncingCloud = false;
+      renderAll();
+      setCloudStatus(`已自动同步：${new Date().toLocaleTimeString()}`);
+    } catch (error) {
+      syncingCloud = false;
+      setCloudStatus(`自动同步失败：${cloudRestErrorText(error)}`);
+    }
+  }, 8000);
+  setCloudStatus("同步码已连接，会自动检查云端。");
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
@@ -1868,7 +2009,6 @@ async function addHighlightFromSelection(color = "yellow", note = "") {
 async function removeHighlight(id) {
   const work = activeWork();
   if (!work) return;
-  if (!confirm("删除这条高亮吗？")) return;
   work.highlights = (work.highlights || []).filter((item) => item.id !== id);
   work.updatedAt = new Date().toISOString();
   activeHighlightId = null;
@@ -1880,7 +2020,6 @@ async function removeHighlight(id) {
 async function removeHighlightFromWork(workId, highlightId) {
   const work = state.works.find((item) => item.id === workId);
   if (!work) return;
-  if (!confirm("删除这条高亮吗？")) return;
   work.highlights = (work.highlights || []).filter((item) => item.id !== highlightId);
   work.updatedAt = new Date().toISOString();
   await saveState();
@@ -1991,12 +2130,7 @@ async function downloadPreviewImage() {
 }
 
 async function boot() {
-  try {
-    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  } catch {
-    supabase = null;
-  }
+  supabase = { mode: "rest" };
   db = await openDb();
   state = { ...defaultState, ...(await dbGet("library") || {}) };
   state.works = (state.works || []).map(normalizeWork);
@@ -2137,9 +2271,7 @@ $("#cloudStartButton").addEventListener("click", async () => {
   } catch (error) {
     state.syncCode = "";
     renderCloudPanel();
-    setCloudStatus(/shared_library_states|schema cache|relation/i.test(error.message)
-      ? "云端表还没建好。请先在 Supabase 运行新版 SQL。"
-      : `同步开启失败：${error.message}`);
+    setCloudStatus(`同步开启失败：${cloudRestErrorText(error)}`);
   }
 });
 
@@ -2237,7 +2369,7 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
     await saveCloudNow({ silent: true });
     setCloudStatus(`同步完成：${new Date().toLocaleTimeString()}`);
   } catch (error) {
-    setCloudStatus(`同步失败：${error.message}`);
+    setCloudStatus(`同步失败：${cloudRestErrorText(error)}`);
   }
 });
 
@@ -2246,7 +2378,7 @@ $("#cloudDownloadButton").addEventListener("click", async () => {
   try {
     await loadCloudIntoLocal({ merge: true });
   } catch (error) {
-    setCloudStatus(`云端读取失败：${error.message}`);
+    setCloudStatus(`云端读取失败：${cloudRestErrorText(error)}`);
   }
 });
 
@@ -2316,6 +2448,62 @@ $("#newFolderButton").addEventListener("click", () => {
   $("#folderDialog").showModal();
 });
 
+$("#batchManageButton").addEventListener("click", openBatchGroupDialog);
+
+$("#batchSearchInput").addEventListener("input", renderBatchGroupDialog);
+
+$("#batchSelectAllButton").addEventListener("click", () => {
+  batchSearchWorks().forEach((work) => batchSelectedWorkIds.add(work.id));
+  renderBatchGroupDialog();
+});
+
+$("#batchClearButton").addEventListener("click", () => {
+  batchSelectedWorkIds.clear();
+  renderBatchGroupDialog();
+});
+
+$("#batchWorkList").addEventListener("change", (event) => {
+  const checkbox = event.target.closest("input[type='checkbox']");
+  if (!checkbox) return;
+  if (checkbox.checked) batchSelectedWorkIds.add(checkbox.value);
+  else batchSelectedWorkIds.delete(checkbox.value);
+  renderBatchGroupDialog();
+});
+
+$("#batchFolderList").addEventListener("change", (event) => {
+  const checkbox = event.target.closest("input[type='checkbox']");
+  if (!checkbox) return;
+  if (checkbox.checked) batchSelectedFolderIds.add(checkbox.value);
+  else batchSelectedFolderIds.delete(checkbox.value);
+  renderBatchGroupDialog();
+});
+
+$("#batchGroupForm").addEventListener("submit", async (event) => {
+  if (event.submitter?.value !== "save") return;
+  event.preventDefault();
+  if (!batchSelectedWorkIds.size) {
+    $("#batchCountText").textContent = "先勾选文章";
+    return;
+  }
+  if (!batchSelectedFolderIds.size) {
+    $("#batchCountText").textContent = "先选择分组";
+    return;
+  }
+  const now = new Date().toISOString();
+  for (const work of state.works) {
+    if (!batchSelectedWorkIds.has(work.id)) continue;
+    normalizeWork(work);
+    for (const folderId of batchSelectedFolderIds) {
+      if (!work.folderIds.includes(folderId)) work.folderIds.push(folderId);
+    }
+    if (!work.folderId || work.folderId === "unfiled") work.folderId = [...batchSelectedFolderIds][0];
+    work.updatedAt = now;
+  }
+  await saveState();
+  $("#batchGroupDialog").close();
+  renderAll();
+});
+
 $("#folderForm").addEventListener("submit", async (event) => {
   if (event.submitter?.value !== "save") return;
   event.preventDefault();
@@ -2341,6 +2529,9 @@ $("#metaForm").addEventListener("submit", async (event) => {
   const work = activeWork();
   if (!work) return;
   work.folderId = $("#metaFolder").value;
+  work.folderIds = work.folderId === "unfiled"
+    ? workFolderIds(work)
+    : [...new Set([...workFolderIds(work), work.folderId])];
   work.customTags = $("#metaCustomTags").value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean);
   work.updatedAt = new Date().toISOString();
   await saveState();
@@ -2394,6 +2585,9 @@ $("#manageFolderSelect").addEventListener("change", async (event) => {
   const work = workById(managedWorkId);
   if (!work) return;
   work.folderId = event.target.value;
+  work.folderIds = work.folderId === "unfiled"
+    ? workFolderIds(work)
+    : [...new Set([...workFolderIds(work), work.folderId])];
   work.updatedAt = new Date().toISOString();
   await saveState();
   renderAll();
@@ -2417,6 +2611,7 @@ $("#manageDeleteFolderButton").addEventListener("click", async () => {
   if (!confirm(`删除文件夹「${folder.name}」？里面的作品不会删除，只是不再放在这个文件夹里。`)) return;
   state.works.forEach((work) => {
     if ((work.folderId || "unfiled") === folder.id) work.folderId = "unfiled";
+    work.folderIds = workFolderIds(work).filter((id) => id !== folder.id);
   });
   state.folders = state.folders.filter((item) => item.id !== folder.id);
   if (state.selectedFolder === folder.id) state.selectedFolder = "all";
@@ -2787,7 +2982,10 @@ async function handleSelectionToolbarAction(event) {
   }
 }
 
-$("#selectionToolbar").addEventListener("pointerdown", handleSelectionToolbarAction);
+$("#selectionToolbar").addEventListener("pointerdown", (event) => {
+  event.stopPropagation();
+});
+$("#selectionToolbar").addEventListener("click", handleSelectionToolbarAction);
 
 $("#closeImagePreview").addEventListener("click", () => $("#imagePreviewDialog").close());
 $("#downloadPreviewImage").addEventListener("click", downloadPreviewImage);

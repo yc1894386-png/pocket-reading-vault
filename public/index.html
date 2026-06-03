@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=72-chapter-split-fix-20260602" />
+    <link rel="stylesheet" href="./styles.css?v=75-batch-cloud-image-highlight-20260602" />
   </head>
   <body>
     <div class="app-shell">
@@ -17,7 +17,7 @@
           <h1>文库</h1>
         </div>
         <div class="top-actions">
-          <button class="cloud-mini" id="highlightLibraryButton" type="button" title="高亮库" aria-label="高亮库">▰</button>
+          <button class="cloud-mini highlight-library-mini" id="highlightLibraryButton" type="button" title="高亮库" aria-label="高亮库">高亮</button>
           <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步">☁</button>
           <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="导入作品" aria-label="导入作品">＋</button>
           <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">◐</button>
@@ -45,7 +45,10 @@
           <section class="folder-tools shelf-directory">
             <div class="section-title">
               <h2>文库</h2>
-              <button class="tiny-button" id="newFolderButton" title="新建文件夹" aria-label="新建文件夹">＋</button>
+              <div class="section-actions">
+                <button class="tiny-button" id="batchManageButton" title="批量整理" aria-label="批量整理" type="button">批量</button>
+                <button class="tiny-button" id="newFolderButton" title="新建文件夹" aria-label="新建文件夹">＋</button>
+              </div>
             </div>
             <div class="folder-list" id="folderList"></div>
           </section>
@@ -171,7 +174,7 @@
           <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button" hidden>›</button>
         </div>
         <div class="console-action-row">
-          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>书签与高亮</span><b id="consoleBookmarkCount">0</b></button>
+          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>高亮</span><b id="consoleBookmarkCount">0</b></button>
           <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>⌕</b></button>
           <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>设置</span><b>Aa</b></button>
           <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>♡</b></button>
@@ -395,6 +398,28 @@
       </form>
     </dialog>
 
+    <dialog id="batchGroupDialog">
+      <form method="dialog" class="dialog-card batch-card" id="batchGroupForm">
+        <div class="dialog-head">
+          <h2>批量整理</h2>
+          <button value="cancel" class="ghost-button" formnovalidate>关闭</button>
+        </div>
+        <input id="batchSearchInput" type="search" placeholder="搜索标题、作者、CP、备注" />
+        <div class="batch-toolbar">
+          <button class="ghost-button" id="batchSelectAllButton" type="button">全选</button>
+          <button class="ghost-button" id="batchClearButton" type="button">清空</button>
+          <span id="batchCountText">已选 0 篇</span>
+        </div>
+        <div class="batch-work-list" id="batchWorkList"></div>
+        <label>加入分组</label>
+        <div class="batch-folder-list" id="batchFolderList"></div>
+        <menu>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
+          <button value="save">确认</button>
+        </menu>
+      </form>
+    </dialog>
+
     <dialog id="folderManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="folderManageForm">
         <h2 id="manageFolderTitle">文件夹</h2>
@@ -433,6 +458,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=72-chapter-split-fix-20260602" type="module"></script>
+    <script src="./app.js?v=75-batch-cloud-image-highlight-20260602" type="module"></script>
   </body>
 </html>

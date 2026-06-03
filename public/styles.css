@@ -457,6 +457,12 @@ body.cloud-open .cloud-section {
   font-weight: 850;
 }
 
+.section-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -2196,9 +2202,91 @@ body.shelf-dragging {
   min-height: 44px;
 }
 
+.batch-card {
+  width: min(92vw, 640px);
+  max-height: min(84dvh, 760px);
+  overflow: auto;
+  gap: 14px;
+}
+
+.batch-toolbar {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.batch-toolbar span {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+.batch-work-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(42vh, 330px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.batch-work-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--soft);
+}
+
+.batch-work-row input,
+.batch-folder-chip input {
+  accent-color: var(--text);
+  margin-top: 4px;
+}
+
+.batch-work-row span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.batch-work-row b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-work-row small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.batch-folder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batch-folder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--text);
+  font-weight: 800;
+}
+
 @media (max-width: 879px) {
   #workManageDialog,
-  #folderManageDialog {
+  #folderManageDialog,
+  #batchGroupDialog {
     width: 100%;
     max-width: none;
     margin: auto 0 0;
@@ -2209,8 +2297,13 @@ body.shelf-dragging {
   }
 
   #workManageDialog .dialog-card,
-  #folderManageDialog .dialog-card {
+  #folderManageDialog .dialog-card,
+  #batchGroupDialog .dialog-card {
     padding: 20px 18px max(20px, env(safe-area-inset-bottom));
+  }
+
+  .batch-card {
+    max-height: min(86dvh, 760px);
   }
 }
 
@@ -6320,6 +6413,14 @@ body:not(.reading) .selection-toolbar {
 #highlightLibraryButton {
   font-size: 1.05rem !important;
   color: var(--text) !important;
+}
+
+.highlight-library-mini {
+  min-width: 54px !important;
+  padding: 0 12px !important;
+  font-size: 0.82rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
 }
 
 .highlight-library-card {
