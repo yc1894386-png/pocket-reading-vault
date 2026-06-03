@@ -603,7 +603,7 @@ function renderMetaOptions() {
 }
 
 function renderReaderNavTabs() {
-  const tabs = ["chapters", "highlights"];
+  const tabs = ["info", "chapters", "highlights"];
   if (!tabs.includes(readerNavTab)) readerNavTab = "chapters";
   document.querySelectorAll("[data-reader-tab]").forEach((button) => {
     button.classList.toggle("active", button.dataset.readerTab === readerNavTab);
@@ -611,6 +611,29 @@ function renderReaderNavTabs() {
   document.querySelectorAll("[data-reader-section]").forEach((section) => {
     section.hidden = section.dataset.readerSection !== readerNavTab;
   });
+}
+
+function renderReaderInfoPanel(work) {
+  const metaHtml = renderMetadata(work);
+  const customTags = (work.customTags || []).filter(Boolean);
+  const summary = work.summaryHtml || "";
+  $("#readerInfoPanel").innerHTML = `
+    <section class="reader-info-hero">
+      <h3>${escapeHtml(work.title || "作品信息")}</h3>
+      <p>${escapeHtml(work.author || "作者待补")}</p>
+    </section>
+    ${metaHtml ? `<section class="reader-info-meta">${metaHtml}</section>` : `<p class="status">这篇暂时没有导入到标签信息。</p>`}
+    ${customTags.length ? `
+      <section class="reader-info-local-tags">
+        <b>我的标签</b>
+        <div class="tag-row">${customTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+      </section>
+    ` : ""}
+    <section class="reader-info-summary">
+      <b>简介</b>
+      ${summary ? `<div>${summary}</div>` : `<p class="status">这篇暂时没有导入到简介。</p>`}
+    </section>
+  `;
 }
 
 function worksWithHighlights() {
@@ -717,10 +740,9 @@ function renderChapterDialog() {
   ].filter(Boolean);
   $("#chapterWorkInfo").innerHTML = `
     <h3>${escapeHtml(work.title || "作品信息")}</h3>
-    <p>${escapeHtml(work.author || "作者待补")}</p>
-    ${infoTags.length ? `<div class="tag-row">${infoTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
-    ${work.summaryHtml ? `<section class="summary-in-dialog"><b>简介</b><div>${work.summaryHtml}</div></section>` : ""}
+    <p>${escapeHtml(work.author || "作者待补")} · ${infoTags.length} 个标签 · ${work.summaryHtml ? "有简介" : "无简介"}</p>
   `;
+  renderReaderInfoPanel(work);
   $("#chapterList").innerHTML = chapters.map((chapter, chapterIndex) => `
     <button class="chapter-item ${chapterIndex === index ? "active" : ""}" data-chapter="${chapterIndex}">
       <span>${escapeHtml(chapter.title)}</span>

@@ -1341,7 +1341,7 @@ body.reading::after {
 
 .reader-nav-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 4px;
   border-radius: 999px;
@@ -1366,6 +1366,68 @@ body.reading::after {
 
 .reader-nav-section[hidden] {
   display: none !important;
+}
+
+.reader-info-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.reader-info-hero,
+.reader-info-meta,
+.reader-info-local-tags,
+.reader-info-summary {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--soft);
+}
+
+.reader-info-hero h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+.reader-info-hero p,
+.reader-info-summary p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.reader-info-meta .metadata-row {
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reader-info-meta .metadata-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.reader-info-meta .metadata-row b,
+.reader-info-local-tags b,
+.reader-info-summary b {
+  color: var(--text);
+}
+
+.reader-info-summary div {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.78;
+  overflow-wrap: anywhere;
+}
+
+.reader-info-summary div p {
+  margin: 0 0 0.85em;
 }
 
 #bookmarkButton,
@@ -6405,7 +6467,7 @@ body:not(.reading) .selection-toolbar {
 
 /* v70: highlights only, bookmark UI removed */
 .reader-nav-tabs {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 
 #bookmarkButton,

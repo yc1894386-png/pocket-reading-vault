@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=79-excerpt-notebook-card-20260604" />
+    <link rel="stylesheet" href="./styles.css?v=80-mobile-info-tab-20260604" />
   </head>
   <body>
     <div class="app-shell">
@@ -317,9 +317,13 @@
         <p class="chapter-progress" id="chapterProgressText"></p>
         <section class="chapter-work-info" id="chapterWorkInfo"></section>
         <div class="reader-nav-tabs" id="readerNavTabs">
+          <button type="button" data-reader-tab="info">信息</button>
           <button type="button" data-reader-tab="chapters">章节</button>
           <button type="button" data-reader-tab="highlights">高亮</button>
         </div>
+        <section class="reader-nav-section" data-reader-section="info">
+          <div class="reader-info-panel" id="readerInfoPanel"></div>
+        </section>
         <section class="reader-nav-section" data-reader-section="chapters">
           <div class="chapter-list" id="chapterList"></div>
         </section>
@@ -461,6 +465,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=79-excerpt-notebook-card-20260604" type="module"></script>
+    <script src="./app.js?v=80-mobile-info-tab-20260604" type="module"></script>
   </body>
 </html>
