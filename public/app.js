@@ -58,6 +58,7 @@ let lastTouchSelectionAt = 0;
 let pageTurnAnimation = 0;
 let cloudTimer;
 let pendingJump = null;
+let pendingHighlightJumpId = null;
 let controlsOpen = false;
 let importDrawerOpen = false;
 let cloudPanelOpen = false;
@@ -67,6 +68,8 @@ let batchSelectedWorkIds = new Set();
 let batchSelectedFolderIds = new Set();
 let readerNavTab = "chapters";
 let highlightLibraryWorkId = null;
+let highlightLibraryPreviewId = null;
+let highlightLibrarySwipe = null;
 let longPressTimer = null;
 let longPressPoint = null;
 let suppressShelfClick = false;
@@ -554,6 +557,11 @@ function renderReader() {
     pendingJump = null;
     requestAnimationFrame(() => scrollToChapterRatio(ratio));
   }
+  if (pendingHighlightJumpId) {
+    const id = pendingHighlightJumpId;
+    pendingHighlightJumpId = null;
+    requestAnimationFrame(() => jumpToHighlightMark(id));
+  }
 }
 
 function renderMetadata(work) {
@@ -616,34 +624,79 @@ function worksWithHighlights() {
     });
 }
 
+function sortedHighlights(work) {
+  return [...(work?.highlights || [])].sort((a, b) => {
+    const chapterDelta = Number(a.chapterIndex || 0) - Number(b.chapterIndex || 0);
+    if (chapterDelta) return chapterDelta;
+    return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+  });
+}
+
+function setHighlightPreviewByOffset(offset) {
+  const selected = highlightLibraryWorkId ? state.works.find((work) => work.id === highlightLibraryWorkId) : null;
+  const highlights = sortedHighlights(selected);
+  if (!selected || !highlights.length) return;
+  const currentIndex = Math.max(0, highlights.findIndex((highlight) => highlight.id === highlightLibraryPreviewId));
+  const nextIndex = (currentIndex + offset + highlights.length) % highlights.length;
+  highlightLibraryPreviewId = highlights[nextIndex].id;
+  renderHighlightLibrary();
+}
+
 function renderHighlightLibrary() {
   const works = worksWithHighlights();
   const selected = highlightLibraryWorkId ? state.works.find((work) => work.id === highlightLibraryWorkId) : null;
   $("#highlightLibraryBack").hidden = !selected;
-  $("#highlightLibraryTitle").textContent = selected ? selected.title : "高亮库";
+  $("#highlightLibraryTitle").textContent = selected ? "摘录" : "摘录";
   $("#highlightLibraryHint").textContent = selected
-    ? `${selected.author || "作者待补"} · ${(selected.highlights || []).length} 条高亮`
-    : "按作品收纳你划过的句子。";
+    ? `${selected.title || "未命名作品"} · ${selected.author || "作者待补"}`
+    : "按作品整理所有高亮句子。";
 
   if (!selected) {
     $("#highlightLibraryList").innerHTML = works.length ? works.map((work) => `
       <button type="button" class="highlight-work-row" data-highlight-work="${work.id}">
-        <span>${escapeHtml(work.title || "未命名作品")}</span>
-        <small>${escapeHtml(work.author || "作者待补")} · ${(work.highlights || []).length} 条</small>
+        <b>${escapeHtml(work.title || "未命名作品")}</b>
+        <span>${escapeHtml(work.author || "作者待补")}</span>
+        <small>${(work.highlights || []).length} 条摘录</small>
       </button>
     `).join("") : `<p class="status">还没有高亮。</p>`;
     return;
   }
 
-  const highlights = [...(selected.highlights || [])].sort((a, b) => Number(a.chapterIndex || 0) - Number(b.chapterIndex || 0));
+  const highlights = sortedHighlights(selected);
+  const preview = highlightLibraryPreviewId ? highlights.find((highlight) => highlight.id === highlightLibraryPreviewId) : null;
+  if (preview) {
+    const previewIndex = Math.max(0, highlights.findIndex((highlight) => highlight.id === preview.id));
+    $("#highlightLibraryHint").textContent = `${selected.title || "未命名作品"} · 第 ${Number(preview.chapterIndex || 0) + 1} 章`;
+    $("#highlightLibraryList").innerHTML = `
+      <article class="highlight-preview-card">
+        <div class="highlight-preview-top">
+          <span class="highlight-preview-pin ${escapeHtml(preview.color || "yellow")}"></span>
+          <span>${previewIndex + 1} / ${highlights.length}</span>
+        </div>
+        <div class="highlight-preview-paper">
+          <button type="button" class="highlight-preview-nav prev" data-library-preview-move="-1" aria-label="上一条">‹</button>
+          <p>${escapeHtml(preview.text || "")}</p>
+          <button type="button" class="highlight-preview-nav next" data-library-preview-move="1" aria-label="下一条">›</button>
+        </div>
+        <small>${preview.note ? escapeHtml(preview.note) : "无备注"} · 第 ${Number(preview.chapterIndex || 0) + 1} 章</small>
+        <div class="highlight-preview-actions">
+          <button type="button" class="ghost-button" data-library-preview-back>摘录列表</button>
+          <button type="button" class="mini-delete" data-library-delete-highlight="${preview.id}">删除</button>
+          <button type="button" data-library-preview-jump="${preview.id}">跳到原文</button>
+        </div>
+      </article>
+    `;
+    return;
+  }
   $("#highlightLibraryList").innerHTML = highlights.length ? highlights.map((highlight) => `
-    <article class="highlight-passage-row" data-library-highlight="${highlight.id}">
-      <button type="button" class="note-jump" data-library-highlight-jump="${highlight.id}">
-        <mark class="reader-highlight ${escapeHtml(highlight.color || "yellow")}">${escapeHtml(highlight.text || "")}</mark>
+    <button type="button" class="highlight-passage-row" data-library-highlight-preview="${highlight.id}">
+      <span class="highlight-dot ${escapeHtml(highlight.color || "yellow")}" aria-hidden="true"></span>
+      <span class="highlight-passage-text">
+        <span>${escapeHtml(highlight.text || "")}</span>
         <small>${highlight.note ? escapeHtml(highlight.note) : "无备注"} · 第 ${Number(highlight.chapterIndex || 0) + 1} 章</small>
-      </button>
-      <button type="button" class="mini-delete" data-library-delete-highlight="${highlight.id}">删除</button>
-    </article>
+      </span>
+      <span class="highlight-passage-arrow" aria-hidden="true">›</span>
+    </button>
   `).join("") : `<p class="status">这本还没有高亮。</p>`;
 }
 
@@ -1937,6 +1990,32 @@ function goToChapter(index, ratio = 0) {
   saveState().then(renderAll);
 }
 
+function goToHighlight(highlight) {
+  if (!highlight) return;
+  const work = activeWork();
+  if (!work) return;
+  const chapters = getChapters(work);
+  work.reading.chapterIndex = Math.max(0, Math.min(Number(highlight.chapterIndex || 0), chapters.length - 1));
+  work.reading.ratio = 0;
+  work.updatedAt = new Date().toISOString();
+  pendingJump = 0;
+  pendingHighlightJumpId = highlight.id;
+  saveState().then(renderAll);
+}
+
+function jumpToHighlightMark(id) {
+  const content = $("#workContent");
+  const mark = content?.querySelector(`[data-highlight-id="${cssEscape(id)}"]`);
+  if (!content || !mark) return;
+  mark.classList.add("jump-focus");
+  mark.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+  window.setTimeout(() => {
+    updateProgressBar();
+    persistProgress();
+  }, 80);
+  window.setTimeout(() => mark.classList.remove("jump-focus"), 1600);
+}
+
 async function addBookmark() {
   const work = activeWork();
   if (!work) return;
@@ -3150,10 +3229,15 @@ $("#highlightList").addEventListener("click", (event) => {
   const highlight = work?.highlights?.find((item) => item.id === button.dataset.highlightJump);
   if (!highlight) return;
   $("#chapterDialog").close();
-  goToChapter(highlight.chapterIndex, 0);
+  goToHighlight(highlight);
 });
 
 $("#highlightLibraryBack").addEventListener("click", () => {
+  if (highlightLibraryPreviewId) {
+    highlightLibraryPreviewId = null;
+    renderHighlightLibrary();
+    return;
+  }
   highlightLibraryWorkId = null;
   renderHighlightLibrary();
 });
@@ -3164,6 +3248,7 @@ $("#highlightLibraryList").addEventListener("click", async (event) => {
   const workButton = event.target.closest("[data-highlight-work]");
   if (workButton) {
     highlightLibraryWorkId = workButton.dataset.highlightWork;
+    highlightLibraryPreviewId = null;
     renderHighlightLibrary();
     return;
   }
@@ -3173,17 +3258,54 @@ $("#highlightLibraryList").addEventListener("click", async (event) => {
 
   const deleteButton = event.target.closest("[data-library-delete-highlight]");
   if (deleteButton) {
+    if (deleteButton.dataset.libraryDeleteHighlight === highlightLibraryPreviewId) highlightLibraryPreviewId = null;
     await removeHighlightFromWork(selected.id, deleteButton.dataset.libraryDeleteHighlight);
     return;
   }
 
-  const jumpButton = event.target.closest("[data-library-highlight-jump]");
+  const previewBack = event.target.closest("[data-library-preview-back]");
+  if (previewBack) {
+    highlightLibraryPreviewId = null;
+    renderHighlightLibrary();
+    return;
+  }
+
+  const previewMove = event.target.closest("[data-library-preview-move]");
+  if (previewMove) {
+    setHighlightPreviewByOffset(Number(previewMove.dataset.libraryPreviewMove || 0));
+    return;
+  }
+
+  const previewButton = event.target.closest("[data-library-highlight-preview]");
+  if (previewButton) {
+    highlightLibraryPreviewId = previewButton.dataset.libraryHighlightPreview;
+    renderHighlightLibrary();
+    return;
+  }
+
+  const jumpButton = event.target.closest("[data-library-preview-jump]");
   if (!jumpButton) return;
-  const highlight = selected.highlights?.find((item) => item.id === jumpButton.dataset.libraryHighlightJump);
+  const highlight = selected.highlights?.find((item) => item.id === jumpButton.dataset.libraryPreviewJump);
   if (!highlight) return;
   state.selectedWorkId = selected.id;
   $("#highlightLibraryDialog").close();
-  goToChapter(highlight.chapterIndex, 0);
+  goToHighlight(highlight);
+});
+
+$("#highlightLibraryList").addEventListener("touchstart", (event) => {
+  if (!highlightLibraryPreviewId || !event.touches?.length) return;
+  const touch = event.touches[0];
+  highlightLibrarySwipe = { x: touch.clientX, y: touch.clientY };
+});
+
+$("#highlightLibraryList").addEventListener("touchend", (event) => {
+  if (!highlightLibraryPreviewId || !highlightLibrarySwipe || !event.changedTouches?.length) return;
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - highlightLibrarySwipe.x;
+  const dy = touch.clientY - highlightLibrarySwipe.y;
+  highlightLibrarySwipe = null;
+  if (Math.abs(dx) < 46 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+  setHighlightPreviewByOffset(dx < 0 ? 1 : -1);
 });
 
 [

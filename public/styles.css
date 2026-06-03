@@ -6417,17 +6417,419 @@ body:not(.reading) .selection-toolbar {
   display: none !important;
 }
 
-#highlightLibraryButton {
-  font-size: 1.05rem !important;
+.highlight-library-mini {
+  width: 46px !important;
+  min-width: 46px !important;
+  padding: 0 !important;
   color: var(--text) !important;
 }
 
-.highlight-library-mini {
-  min-width: 54px !important;
-  padding: 0 12px !important;
-  font-size: 0.82rem !important;
+.highlight-library-icon {
+  position: relative !important;
+  display: block !important;
+  width: 18px !important;
+  height: 20px !important;
+  margin: 0 auto !important;
+  border: 2px solid currentColor !important;
+  border-radius: 5px 5px 3px 3px !important;
+  background:
+    linear-gradient(currentColor, currentColor) 5px 6px / 8px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) 5px 11px / 7px 2px no-repeat !important;
+}
+
+.highlight-library-icon::after {
+  content: "" !important;
+  position: absolute !important;
+  right: -5px !important;
+  bottom: 2px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: currentColor !important;
+  box-shadow: -2px 2px 0 var(--panel) !important;
+}
+
+/* v78: cleaner excerpt library and exact highlight jump */
+#highlightLibraryDialog {
+  width: min(720px, calc(100vw - 32px)) !important;
+  max-width: none !important;
+  max-height: min(84dvh, 780px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 26px !important;
+  background: var(--panel) !important;
+}
+
+#highlightLibraryDialog::backdrop {
+  background: rgba(0, 0, 0, 0.24) !important;
+  backdrop-filter: blur(4px);
+}
+
+#highlightLibraryDialog .highlight-library-card {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  gap: 0 !important;
+  width: 100% !important;
+  max-height: min(84dvh, 780px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: var(--panel) !important;
+}
+
+#highlightLibraryDialog .dialog-head {
+  align-items: flex-start !important;
+  padding: 22px 24px 12px !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+
+#highlightLibraryDialog h2 {
+  max-width: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: var(--text) !important;
+  font-size: 1.32rem !important;
+  line-height: 1.18 !important;
   font-weight: 850 !important;
-  letter-spacing: 0 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#highlightLibraryDialog .dialog-actions {
+  flex: 0 0 auto !important;
+}
+
+#highlightLibraryDialog .dialog-actions button {
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  background: var(--soft) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+#highlightLibraryHint {
+  margin: 0 !important;
+  padding: 12px 24px !important;
+  overflow: hidden !important;
+  color: var(--muted) !important;
+  line-height: 1.55 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+
+#highlightLibraryDialog .highlight-library-list {
+  display: grid !important;
+  align-content: start !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 16px 24px 22px !important;
+  overflow: auto !important;
+  overflow-x: hidden !important;
+}
+
+#highlightLibraryDialog .highlight-work-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "title count"
+    "author count" !important;
+  gap: 6px 12px !important;
+  width: 100% !important;
+  min-height: 76px !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  background: var(--soft) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  text-align: left !important;
+}
+
+#highlightLibraryDialog .highlight-work-row b {
+  grid-area: title !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.98rem !important;
+  line-height: 1.35 !important;
+}
+
+#highlightLibraryDialog .highlight-work-row span {
+  grid-area: author !important;
+  overflow: hidden !important;
+  color: var(--muted) !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.84rem !important;
+}
+
+#highlightLibraryDialog .highlight-work-row small {
+  grid-area: count !important;
+  align-self: center !important;
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  background: var(--panel) !important;
+  color: var(--muted) !important;
+  white-space: nowrap !important;
+}
+
+#highlightLibraryDialog .highlight-passage-row {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  background: var(--soft) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+#highlightLibraryDialog .highlight-passage-row:hover {
+  background: color-mix(in srgb, var(--soft) 72%, var(--panel)) !important;
+}
+
+#highlightLibraryDialog .highlight-dot {
+  width: 12px !important;
+  min-width: 12px !important;
+  height: 12px !important;
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--panel) 72%, transparent) !important;
+}
+
+#highlightLibraryDialog .highlight-passage-text {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  text-align: left !important;
+}
+
+#highlightLibraryDialog .highlight-passage-text > span {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  line-height: 1.65 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+#highlightLibraryDialog .highlight-passage-text small {
+  color: var(--muted) !important;
+  font-size: 0.82rem !important;
+}
+
+#highlightLibraryDialog .highlight-passage-arrow {
+  color: var(--muted) !important;
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+}
+
+#highlightLibraryDialog .mini-delete {
+  min-width: 52px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  background: var(--panel) !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+}
+
+#highlightLibraryDialog .highlight-preview-card {
+  display: grid !important;
+  gap: 14px !important;
+  width: 100% !important;
+  min-height: 420px !important;
+  padding: 18px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 98%, transparent), color-mix(in srgb, var(--soft) 38%, var(--panel))) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08) !important;
+}
+
+#highlightLibraryDialog .highlight-preview-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  color: var(--muted) !important;
+  font-size: 0.86rem !important;
+}
+
+#highlightLibraryDialog .highlight-preview-pin {
+  display: inline-block !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent) !important;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--soft) 72%, transparent) !important;
+}
+
+#highlightLibraryDialog .highlight-preview-paper {
+  position: relative !important;
+  display: grid !important;
+  align-items: center !important;
+  min-height: 270px !important;
+  padding: 30px 52px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--soft) 55%, transparent) 0 1px, transparent 1px 100%) 0 0 / 18px 100%,
+    var(--panel) !important;
+}
+
+#highlightLibraryDialog .highlight-preview-paper::before {
+  content: "“" !important;
+  position: absolute !important;
+  left: 18px !important;
+  top: 12px !important;
+  color: color-mix(in srgb, var(--text) 10%, transparent) !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 4.4rem !important;
+  line-height: 1 !important;
+}
+
+#highlightLibraryDialog .highlight-preview-paper p {
+  position: relative !important;
+  z-index: 1 !important;
+  max-height: 46dvh !important;
+  margin: 0 !important;
+  overflow: auto !important;
+  color: var(--text) !important;
+  font-family: var(--reader-font, "Noto Serif SC", "Songti SC", "SimSun", serif) !important;
+  font-size: clamp(1.05rem, 2.6vw, 1.38rem) !important;
+  line-height: 1.92 !important;
+  text-align: justify !important;
+  overflow-wrap: anywhere !important;
+}
+
+#highlightLibraryDialog .highlight-preview-card > small {
+  color: var(--muted) !important;
+  font-size: 0.86rem !important;
+}
+
+#highlightLibraryDialog .highlight-preview-nav {
+  position: absolute !important;
+  top: 50% !important;
+  z-index: 2 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 36px !important;
+  height: 56px !important;
+  transform: translateY(-50%) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--soft) 82%, transparent) !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+  font-size: 1.8rem !important;
+}
+
+#highlightLibraryDialog .highlight-preview-nav.prev {
+  left: 10px !important;
+}
+
+#highlightLibraryDialog .highlight-preview-nav.next {
+  right: 10px !important;
+}
+
+#highlightLibraryDialog .highlight-preview-actions {
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+#highlightLibraryDialog .highlight-preview-actions button {
+  min-height: 42px !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+#highlightLibraryDialog .highlight-preview-actions [data-library-preview-jump] {
+  background: var(--text) !important;
+  color: var(--panel) !important;
+}
+
+.reader-highlight.jump-focus {
+  outline: 2px solid color-mix(in srgb, var(--text) 45%, transparent) !important;
+  outline-offset: 3px !important;
+  animation: highlightJumpPulse 1.2s ease-out 1;
+}
+
+@keyframes highlightJumpPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--text) 28%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 16px transparent;
+  }
+}
+
+@media (max-width: 879px) {
+  #highlightLibraryDialog {
+    width: 100vw !important;
+    max-height: 88dvh !important;
+    margin: auto 0 0 !important;
+    border-radius: 22px 22px 0 0 !important;
+  }
+
+  #highlightLibraryDialog .highlight-library-card {
+    max-height: 88dvh !important;
+  }
+
+  #highlightLibraryDialog .dialog-head,
+  #highlightLibraryHint,
+  #highlightLibraryDialog .highlight-library-list {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-card {
+    min-height: 0 !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-paper {
+    min-height: 260px !important;
+    padding: 28px 42px !important;
+    border-radius: 18px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-paper p {
+    max-height: 42dvh !important;
+    font-size: 1.08rem !important;
+    line-height: 1.86 !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-actions {
+    grid-template-columns: 1fr 72px 1fr !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-actions button {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
 }
 
 /* v77: usable batch organizer */
