@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v80-mobile-info-tab";
+const CACHE_NAME = "pocket-reading-vault-v82-quiet-archive-empty";
 const ASSETS = [
   "./",
   "./index.html",

@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=80-mobile-info-tab-20260604" />
+    <link rel="stylesheet" href="./styles.css?v=82-quiet-archive-empty-20260604" />
   </head>
   <body>
     <div class="app-shell">
@@ -107,9 +107,19 @@
 
         <article class="reader-panel" id="readerPanel">
           <div class="empty-state" id="emptyState">
-            <div class="empty-mark">原站</div>
-            <h2>把想读的作品收进来</h2>
-            <p>作品会保存在这台设备的浏览器里，断网后也能打开。你可以按 CP、坑位、阅读状态或任何习惯建立文件夹。</p>
+            <span class="archive-dust dust-a" aria-hidden="true"></span>
+            <span class="archive-dust dust-b" aria-hidden="true"></span>
+            <span class="archive-dust dust-c" aria-hidden="true"></span>
+            <div class="empty-archive-orb" aria-hidden="true">
+              <span class="archive-halo"></span>
+              <span class="archive-ring ring-outer"></span>
+              <span class="archive-ring ring-inner"></span>
+              <span class="empty-mark">原站</span>
+            </div>
+            <div class="empty-copy">
+              <h2>把想读的作品收进来</h2>
+              <p>作品会保存在这台设备的浏览器里，断网后也能打开。你可以按 CP、坑位、阅读状态或任何习惯建立文件夹。</p>
+            </div>
           </div>
 
           <div class="reader hidden" id="reader">
@@ -465,6 +475,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=80-mobile-info-tab-20260604" type="module"></script>
+    <script src="./app.js?v=82-quiet-archive-empty-20260604" type="module"></script>
   </body>
 </html>
