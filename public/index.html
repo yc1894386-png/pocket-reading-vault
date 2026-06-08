@@ -7,7 +7,7 @@
     <title>离线书架</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=83-shelf-free-drag-20260606" />
+    <link rel="stylesheet" href="./styles.css?v=84-progress-palette-20260608" />
   </head>
   <body>
     <div class="app-shell">
@@ -360,6 +360,19 @@
       </div>
     </dialog>
 
+    <dialog id="progressColorDialog">
+      <form method="dialog" class="dialog-card progress-color-card">
+        <div class="dialog-head">
+          <h2>进度颜色</h2>
+          <div class="dialog-actions">
+            <button class="ghost-button" value="cancel" type="submit" formnovalidate>关闭</button>
+          </div>
+        </div>
+        <p class="helper-text">长按文章卡片底部的细线可以重新打开这里。</p>
+        <div class="progress-color-groups" id="progressColorGroups"></div>
+      </form>
+    </dialog>
+
     <div class="portrait-lock hidden" id="portraitLock">
       <div>请竖屏阅读</div>
       <p>横屏会挡住排版，我先帮你拦住。</p>
@@ -475,6 +488,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=83-shelf-free-drag-20260606" type="module"></script>
+    <script src="./app.js?v=84-progress-palette-20260608" type="module"></script>
   </body>
 </html>

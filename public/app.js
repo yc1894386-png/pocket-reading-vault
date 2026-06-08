@@ -30,6 +30,7 @@ const defaultState = {
   readerEyeCare: false,
   readerTurnMode: "tap",
   readerBg: "white",
+  progressAccent: "#E0F4F1",
   selectedFolder: "all",
   selectedWorkId: null,
   syncCode: "",
@@ -40,6 +41,40 @@ const defaultState = {
   ],
   works: []
 };
+
+const PROGRESS_PALETTES = [
+  {
+    group: "治愈书香",
+    colors: [
+      ["淡竹绿", "#E2F0D9"],
+      ["麦芽黄", "#FDF2D5"],
+      ["薄荷青", "#E0F4F1"]
+    ]
+  },
+  {
+    group: "独处静谧",
+    colors: [
+      ["雾霾蓝", "#E6F0FA"],
+      ["薰衣草紫", "#EBE8F5"],
+      ["远山灰", "#ECEFF1"]
+    ]
+  },
+  {
+    group: "少女心动",
+    colors: [
+      ["晚霞粉", "#FCE8E6"],
+      ["奶油橘", "#FDF0E6"],
+      ["浅草莓紫", "#F9EBF2"]
+    ]
+  },
+  {
+    group: "蒸汽波暗色",
+    colors: [
+      ["暗夜蓝", "#1E293B"],
+      ["枯叶红", "#3F2424"]
+    ]
+  }
+];
 
 let state = structuredClone(defaultState);
 let db;
@@ -460,6 +495,58 @@ function visibleFolders() {
   return state.folders.filter((folder) => folder.id !== "unfiled");
 }
 
+function normalizeHexColor(value, fallback = "#007AFF") {
+  const raw = String(value || "").trim();
+  const short = raw.match(/^#?([0-9a-f]{3})$/i);
+  if (short) return `#${short[1].split("").map((char) => char + char).join("")}`.toUpperCase();
+  const long = raw.match(/^#?([0-9a-f]{6})$/i);
+  return long ? `#${long[1]}`.toUpperCase() : fallback;
+}
+
+function hexToRgb(value) {
+  const hex = normalizeHexColor(value).slice(1);
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16)
+  };
+}
+
+function isDarkHex(value) {
+  const { r, g, b } = hexToRgb(value);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 96;
+}
+
+function renderProgressColorChoices() {
+  const current = normalizeHexColor(state.progressAccent || defaultState.progressAccent);
+  const groups = $("#progressColorGroups");
+  if (!groups) return;
+  groups.innerHTML = PROGRESS_PALETTES.map((palette) => `
+    <section class="progress-color-group">
+      <h3>${escapeHtml(palette.group)}</h3>
+      <div class="progress-color-grid">
+        ${palette.colors.map(([name, color]) => {
+          const hex = normalizeHexColor(color);
+          const active = hex === current ? "active" : "";
+          const dark = isDarkHex(hex) ? "dark-swatch" : "";
+          return `
+            <button type="button" class="progress-color-choice ${active} ${dark}" data-progress-accent="${hex}">
+              <span style="--choice-color: ${hex}"></span>
+              <b>${escapeHtml(name)}</b>
+              <small>${hex}</small>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function openProgressColorDialog() {
+  renderProgressColorChoices();
+  $("#progressColorDialog")?.showModal();
+}
+
 function renderFolders() {
   const countFor = (folderId) => {
     if (folderId === "all") return state.works.length;
@@ -485,10 +572,14 @@ function renderWorks() {
     const chapterIndex = Math.min(chapters - 1, Math.max(0, Number(work.reading?.chapterIndex || 0)));
     const ratio = Math.max(0, Math.min(1, Number(work.reading?.ratio || 0)));
     const progress = chapters ? Math.round(((chapterIndex + ratio) / chapters) * 100) : Math.round(ratio * 100);
+    const safeProgress = Math.min(100, Math.max(0, progress));
     const progressText = progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读";
     const customTags = (work.customTags || []).slice(0, 3);
+    const contrastClass = isDarkHex(state.progressAccent) && safeProgress > 18 ? "progress-contrast" : "";
     return `
-      <button class="work-card ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}">
+      <button class="work-card ${contrastClass} ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}" style="--work-progress: ${safeProgress}%;">
+        <span class="work-progress-wash" aria-hidden="true"></span>
+        <span class="work-progress-edge" data-progress-color-trigger title="长按更改进度颜色" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
         <p>${progressText} · ${chapters} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
@@ -797,6 +888,9 @@ function renderAll() {
   document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
   document.documentElement.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
   document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
+  const progressRgb = hexToRgb(state.progressAccent || defaultState.progressAccent);
+  document.documentElement.style.setProperty("--shelf-progress-rgb", `${progressRgb.r}, ${progressRgb.g}, ${progressRgb.b}`);
+  document.documentElement.style.setProperty("--shelf-progress-color", normalizeHexColor(state.progressAccent || defaultState.progressAccent));
   renderFolders();
   renderWorks();
   renderReader();
@@ -1110,6 +1204,12 @@ function cancelLongPressOnMove(event) {
   }
 }
 
+function startProgressColorPress(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  startLongPress(event, () => openProgressColorDialog());
+}
+
 function startWorkPress(event, id) {
   clearTimeout(longPressTimer);
   event.currentTarget?.setPointerCapture?.(event.pointerId);
@@ -1201,6 +1301,7 @@ async function importLibraryFile(file) {
   state.readerVerticalMargin = nextState.readerVerticalMargin || state.readerVerticalMargin;
   state.readerTurnMode = nextState.readerTurnMode || state.readerTurnMode;
   state.readerBg = nextState.readerBg || state.readerBg;
+  state.progressAccent = normalizeHexColor(nextState.progressAccent || state.progressAccent || defaultState.progressAccent);
   state.readerBrightness = nextState.readerBrightness || state.readerBrightness;
   state.readerEyeCare = nextState.readerEyeCare ?? state.readerEyeCare;
   state.theme = nextState.theme || state.theme;
@@ -1326,6 +1427,7 @@ function mergeLibraryState(localState, cloudState) {
   merged.readerVerticalMargin = localState.readerVerticalMargin || cloudState.readerVerticalMargin || defaultState.readerVerticalMargin;
   merged.readerTurnMode = localState.readerTurnMode || cloudState.readerTurnMode || defaultState.readerTurnMode;
   merged.readerBg = localState.readerBg || cloudState.readerBg || defaultState.readerBg;
+  merged.progressAccent = normalizeHexColor(localState.progressAccent || cloudState.progressAccent || defaultState.progressAccent);
   merged.readerBrightness = localState.readerBrightness || cloudState.readerBrightness || defaultState.readerBrightness;
   merged.readerEyeCare = localState.readerEyeCare ?? cloudState.readerEyeCare ?? defaultState.readerEyeCare;
   merged.theme = localState.theme || cloudState.theme || defaultState.theme;
@@ -2327,6 +2429,8 @@ async function boot() {
   state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
   state.readerVerticalMargin = Math.max(28, Math.min(76, Number(state.readerVerticalMargin || defaultState.readerVerticalMargin)));
   state.readerBrightness = Math.max(45, Math.min(100, Number(state.readerBrightness || defaultState.readerBrightness)));
+  state.progressAccent = normalizeHexColor(state.progressAccent || defaultState.progressAccent);
+  if (state.progressAccent === "#007AFF") state.progressAccent = defaultState.progressAccent;
   normalizePendingImports();
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
@@ -2385,6 +2489,15 @@ document.addEventListener("pointerdown", (event) => {
   cloudPanelOpen = false;
   renderAll();
 }, { passive: true });
+
+$("#progressColorGroups")?.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-progress-accent]");
+  if (!button) return;
+  state.progressAccent = normalizeHexColor(button.dataset.progressAccent, defaultState.progressAccent);
+  await saveState();
+  renderAll();
+  renderProgressColorChoices();
+});
 
 async function finishCloudSignIn(session, message = "已登录云端。") {
   cloudSession = session;
@@ -2606,6 +2719,10 @@ $("#workList").addEventListener("click", async (event) => {
 });
 
 $("#workList").addEventListener("pointerdown", (event) => {
+  if (event.target.closest("[data-progress-color-trigger]")) {
+    startProgressColorPress(event);
+    return;
+  }
   const button = event.target.closest("[data-work]");
   if (!button) return;
   startWorkPress(event, button.dataset.work);
@@ -3372,6 +3489,7 @@ $("#highlightLibraryList").addEventListener("touchend", (event) => {
   "#backgroundDialog",
   "#chapterDialog",
   "#highlightLibraryDialog",
+  "#progressColorDialog",
   "#workManageDialog",
   "#folderManageDialog",
   "#folderDialog",

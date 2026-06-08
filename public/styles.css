@@ -2324,6 +2324,8 @@ dialog,
 }
 
 .work-card {
+  position: relative;
+  overflow: hidden;
   gap: 5px;
   min-height: 96px;
   border: 1px solid var(--line);
@@ -2333,10 +2335,62 @@ dialog,
   touch-action: pan-y;
 }
 
+.work-card > :not(.work-progress-wash):not(.work-progress-edge) {
+  position: relative;
+  z-index: 1;
+}
+
+.work-progress-wash {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: var(--work-progress, 0%);
+  border-radius: inherit;
+  background: var(--shelf-progress-color, #e0f4f1);
+  pointer-events: none;
+}
+
+.work-progress-wash::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(120px, 28%);
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent);
+}
+
+.work-progress-edge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  height: 8px;
+  border-radius: 0 0 inherit inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 82%, #8ecbd7) 0 var(--work-progress, 0%),
+    transparent var(--work-progress, 0%) 100%
+  );
+  cursor: crosshair;
+  touch-action: none;
+}
+
 .work-card.active,
 .work-card:active {
   background: var(--soft);
   box-shadow: none;
+}
+
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 86%, var(--panel));
+}
+
+.work-card.progress-contrast p {
+  color: color-mix(in srgb, var(--text) 70%, #fff) !important;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.5);
 }
 
 .work-card.dragging {
@@ -2457,6 +2511,87 @@ body.shelf-dragging .work-card {
 
 .danger-zone {
   background: transparent;
+}
+
+.progress-color-card {
+  width: min(680px, calc(100vw - 28px));
+  max-height: min(82dvh, 760px);
+  overflow: auto;
+}
+
+.progress-color-card .helper-text {
+  margin-top: -4px;
+}
+
+.progress-color-groups {
+  display: grid;
+  gap: 18px;
+}
+
+.progress-color-group {
+  display: grid;
+  gap: 10px;
+}
+
+.progress-color-group h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.progress-color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.progress-color-choice {
+  display: grid;
+  gap: 7px;
+  min-height: 118px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: none;
+  text-align: left;
+}
+
+.progress-color-choice span {
+  display: block;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  background: var(--choice-color);
+}
+
+.progress-color-choice b,
+.progress-color-choice small {
+  display: block;
+  line-height: 1.2;
+}
+
+.progress-color-choice b {
+  font-size: 0.9rem;
+}
+
+.progress-color-choice small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.progress-color-choice.active {
+  border-color: var(--text);
+  background: var(--soft);
+}
+
+.progress-color-choice.active span {
+  box-shadow: inset 0 0 0 2px var(--panel), inset 0 0 0 4px var(--text);
+}
+
+.progress-color-choice.dark-swatch span {
+  border-color: color-mix(in srgb, #fff 18%, transparent);
 }
 
 .manage-actions button,
@@ -7084,6 +7219,20 @@ body:not(.reading) .selection-toolbar {
   #highlightLibraryDialog .highlight-preview-actions button {
     padding-left: 10px !important;
     padding-right: 10px !important;
+  }
+}
+
+@media (max-width: 879px) {
+  .progress-color-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .progress-color-choice {
+    min-height: 104px;
+  }
+
+  .progress-color-choice span {
+    height: 42px;
   }
 }
 
