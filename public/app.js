@@ -940,6 +940,43 @@ async function moveWorkInList(id, delta, { reopen = true } = {}) {
   if (reopen) openWorkManageDialog(id);
 }
 
+async function moveWorkToVisibleIndex(id, targetIndex) {
+  const works = orderedVisibleWorks();
+  const fromIndex = works.findIndex((work) => work.id === id);
+  if (fromIndex < 0) return false;
+  const safeTarget = Math.max(0, Math.min(targetIndex, works.length - 1));
+  if (fromIndex === safeTarget) return false;
+  const [moving] = works.splice(fromIndex, 1);
+  works.splice(safeTarget, 0, moving);
+  const base = Date.now() + works.length + 100;
+  const now = new Date().toISOString();
+  works.forEach((work, index) => {
+    work.sortOrder = base - index;
+    if (work.id === id) work.updatedAt = now;
+  });
+  await saveState();
+  renderWorks();
+  document.body.classList.add("shelf-dragging");
+  document.querySelector(`[data-work="${cssEscape(id)}"]`)?.classList.add("dragging");
+  return true;
+}
+
+function dragTargetIndexFromPoint(y, id) {
+  const cards = [...document.querySelectorAll("#workList [data-work]")];
+  if (!cards.length) return 0;
+  let targetIndex = cards.length - 1;
+  for (const [index, card] of cards.entries()) {
+    const rect = card.getBoundingClientRect();
+    if (y < rect.top + rect.height / 2) {
+      targetIndex = index;
+      break;
+    }
+  }
+  const currentIndex = cards.findIndex((card) => card.dataset.work === id);
+  if (currentIndex >= 0 && targetIndex > currentIndex) targetIndex -= 1;
+  return Math.max(0, targetIndex);
+}
+
 async function moveFolderInList(id, delta) {
   if (!id || id === "all" || id === "unfiled") return;
   const order = visibleFolders().map((folder) => folder.id).filter((folderId) => folderId !== "all");
@@ -1075,32 +1112,32 @@ function cancelLongPressOnMove(event) {
 
 function startWorkPress(event, id) {
   clearTimeout(longPressTimer);
+  event.currentTarget?.setPointerCapture?.(event.pointerId);
   longPressPoint = { x: event.clientX, y: event.clientY };
-  workDrag = { id, active: false, moved: false, lastY: event.clientY };
+  workDrag = { id, active: false, moved: false, lastY: event.clientY, lastTargetIndex: null };
   longPressTimer = setTimeout(() => {
     suppressShelfClick = true;
     if (!workDrag || workDrag.id !== id) return;
     workDrag.active = true;
     document.body.classList.add("shelf-dragging");
     document.querySelector(`[data-work="${cssEscape(id)}"]`)?.classList.add("dragging");
-  }, 360);
+  }, 240);
 }
 
 async function moveDraggedWork(event) {
   if (!workDrag) return;
   if (!workDrag.active) {
-    const movedEarly = Math.abs(event.clientX - longPressPoint.x) > 8 || Math.abs(event.clientY - longPressPoint.y) > 8;
+    const movedEarly = Math.abs(event.clientX - longPressPoint.x) > 16 || Math.abs(event.clientY - longPressPoint.y) > 16;
     if (movedEarly) cancelWorkPress();
     return;
   }
   event.preventDefault();
-  const dy = event.clientY - workDrag.lastY;
-  if (Math.abs(dy) < 42) return;
+  const targetIndex = dragTargetIndexFromPoint(event.clientY, workDrag.id);
+  if (targetIndex === workDrag.lastTargetIndex) return;
+  workDrag.lastTargetIndex = targetIndex;
   workDrag.moved = true;
   workDrag.lastY = event.clientY;
-  await moveWorkInList(workDrag.id, dy > 0 ? 1 : -1, { reopen: false });
-  document.body.classList.add("shelf-dragging");
-  document.querySelector(`[data-work="${cssEscape(workDrag.id)}"]`)?.classList.add("dragging");
+  await moveWorkToVisibleIndex(workDrag.id, targetIndex);
 }
 
 function finishWorkPress() {

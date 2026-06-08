@@ -2330,6 +2330,7 @@ dialog,
   border-radius: 18px;
   background: var(--panel);
   padding: 16px;
+  touch-action: pan-y;
 }
 
 .work-card.active,
@@ -2342,11 +2343,18 @@ dialog,
   background: var(--soft);
   outline: 1px solid var(--text);
   opacity: 0.86;
+  cursor: grabbing;
+  transform: scale(0.985);
 }
 
 body.shelf-dragging {
   cursor: grabbing;
   user-select: none;
+}
+
+body.shelf-dragging .work-list,
+body.shelf-dragging .work-card {
+  touch-action: none;
 }
 
 .work-card h3 {
