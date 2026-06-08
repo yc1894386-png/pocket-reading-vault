@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v84-progress-palette";
+const CACHE_NAME = "pocket-reading-vault-v85-progress-color-in-manage";
 const ASSETS = [
   "./",
   "./index.html",

@@ -1168,6 +1168,8 @@ function openWorkManageDialog(id) {
   $("#manageWorkTitle").textContent = "整理";
   $("#manageFolderSelect").value = work.folderId && work.folderId !== "unfiled" ? work.folderId : (workFolderIds(work)[0] || "unfiled");
   $("#manageTagInput").value = "";
+  const swatch = $("#manageProgressColorSwatch");
+  if (swatch) swatch.style.background = normalizeHexColor(state.progressAccent || defaultState.progressAccent);
   renderManageTags(work);
   if (!$("#workManageDialog").open) $("#workManageDialog").showModal();
 }
@@ -2497,6 +2499,13 @@ $("#progressColorGroups")?.addEventListener("click", async (event) => {
   await saveState();
   renderAll();
   renderProgressColorChoices();
+  const swatch = $("#manageProgressColorSwatch");
+  if (swatch) swatch.style.background = state.progressAccent;
+});
+
+$("#manageProgressColorButton")?.addEventListener("click", () => {
+  $("#workManageDialog")?.close();
+  openProgressColorDialog();
 });
 
 async function finishCloudSignIn(session, message = "已登录云端。") {
