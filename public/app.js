@@ -245,14 +245,18 @@ function normalizeImages(root, baseUrl = "") {
       || img.getAttribute("data-src")
       || img.getAttribute("data-original")
       || img.getAttribute("data-lazy-src")
+      || img.getAttribute("data-original-src")
       || "";
     const srcset = img.getAttribute("srcset") || "";
-    const original = src || (srcset ? srcset.split(",")[0].trim().split(/\s+/)[0] : "");
+    const original = originalImageUrlFromProxy(src)
+      || img.getAttribute("data-original-src")
+      || src
+      || (srcset ? srcset.split(",")[0].trim().split(/\s+/)[0] : "");
     if (original && !img.getAttribute("data-original-src")) {
       img.setAttribute("data-original-src", originalImageUrlFromProxy(original) || original);
     }
-    if (src) img.setAttribute("src", proxiedImageUrl(src, baseUrl));
-    if (!src && srcset) img.setAttribute("src", proxiedImageUrl(srcset.split(",")[0].trim().split(/\s+/)[0], baseUrl));
+    if (original) img.setAttribute("src", proxiedImageUrl(original, baseUrl));
+    if (!original && srcset) img.setAttribute("src", proxiedImageUrl(srcset.split(",")[0].trim().split(/\s+/)[0], baseUrl));
     if (srcset) img.setAttribute("srcset", rewriteSrcset(srcset, baseUrl));
     img.setAttribute("loading", "lazy");
     img.setAttribute("decoding", "async");
@@ -362,7 +366,7 @@ function normalizeWork(work) {
     const count = textFromHtml(work.contentHtml || "").replace(/\s/g, "").length;
     if (count) work.metadata.words = `${count} 字`;
   }
-  if (work.contentHtml && /<img\b/i.test(work.contentHtml) && !work.contentHtml.includes(`${IMPORT_API_BASE}/api/image?`)) {
+  if (work.contentHtml && /<img\b/i.test(work.contentHtml)) {
     const contentRoot = document.createElement("div");
     contentRoot.innerHTML = work.contentHtml;
     normalizeImages(contentRoot, work.sourceUrl || "");
@@ -2530,7 +2534,13 @@ async function boot() {
   supabase = { mode: "rest" };
   db = await openDb();
   state = { ...defaultState, ...(await dbGet("library") || {}) };
-  state.works = (state.works || []).map(normalizeWork);
+  let imageMigrationNeeded = false;
+  state.works = (state.works || []).map((work) => {
+    const before = work.contentHtml || "";
+    const normalized = normalizeWork(work);
+    if ((normalized.contentHtml || "") !== before) imageMigrationNeeded = true;
+    return normalized;
+  });
   state.readerLineHeight ||= defaultState.readerLineHeight;
   state.readerSideMargin ||= defaultState.readerSideMargin;
   state.readerVerticalMargin ||= defaultState.readerVerticalMargin;
@@ -2551,6 +2561,7 @@ async function boot() {
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
+  if (imageMigrationNeeded) await dbSet("library", state);
   renderAll();
   schedulePendingImports();
   if (supabase) {

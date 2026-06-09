@@ -132,16 +132,70 @@ function rewriteSrcset(value = "", baseUrl) {
   }).filter(Boolean).join(", ");
 }
 
-function cleanWorkHtml(html, sourceUrl) {
-  const start = html.match(/<div[^>]+id=["']chapters["'][^>]*>/i);
-  let chapters = "";
-  if (start?.index !== undefined) {
-    const tail = html.slice(start.index);
-    const end = tail.search(/<div[^>]+id=["'](afterword|feedback|kudos|comments_placeholder)["'][^>]*>/i);
-    chapters = end >= 0 ? tail.slice(0, end) : tail;
-  } else {
-    chapters = firstMatch(html, /<div[^>]+id=["']chapters["'][^>]*>([\s\S]*?)<\s*\/\s*div\s*>/i);
+function extractElementHtml(html, openTagIndex) {
+  const open = html.slice(openTagIndex).match(/^<([a-z0-9:-]+)\b[^>]*>/i);
+  if (!open) return "";
+  const tag = open[1].toLowerCase();
+  let depth = 0;
+  const pattern = new RegExp(`<\\/?${tag}\\b[^>]*>`, "gi");
+  pattern.lastIndex = openTagIndex;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const isClose = /^<\//.test(match[0]);
+    depth += isClose ? -1 : 1;
+    if (depth === 0) return html.slice(openTagIndex, pattern.lastIndex);
   }
+  return html.slice(openTagIndex);
+}
+
+function findElementHtml(html, patterns) {
+  for (const pattern of patterns) {
+    const match = pattern.exec(html);
+    if (match?.index !== undefined) {
+      const extracted = extractElementHtml(html, match.index);
+      if (textLengthFromHtml(extracted) > 40) return extracted;
+    }
+  }
+  return "";
+}
+
+function largestElementHtml(html, pattern) {
+  let best = "";
+  for (const match of html.matchAll(pattern)) {
+    const extracted = extractElementHtml(html, match.index);
+    if (textLengthFromHtml(extracted) > textLengthFromHtml(best)) best = extracted;
+  }
+  return best;
+}
+
+function explainMissingBody(html, sourceUrl) {
+  const plain = textOnly(html).toLowerCase();
+  if (/cloudflare|checking your browser|attention required|just a moment/i.test(html)) {
+    return "原站给后端返回了防护/验证页，不是作品正文。链接没错，但站点这次没有把正文放行；稍后重试，或在原站 Download → HTML 后导入文件。";
+  }
+  if (/login|log in|sign in|restricted|archive locked|only registered users/i.test(plain)) {
+    return "这个链接需要登录或被限制访问。网页里没有公开正文，所以后端不能直接保存；请在原站登录后 Download → HTML，再回这里导入 HTML 文件。";
+  }
+  if (/adult content|proceed|view adult/i.test(plain)) {
+    return "原站返回的是成人内容确认页，不是作品正文。我已经带了确认参数，但这次仍没放行；请稍后重试，或用 Download → HTML 文件导入。";
+  }
+  if (/retry later|rate limit|too many requests|429/i.test(plain)) {
+    return "原站正在限流，返回的不是作品正文。先等几分钟再试；急着保存就用 Download → HTML 文件导入。";
+  }
+  if (/works\/\d+/i.test(sourceUrl)) {
+    return "链接看起来没错，但这次拿到的页面结构里没有正文容器。可能是原站临时返回了空壳页/提示页；我已加备用识别规则，仍失败时请用 Download → HTML 导入。";
+  }
+  return "没有在这个页面里找到正文。请确认链接是作品页；如果你确定链接没错，通常是原站这次返回了提示页而不是正文。";
+}
+
+function cleanWorkHtml(html, sourceUrl) {
+  let chapters = findElementHtml(html, [
+    /<div[^>]+id=["']chapters["'][^>]*>/i,
+    /<div[^>]+id=["']workskin["'][^>]*>/i,
+    /<main\b[^>]*>/i,
+    /<article\b[^>]*>/i
+  ]);
+  if (!chapters) chapters = largestElementHtml(html, /<(div|section|blockquote)[^>]+class=["'][^"']*userstuff[^"']*["'][^>]*>/gi);
 
   return chapters
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -176,10 +230,14 @@ async function fetchImageAttempt(targetUrl, referer, signal) {
   const headers = {
     "accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
     "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-    "origin": `https://${sourceHost}`,
     "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
   };
-  if (referer) headers.referer = referer;
+  if (referer) {
+    headers.referer = referer;
+    try {
+      headers.origin = new URL(referer).origin;
+    } catch {}
+  }
   return fetch(targetUrl, {
     redirect: "follow",
     signal,
@@ -202,8 +260,9 @@ async function proxyImage(targetUrl, refererUrl = "") {
     const targetOrigin = new URL(targetUrl).origin;
     const referers = [...new Set([
       referer,
-      `https://${sourceHost}/`,
       targetOrigin,
+      `${targetOrigin}/`,
+      `https://${sourceHost}/`,
       ""
     ].filter((item) => item !== undefined))];
     let response;
@@ -264,7 +323,7 @@ function parseSourceWork(html, sourceUrl) {
   const contentHtml = cleanWorkHtml(html, sourceUrl);
 
   if (!contentHtml || contentHtml.length < 80) {
-    throw new Error("没有在这个页面里找到正文。请确认链接是 作品页，并且作品可以公开访问。");
+    throw new Error(explainMissingBody(html, sourceUrl));
   }
 
   return {
