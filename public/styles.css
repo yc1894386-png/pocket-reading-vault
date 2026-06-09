@@ -642,6 +642,83 @@ body.cloud-open .cloud-section {
   }
 }
 
+*** End of File
+
+/* v91 final-final: this must stay at EOF so older shelf rules cannot override it. */
+.folder-list {
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 0 18px 3px 0 !important;
+  scroll-padding-inline: 0 18px !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.folder-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.folder-card {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: min(68vw, 180px) !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+.folder-card span,
+.folder-card small {
+  white-space: nowrap !important;
+}
+
+.work-progress-edge {
+  pointer-events: none !important;
+}
+/* v91: final shelf stability - folder chips must stay in one horizontal rail */
+.folder-list {
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 0 18px 3px 0 !important;
+  scroll-padding-inline: 0 18px !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.folder-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.folder-card {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: min(68vw, 180px) !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+.folder-card span,
+.folder-card small {
+  white-space: nowrap !important;
+}
+
+.work-progress-edge {
+  pointer-events: none !important;
+}
+
 @keyframes archiveSpinOut {
   from {
     transform: rotate(0deg);
@@ -7856,3 +7933,40 @@ body:not(.reading) .selection-toolbar {
   }
 }
 
+/* v91 eof guard: shelf chips stay in one horizontal rail; progress edge is visual only. */
+.folder-list {
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 0 18px 3px 0 !important;
+  scroll-padding-inline: 0 18px !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.folder-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.folder-card {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: min(68vw, 180px) !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+.folder-card span,
+.folder-card small {
+  white-space: nowrap !important;
+}
+
+.work-progress-edge {
+  pointer-events: none !important;
+}

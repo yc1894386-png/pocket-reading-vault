@@ -608,7 +608,7 @@ function renderWorks() {
     return `
       <button class="work-card ${contrastClass} ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}" style="--work-progress: ${safeProgress}%;">
         <span class="work-progress-wash" aria-hidden="true"></span>
-        <span class="work-progress-edge" data-progress-color-trigger title="长按更改进度颜色" aria-hidden="true"></span>
+        <span class="work-progress-edge" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
         <p>${progressText} · ${chapters.length} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
@@ -1253,17 +1253,18 @@ function startProgressColorPress(event) {
 }
 
 function startWorkPress(event, id) {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
   clearTimeout(longPressTimer);
   event.currentTarget?.setPointerCapture?.(event.pointerId);
   longPressPoint = { x: event.clientX, y: event.clientY };
-  workDrag = { id, active: false, moved: false, lastY: event.clientY, lastTargetIndex: null };
+  workDrag = { id, active: false, moved: false, lastY: event.clientY, lastTargetIndex: null, pointerType: event.pointerType || "mouse" };
   longPressTimer = setTimeout(() => {
     suppressShelfClick = true;
     if (!workDrag || workDrag.id !== id) return;
     workDrag.active = true;
     document.body.classList.add("shelf-dragging");
     document.querySelector(`[data-work="${cssEscape(id)}"]`)?.classList.add("dragging");
-  }, 240);
+  }, event.pointerType === "mouse" ? 520 : 300);
 }
 
 async function moveDraggedWork(event) {
@@ -1290,8 +1291,8 @@ function finishWorkPress() {
   document.body.classList.remove("shelf-dragging");
   document.querySelectorAll(".work-card.dragging").forEach((card) => card.classList.remove("dragging"));
   if (!drag) return;
-  if (drag.active && !drag.moved) openWorkManageDialog(drag.id);
-  if (drag.active) suppressShelfClick = true;
+  if (drag.active && !drag.moved && drag.pointerType !== "mouse") openWorkManageDialog(drag.id);
+  if (drag.active && (drag.moved || drag.pointerType !== "mouse")) suppressShelfClick = true;
 }
 
 function cancelWorkPress() {
@@ -2837,7 +2838,7 @@ $("#folderList").addEventListener("contextmenu", (event) => {
   openFolderManageDialog(button.dataset.folder);
 });
 
-$("#workList").addEventListener("click", async (event) => {
+$("#workList").addEventListener("click", (event) => {
   const button = event.target.closest("[data-work]");
   if (!button) return;
   if (suppressShelfClick) {
@@ -2848,15 +2849,11 @@ $("#workList").addEventListener("click", async (event) => {
   const work = activeWork();
   pendingJump = work ? readingToWholeRatio(work) : 0;
   requestReadingFullscreen();
-  await saveState();
   renderAll();
+  saveState().catch(() => {});
 });
 
 $("#workList").addEventListener("pointerdown", (event) => {
-  if (event.target.closest("[data-progress-color-trigger]")) {
-    startProgressColorPress(event);
-    return;
-  }
   const button = event.target.closest("[data-work]");
   if (!button) return;
   startWorkPress(event, button.dataset.work);
