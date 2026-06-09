@@ -922,9 +922,27 @@ body.cloud-open .cloud-section {
 }
 
 .work-content h3,
+.work-content h2,
 .work-content h4 {
   font-family: inherit;
   line-height: 1.35;
+}
+
+.reader-chapter {
+  display: block;
+}
+
+.reader-chapter > h2 {
+  margin: 1.8em 0 1.1em;
+  color: var(--reader-ink);
+  font-size: 1.08em;
+  font-weight: 700;
+  text-align: center;
+  break-after: avoid;
+}
+
+.reader-chapter:first-child > h2 {
+  margin-top: 0.2em;
 }
 
 .work-content p {
@@ -1954,7 +1972,7 @@ dialog::backdrop {
   :root.turn-both .work-content {
     overflow-x: hidden;
     overscroll-behavior: contain;
-    touch-action: none;
+    touch-action: pan-y pinch-zoom;
     -webkit-overflow-scrolling: auto;
   }
 

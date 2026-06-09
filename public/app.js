@@ -93,6 +93,7 @@ let lastTouchSelectionAt = 0;
 let pageTurnAnimation = 0;
 let cloudTimer;
 let pendingJump = null;
+let pendingChapterJump = null;
 let pendingHighlightJumpId = null;
 let controlsOpen = false;
 let importDrawerOpen = false;
@@ -117,6 +118,7 @@ let supabase;
 let activeHighlightId = null;
 let activeSelectionText = "";
 let activeSelectionRange = null;
+let toolbarActionUntil = 0;
 let previewImageUrl = "";
 
 function lockPortraitMode() {
@@ -473,6 +475,30 @@ function currentChapterIndex(work, chapters = getChapters(work)) {
   return Math.max(0, Math.min(index, chapters.length - 1));
 }
 
+function readingToWholeRatio(work, chapters = getChapters(work)) {
+  const total = Math.max(1, chapters.length);
+  if (work.reading?.wholeRatio !== undefined) {
+    return Math.max(0, Math.min(1, Number(work.reading.wholeRatio || 0)));
+  }
+  const index = currentChapterIndex(work, chapters);
+  const ratio = Math.max(0, Math.min(1, Number(work.reading?.ratio || 0)));
+  return Math.max(0, Math.min(1, (index + ratio) / total));
+}
+
+function chapterStartRatio(index, chapters = []) {
+  const total = Math.max(1, chapters.length || 1);
+  return Math.max(0, Math.min(1, index / total));
+}
+
+function renderContinuousChapters(chapters) {
+  return chapters.map((chapter, index) => `
+    <section class="reader-chapter" data-reader-chapter="${index}">
+      <h2>${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</h2>
+      ${chapter.html || ""}
+    </section>
+  `).join("");
+}
+
 function filteredWorks() {
   const query = $("#searchInput").value.trim().toLowerCase();
   return state.works
@@ -565,13 +591,12 @@ function renderWorks() {
   $("#workList").innerHTML = works.length ? works.map((work) => {
     normalizeWork(work);
     const rel = work.metadata?.relationships?.[0] || work.customTags?.[0] || folderNamesForWork(work);
-    const chapters = getChapters(work).length;
+    const chapters = getChapters(work);
     const chapterText = work.metadata?.chapters || "";
     const complete = /(\d+)\s*\/\s*\1/.test(chapterText) || /complete|完结/i.test(work.metadata?.status || "");
     const status = complete ? "完结" : (chapterText ? "连载" : "未知");
-    const chapterIndex = Math.min(chapters - 1, Math.max(0, Number(work.reading?.chapterIndex || 0)));
-    const ratio = Math.max(0, Math.min(1, Number(work.reading?.ratio || 0)));
-    const progress = chapters ? Math.round(((chapterIndex + ratio) / chapters) * 100) : Math.round(ratio * 100);
+    const ratio = readingToWholeRatio(work, chapters);
+    const progress = Math.round(ratio * 100);
     const safeProgress = Math.min(100, Math.max(0, progress));
     const progressText = progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读";
     const customTags = (work.customTags || []).slice(0, 3);
@@ -582,11 +607,23 @@ function renderWorks() {
         <span class="work-progress-edge" data-progress-color-trigger title="长按更改进度颜色" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
-        <p>${progressText} · ${chapters} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
+        <p>${progressText} · ${chapters.length} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
         ${customTags.length ? `<div class="mini-tag-row">${customTags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </button>
     `;
   }).join("") : `<div class="empty-state compact-empty"><p>这里还没有作品。</p></div>`;
+}
+
+function updateReaderChapterLabels(work = activeWork(), chapters = work ? getChapters(work) : []) {
+  if (!work || !chapters.length) return;
+  const index = currentChapterIndex(work, chapters);
+  const chapter = chapters[index] || chapters[0];
+  $("#chapterTitle").textContent = `${index + 1}/${chapters.length} ${chapter.title}`;
+  $("#openChapterDialog").textContent = `${index + 1}/${chapters.length}`;
+  $("#prevChapter").disabled = index === 0;
+  $("#nextChapter").disabled = index === chapters.length - 1;
+  $("#consolePrevChapter").hidden = index === 0;
+  $("#consoleNextChapter").hidden = index === chapters.length - 1;
 }
 
 function renderReader() {
@@ -603,21 +640,15 @@ function renderReader() {
   const chapters = getChapters(work);
   const index = currentChapterIndex(work, chapters);
   work.reading.chapterIndex = index;
-  const chapter = chapters[index];
 
   $("#workFolder").textContent = folderNamesForWork(work);
   $("#workTitle").textContent = work.title;
   $("#workAuthor").textContent = work.author || "作者待补";
   $("#noteInput").value = work.note || "";
   $("#summaryBlock").innerHTML = work.summaryHtml ? `<label>简介</label><div>${work.summaryHtml}</div>` : "";
-  $("#chapterTitle").textContent = `${index + 1}/${chapters.length} ${chapter.title}`;
-  $("#openChapterDialog").textContent = `${index + 1}/${chapters.length}`;
-  $("#prevChapter").disabled = index === 0;
-  $("#nextChapter").disabled = index === chapters.length - 1;
-  $("#consolePrevChapter").hidden = index === 0;
-  $("#consoleNextChapter").hidden = index === chapters.length - 1;
+  updateReaderChapterLabels(work, chapters);
 
-  $("#workContent").innerHTML = chapter.html;
+  $("#workContent").innerHTML = renderContinuousChapters(chapters);
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
   $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
@@ -625,7 +656,7 @@ function renderReader() {
   $("#workContent").style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
   prepareReaderImages();
   resetPageCache();
-  applyHighlights(work, index);
+  applyHighlights(work);
 
   const tags = [
     work.metadata?.rating,
@@ -647,6 +678,11 @@ function renderReader() {
     const ratio = pendingJump;
     pendingJump = null;
     requestAnimationFrame(() => scrollToChapterRatio(ratio));
+  }
+  if (pendingChapterJump) {
+    const { index: jumpIndex, ratio } = pendingChapterJump;
+    pendingChapterJump = null;
+    requestAnimationFrame(() => jumpToChapterElement(jumpIndex, ratio));
   }
   if (pendingHighlightJumpId) {
     const id = pendingHighlightJumpId;
@@ -819,7 +855,7 @@ function renderChapterDialog() {
   if (!work) return;
   const chapters = getChapters(work);
   const index = currentChapterIndex(work, chapters);
-  $("#chapterProgressText").textContent = `当前：${index + 1}/${chapters.length} · ${Math.round((work.reading?.ratio || 0) * 100)}%`;
+  $("#chapterProgressText").textContent = `当前：${index + 1}/${chapters.length} · ${Math.round(readingToWholeRatio(work, chapters) * 100)}%`;
   const infoTags = [
     work.metadata?.rating,
     ...(work.metadata?.warnings || []),
@@ -1927,6 +1963,64 @@ function scrollToChapterRatio(ratio) {
   updatePageCount();
 }
 
+function visibleReaderChapterIndex() {
+  const work = activeWork();
+  const content = $("#workContent");
+  if (!work || !content) return 0;
+  const chapters = getChapters(work);
+  const sections = [...content.querySelectorAll("[data-reader-chapter]")];
+  if (!sections.length) return currentChapterIndex(work, chapters);
+  const box = content.getBoundingClientRect();
+  const targetX = box.left + Math.min(box.width - 1, Math.max(1, box.width * 0.5));
+  const targetY = box.top + Math.min(box.height - 1, Math.max(1, box.height * 0.34));
+  let best = { index: currentChapterIndex(work, chapters), score: Infinity };
+  for (const section of sections) {
+    const index = Number(section.dataset.readerChapter || 0);
+    const rects = [...section.getClientRects()].filter((rect) => rect.width > 1 && rect.height > 1);
+    for (const rect of rects) {
+      const insideX = targetX >= rect.left && targetX <= rect.right;
+      const insideY = targetY >= rect.top && targetY <= rect.bottom;
+      const dx = insideX ? 0 : Math.min(Math.abs(targetX - rect.left), Math.abs(targetX - rect.right));
+      const dy = insideY ? 0 : Math.min(Math.abs(targetY - rect.top), Math.abs(targetY - rect.bottom));
+      const score = dx + dy * 1.6;
+      if (score < best.score) best = { index, score };
+      if (insideX && insideY) return Math.max(0, Math.min(index, chapters.length - 1));
+    }
+  }
+  return Math.max(0, Math.min(best.index, chapters.length - 1));
+}
+
+function selectedReaderChapterIndex() {
+  const selection = window.getSelection();
+  const node = activeSelectionRange?.startContainer || selection?.anchorNode;
+  const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+  const chapter = element?.closest?.("[data-reader-chapter]");
+  if (chapter) return Number(chapter.dataset.readerChapter || 0);
+  return visibleReaderChapterIndex();
+}
+
+function jumpToChapterElement(index, innerRatio = 0) {
+  const content = $("#workContent");
+  if (!content) return false;
+  const section = content.querySelector(`[data-reader-chapter="${Number(index)}"]`);
+  if (!section) return false;
+  const ratio = Math.max(0, Math.min(1, Number(innerRatio || 0)));
+  if (normalizedTurnMode() === "scroll") {
+    const top = Math.max(0, section.offsetTop + Math.max(0, section.scrollHeight - content.clientHeight) * ratio);
+    content.scrollTo({ top, behavior: "auto" });
+    updateProgressBar();
+    return true;
+  }
+  const contentRect = content.getBoundingClientRect();
+  const rect = [...section.getClientRects()].find((item) => item.width > 1 && item.height > 1) || section.getBoundingClientRect();
+  const rawLeft = content.scrollLeft + rect.left - contentRect.left;
+  const metrics = refreshPageCache(true);
+  const targetPage = Math.round(Math.max(0, Math.min(metrics.max, rawLeft)) / metrics.step) + 1;
+  setReaderPage(targetPage);
+  updateProgressBar();
+  return true;
+}
+
 function isPagedMode() {
   return window.matchMedia("(max-width: 879px)").matches;
 }
@@ -1977,11 +2071,8 @@ function readerPageKey() {
   const work = activeWork();
   const content = $("#workContent");
   if (!work || !content) return "";
-  const chapters = getChapters(work);
-  const index = currentChapterIndex(work, chapters);
   return [
     work.id || state.selectedWorkId || "",
-    index,
     content.clientWidth,
     state.readerFontSize,
     state.readerFontFamily,
@@ -2088,11 +2179,14 @@ function updateProgressBar() {
   const work = activeWork();
   if (!work) return;
   const ratio = chapterScrollRatio();
+  const chapters = getChapters(work);
+  work.reading.chapterIndex = visibleReaderChapterIndex();
   $("#progressRange").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
   $("#consoleMenuProgress").textContent = `目录 · ${Math.round(ratio * 100)}%`;
   const bookmarkCount = (work.highlights || []).length;
   $("#consoleBookmarkCount").textContent = String(bookmarkCount);
+  updateReaderChapterLabels(work, chapters);
   updatePageCount();
 }
 
@@ -2125,7 +2219,9 @@ async function persistProgress() {
   const work = activeWork();
   if (!work) return;
   normalizeWork(work);
-  work.reading.ratio = chapterScrollRatio();
+  work.reading.wholeRatio = chapterScrollRatio();
+  work.reading.ratio = work.reading.wholeRatio;
+  work.reading.chapterIndex = visibleReaderChapterIndex();
   work.updatedAt = new Date().toISOString();
   await saveState();
   updateProgressBar();
@@ -2135,10 +2231,14 @@ function changeChapter(delta) {
   const work = activeWork();
   if (!work) return;
   const chapters = getChapters(work);
-  work.reading.chapterIndex = Math.max(0, Math.min(currentChapterIndex(work, chapters) + delta, chapters.length - 1));
-  work.reading.ratio = 0;
+  const nextIndex = Math.max(0, Math.min(visibleReaderChapterIndex() + delta, chapters.length - 1));
+  const nextRatio = chapterStartRatio(nextIndex, chapters);
+  work.reading.chapterIndex = nextIndex;
+  work.reading.wholeRatio = nextRatio;
+  work.reading.ratio = nextRatio;
   work.updatedAt = new Date().toISOString();
-  pendingJump = 0;
+  pendingJump = nextRatio;
+  pendingChapterJump = { index: nextIndex, ratio: 0 };
   saveState().then(renderAll);
 }
 
@@ -2146,10 +2246,14 @@ function goToChapter(index, ratio = 0) {
   const work = activeWork();
   if (!work) return;
   const chapters = getChapters(work);
-  work.reading.chapterIndex = Math.max(0, Math.min(index, chapters.length - 1));
-  work.reading.ratio = ratio;
+  const nextIndex = Math.max(0, Math.min(index, chapters.length - 1));
+  const nextRatio = Math.max(0, Math.min(1, chapterStartRatio(nextIndex, chapters) + (ratio / Math.max(1, chapters.length))));
+  work.reading.chapterIndex = nextIndex;
+  work.reading.wholeRatio = nextRatio;
+  work.reading.ratio = nextRatio;
   work.updatedAt = new Date().toISOString();
-  pendingJump = ratio;
+  pendingJump = nextRatio;
+  pendingChapterJump = { index: nextIndex, ratio };
   saveState().then(renderAll);
 }
 
@@ -2158,10 +2262,14 @@ function goToHighlight(highlight) {
   const work = activeWork();
   if (!work) return;
   const chapters = getChapters(work);
-  work.reading.chapterIndex = Math.max(0, Math.min(Number(highlight.chapterIndex || 0), chapters.length - 1));
-  work.reading.ratio = 0;
+  const index = Math.max(0, Math.min(Number(highlight.chapterIndex || 0), chapters.length - 1));
+  const nextRatio = chapterStartRatio(index, chapters);
+  work.reading.chapterIndex = index;
+  work.reading.wholeRatio = nextRatio;
+  work.reading.ratio = nextRatio;
   work.updatedAt = new Date().toISOString();
-  pendingJump = 0;
+  pendingJump = nextRatio;
+  pendingChapterJump = { index, ratio: 0 };
   pendingHighlightJumpId = highlight.id;
   saveState().then(renderAll);
 }
@@ -2193,6 +2301,7 @@ async function addBookmark() {
     label: `${chapters[index].title} · ${Math.round(ratio * 100)}%`,
     createdAt: new Date().toISOString()
   });
+  work.reading.wholeRatio = ratio;
   work.reading.ratio = ratio;
   work.updatedAt = new Date().toISOString();
   await saveState();
@@ -2212,10 +2321,14 @@ async function addBookmarkFromControl(event) {
   }, 180);
 }
 
-function applyHighlights(work, chapterIndex) {
+function applyHighlights(work) {
   const root = $("#workContent");
-  const highlights = (work.highlights || []).filter((item) => item.chapterIndex === chapterIndex);
-  for (const highlight of highlights) markFirstText(root, highlight);
+  const highlights = work.highlights || [];
+  for (const highlight of highlights) {
+    const chapterIndex = Number(highlight.chapterIndex || 0);
+    const host = root.querySelector(`[data-reader-chapter="${chapterIndex}"]`) || root;
+    markFirstText(host, highlight);
+  }
 }
 
 function markFirstText(root, highlight) {
@@ -2280,7 +2393,7 @@ async function addHighlightFromSelection(color = "yellow", note = "") {
   const text = selectedReaderText() || activeSelectionText;
   if (!text || text.length < 2) return;
   normalizeWork(work);
-  const chapterIndex = currentChapterIndex(work);
+  const chapterIndex = selectedReaderChapterIndex();
   work.highlights.push({ id: uid(), chapterIndex, text, color, note, createdAt: new Date().toISOString() });
   work.updatedAt = new Date().toISOString();
   selection?.removeAllRanges();
@@ -2360,6 +2473,7 @@ function showSelectionToolbarFromRect(rect, { mode = "selection" } = {}) {
 }
 
 function updateSelectionToolbar() {
+  if (Date.now() < toolbarActionUntil) return;
   if (Date.now() - lastReaderActionAt < 650) return hideSelectionToolbar();
   if (!document.body.classList.contains("reading")) return hideSelectionToolbar();
   const selection = window.getSelection();
@@ -2721,7 +2835,7 @@ $("#workList").addEventListener("click", async (event) => {
   }
   state.selectedWorkId = button.dataset.work;
   const work = activeWork();
-  pendingJump = work?.reading?.ratio || 0;
+  pendingJump = work ? readingToWholeRatio(work) : 0;
   requestReadingFullscreen();
   await saveState();
   renderAll();
@@ -3064,7 +3178,7 @@ document.addEventListener("keydown", (event) => {
 $("#settingsTurnMode").addEventListener("change", async (event) => {
   await persistProgress();
   state.readerTurnMode = normalizedTurnMode(event.target.value);
-  pendingJump = activeWork()?.reading?.ratio ?? null;
+  pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
   await saveState();
   renderAll();
 });
@@ -3076,7 +3190,7 @@ document.querySelectorAll("[data-turn-mode]").forEach((button) => {
     state.readerTurnMode = mode;
     const select = $("#settingsTurnMode");
     if (select) select.value = mode;
-    pendingJump = activeWork()?.reading?.ratio ?? null;
+    pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
     await saveState();
     renderAll();
   });
@@ -3231,6 +3345,7 @@ document.addEventListener("selectionchange", () => {
 async function handleSelectionToolbarAction(event) {
   event.preventDefault();
   event.stopPropagation();
+  toolbarActionUntil = Date.now() + 1000;
   const colorButton = event.target.closest("[data-highlight-color]");
   const actionButton = event.target.closest("[data-highlight-action]");
   if (colorButton) {
@@ -3280,7 +3395,7 @@ async function handleSelectionToolbarAction(event) {
     }
     const text = activeSelectionText || selectedReaderText();
     const work = activeWork();
-    const chapterIndex = work ? currentChapterIndex(work) : 0;
+    const chapterIndex = work ? selectedReaderChapterIndex() : 0;
     const match = work?.highlights?.find((item) => item.chapterIndex === chapterIndex && item.text === text);
     if (match) await removeHighlight(match.id);
     else hideSelectionToolbar();
@@ -3288,8 +3403,13 @@ async function handleSelectionToolbarAction(event) {
 }
 
 $("#selectionToolbar").addEventListener("pointerdown", (event) => {
+  toolbarActionUntil = Date.now() + 1000;
   event.stopPropagation();
 });
+$("#selectionToolbar").addEventListener("touchstart", (event) => {
+  toolbarActionUntil = Date.now() + 1000;
+  event.stopPropagation();
+}, { passive: true });
 $("#selectionToolbar").addEventListener("click", handleSelectionToolbarAction);
 
 $("#closeImagePreview").addEventListener("click", () => $("#imagePreviewDialog").close());
@@ -3344,7 +3464,7 @@ $("#workContent").addEventListener("scroll", () => {
 window.addEventListener("resize", () => {
   resetPageCache();
   requestAnimationFrame(() => {
-    scrollToChapterRatio(activeWork()?.reading?.ratio || 0);
+    scrollToChapterRatio(activeWork() ? readingToWholeRatio(activeWork()) : 0);
     updateProgressBar();
   });
 }, { passive: true });
