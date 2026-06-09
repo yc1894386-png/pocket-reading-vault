@@ -575,6 +575,73 @@ body.cloud-open .cloud-section {
   }
 }
 
+/* v87 final override: stable shelf chips on desktop and mobile */
+.shelf-directory,
+.shelf-directory .section-title,
+.folder-list {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.shelf-directory .section-title {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.shelf-directory .section-actions {
+  flex: 0 0 auto !important;
+}
+
+.folder-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.folder-card {
+  flex: 0 1 auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
+}
+
+.folder-card span,
+.folder-card small {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 879px) {
+  .folder-list {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 22px 2px 0 !important;
+    scroll-padding-inline: 0 22px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .folder-list::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .folder-card {
+    flex: 0 0 auto !important;
+  }
+}
+
 @keyframes archiveSpinOut {
   from {
     transform: rotate(0deg);
@@ -943,6 +1010,73 @@ body.cloud-open .cloud-section {
 
 .reader-chapter:first-child > h2 {
   margin-top: 0.2em;
+}
+
+/* v87: keep shelf category chips from being clipped in the left pane */
+.shelf-directory,
+.shelf-directory .section-title,
+.folder-list {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.shelf-directory .section-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.shelf-directory .section-actions {
+  flex: 0 0 auto;
+}
+
+.folder-list {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px !important;
+  width: 100%;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.folder-card {
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0 !important;
+  width: auto !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+
+.folder-card span,
+.folder-card small {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 879px) {
+  .folder-list {
+    flex-wrap: nowrap;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 22px 2px 0 !important;
+    scroll-padding-inline: 0 22px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .folder-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .folder-card {
+    flex: 0 0 auto;
+  }
 }
 
 .work-content p {
@@ -2363,8 +2497,8 @@ dialog,
   inset: 0 auto 0 0;
   z-index: 0;
   width: var(--work-progress, 0%);
-  border-radius: inherit;
-  background: var(--shelf-progress-color, #e0f4f1);
+  border-radius: 17px 0 0 17px;
+  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, var(--panel));
   pointer-events: none;
 }
 
@@ -2384,11 +2518,11 @@ dialog,
   bottom: 0;
   left: 0;
   z-index: 2;
-  height: 8px;
-  border-radius: 0 0 inherit inherit;
+  height: 3px;
+  border-radius: 0;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 82%, #8ecbd7) 0 var(--work-progress, 0%),
+    color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 82%, var(--text) 10%) 0 var(--work-progress, 0%),
     transparent var(--work-progress, 0%) 100%
   );
   cursor: crosshair;
@@ -2403,7 +2537,7 @@ dialog,
 
 .work-card.active .work-progress-wash,
 .work-card:active .work-progress-wash {
-  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 86%, var(--panel));
+  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 76%, var(--panel));
 }
 
 .work-card.progress-contrast p {
@@ -7652,6 +7786,73 @@ body:not(.reading) .selection-toolbar {
   .reading-bar,
   .reader-page-count {
     display: none !important;
+  }
+}
+
+/* v87 true final override: stable shelf chips on desktop and mobile */
+.shelf-directory,
+.shelf-directory .section-title,
+.folder-list {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.shelf-directory .section-title {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.shelf-directory .section-actions {
+  flex: 0 0 auto !important;
+}
+
+.folder-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.folder-card {
+  flex: 0 1 auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
+}
+
+.folder-card span,
+.folder-card small {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 879px) {
+  .folder-list {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 22px 2px 0 !important;
+    scroll-padding-inline: 0 22px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .folder-list::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .folder-card {
+    flex: 0 0 auto !important;
   }
 }
 
