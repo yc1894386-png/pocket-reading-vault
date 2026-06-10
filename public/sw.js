@@ -1,11 +1,12 @@
-const CACHE_NAME = "pocket-reading-vault-v94-folder-membership-tags";
+const CACHE_NAME = "pocket-reading-vault-v95-vellum-image-retry";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./icon.svg",
+  "./vellum-logo.png"
 ];
 
 self.addEventListener("install", (event) => {

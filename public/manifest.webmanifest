@@ -1,16 +1,16 @@
 ﻿{
-  "name": "离线书架",
-  "short_name": "书架",
+  "name": "vellum",
+  "short_name": "vellum",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f7f3ee",
-  "theme_color": "#316b62",
+  "background_color": "#ffffff",
+  "theme_color": "#55aee2",
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./vellum-logo.png",
+      "sizes": "144x144",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

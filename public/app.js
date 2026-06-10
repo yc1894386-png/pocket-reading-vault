@@ -213,22 +213,15 @@ function retryImageUrl(img, work) {
   const current = img.currentSrc || img.src || "";
   const original = img.getAttribute("data-original-src") || originalImageUrlFromProxy(current) || current;
   if (!original) return "";
-  if (img.dataset.proxyRetry !== "1") {
-    img.dataset.proxyRetry = "1";
-    const retry = proxiedImageUrl(original, work?.sourceUrl || "");
-    try {
-      const retryUrl = new URL(retry);
-      retryUrl.searchParams.set("retry", Date.now().toString());
-      return retryUrl.toString();
-    } catch {
-      return retry;
-    }
+  img.dataset.proxyRetry = String(Number(img.dataset.proxyRetry || "0") + 1);
+  const retry = proxiedImageUrl(original, work?.sourceUrl || "");
+  try {
+    const retryUrl = new URL(retry);
+    retryUrl.searchParams.set("retry", Date.now().toString());
+    return retryUrl.toString();
+  } catch {
+    return retry;
   }
-  if (img.dataset.directImageTried !== "1" && /^https?:\/\//i.test(original)) {
-    img.dataset.directImageTried = "1";
-    return original;
-  }
-  return "";
 }
 
 function rewriteSrcset(value = "", baseUrl = "") {
@@ -2517,6 +2510,15 @@ function showHighlightToolbar(mark) {
 }
 
 function openImagePreview(img) {
+  const work = activeWork();
+  const original = img.getAttribute("data-original-src") || originalImageUrlFromProxy(img.currentSrc || img.src || img.getAttribute("src") || "");
+  if (original) {
+    const refreshed = retryImageUrl(img, work);
+    if (refreshed) {
+      img.classList.remove("reader-image-broken");
+      img.src = refreshed;
+    }
+  }
   const src = img.currentSrc || img.src || img.getAttribute("src");
   if (!src) return;
   previewImageUrl = src;

@@ -8047,3 +8047,18 @@ body:not(.reading) .selection-toolbar {
   line-height: 1 !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
 }
+
+.brand-lockup {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.brand-logo {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  object-fit: cover !important;
+  flex: 0 0 auto !important;
+}
