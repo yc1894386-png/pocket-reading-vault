@@ -7,6 +7,7 @@ const root = fileURLToPath(new URL("./public", import.meta.url));
 const port = Number(process.env.PORT || 4173);
 const sourceHost = [[ "archive", "of", "our", "own" ].join(""), "org"].join(".");
 const downloadHost = `download.${sourceHost}`;
+const lofterHostPattern = /(^|\.)lofter\.com$/i;
 const importCache = new Map();
 const imageCache = new Map();
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://pocket-reading-vault.onrender.com";
@@ -86,6 +87,18 @@ function tagsFromHtml(value = "") {
 
 function textLengthFromHtml(value = "") {
   return textOnly(value).replace(/\s/g, "").length;
+}
+
+function jsonScriptValue(html, variableName) {
+  const escaped = variableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = html.match(new RegExp(`<script[^>]*>\\s*${escaped}\\s*=\\s*([\\s\\S]*?)\\s*<\\/script>`, "i"));
+  if (!match?.[1]) return null;
+  const raw = match[1].replace(/;\s*$/, "").trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function parseTitleParts(rawValue = "") {
@@ -335,7 +348,74 @@ async function proxyImage(targetUrl, refererUrl = "") {
   }
 }
 
+function parseLofterWork(html, sourceUrl) {
+  const init = jsonScriptValue(html, "window.__initialize_data__");
+  const payload = init?.postData?.data || init?.data || {};
+  const postView = payload?.postData?.postView || payload?.postView || {};
+  const blogInfo = payload?.blogInfo || {};
+  if (!postView?.id && !postView?.title && !postView?.digest && !postView?.photoPostView) {
+    throw new Error("LOFTER 页面没有把作品数据放出来。可能需要登录、被限制访问，或页面临时没有加载完整数据。");
+  }
+
+  const photoView = postView.photoPostView || {};
+  const textView = postView.textPostView || {};
+  const title = textOnly(postView.title || textView.title || photoView.title || "") || "LOFTER 未命名作品";
+  const author = textOnly(blogInfo.blogNickName || blogInfo.blogName || "") || "LOFTER 作者";
+  const caption = photoView.caption || textView.content || postView.content || postView.digest || "";
+  const photoLinks = [
+    ...(photoView.photoLinks || []),
+    ...(postView.photoLinks || [])
+  ];
+  const seenImages = new Set();
+  const imageHtml = photoLinks.map((photo, index) => {
+    const raw = photo.raw || photo.orign || photo.origin || photo.url || photo.middle || "";
+    if (!raw || seenImages.has(raw)) return "";
+    seenImages.add(raw);
+    const proxied = proxiedImageUrl(raw, sourceUrl);
+    const original = absoluteUrl(raw, sourceUrl);
+    const alt = `${title} 图片 ${index + 1}`;
+    const width = Number(photo.ow || photo.width || 0);
+    const height = Number(photo.oh || photo.height || 0);
+    const sizeAttrs = `${width ? ` width="${width}"` : ""}${height ? ` height="${height}"` : ""}`;
+    return `<figure class="lofter-image"><img src="${proxied}" data-original-src="${original}" alt="${alt}" loading="lazy" decoding="async"${sizeAttrs}></figure>`;
+  }).filter(Boolean).join("\n");
+
+  const contentHtml = `<article class="lofter-work">
+    <section class="lofter-caption">${caption}</section>
+    ${imageHtml}
+  </article>`;
+  if (textLengthFromHtml(contentHtml) < 10 && !imageHtml) {
+    throw new Error("LOFTER 页面能打开，但没有找到正文或图片。这个页面可能需要登录或被作者限制。");
+  }
+
+  const tags = Array.isArray(postView.tagList) ? postView.tagList.map(textOnly).filter(Boolean) : [];
+  const words = textLengthFromHtml(contentHtml);
+  return {
+    title,
+    author,
+    sourceUrl,
+    importedAt: new Date().toISOString(),
+    summaryHtml: tags.length ? `<p>${tags.map((tag) => `#${tag}`).join(" ")}</p>` : "",
+    contentHtml,
+    metadata: {
+      rating: "LOFTER",
+      categories: ["LOFTER"],
+      fandoms: tags,
+      warnings: [],
+      relationships: [],
+      characters: [],
+      freeforms: tags,
+      words: `${words} 字`,
+      chapters: "1/1",
+      status: "完结",
+      language: "中文",
+      kudos: payload?.postData?.postCountView?.favoriteCount ? String(payload.postData.postCountView.favoriteCount) : ""
+    }
+  };
+}
+
 function parseSourceWork(html, sourceUrl) {
+  if (lofterHostPattern.test(new URL(sourceUrl).hostname)) return parseLofterWork(html, sourceUrl);
   const titleParts = parseTitleParts(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i));
   const title = textOnly(firstMatch(html, /<h2[^>]+class=["'][^"']*title[^"']*heading[^"']*["'][^>]*>([\s\S]*?)<\/h2>/i))
     || textOnly(firstMatch(html, /<h1[^>]+class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i))
@@ -392,8 +472,12 @@ function parseSourceWork(html, sourceUrl) {
 
 function normalizeSourceUrl(url) {
   const parsed = new URL(url);
-  if (parsed.hostname.toLowerCase() !== sourceHost && !parsed.hostname.toLowerCase().endsWith(`.${sourceHost}`)) {
-    throw new Error("目前只支持指定作品站点的链接。");
+  const hostname = parsed.hostname.toLowerCase();
+  if (lofterHostPattern.test(hostname)) {
+    return parsed;
+  }
+  if (hostname !== sourceHost && !hostname.endsWith(`.${sourceHost}`)) {
+    throw new Error("目前支持 AO3 作品链接和公开 LOFTER 文章链接。");
   }
   parsed.pathname = parsed.pathname.replace(/\/chapters\/\d+\/?$/i, "");
   parsed.searchParams.set("view_adult", "true");
@@ -406,6 +490,7 @@ function getWorkId(parsed) {
 }
 
 function getDownloadUrls(parsed) {
+  if (lofterHostPattern.test(parsed.hostname)) return [];
   const workId = getWorkId(parsed);
   if (!workId) return [];
   return [
@@ -417,13 +502,17 @@ function getDownloadUrls(parsed) {
 }
 
 function requestHeaders(url) {
+  const parsed = new URL(url);
+  const isLofter = lofterHostPattern.test(parsed.hostname);
   return {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     "cache-control": "no-cache",
     "pragma": "no-cache",
     "referer": url,
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
+    "user-agent": isLofter
+      ? "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+      : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
     "cookie": "view_adult=true; viewed_adult=true"
   };
 }
