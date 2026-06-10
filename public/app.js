@@ -1133,6 +1133,18 @@ function renderManageTags(work) {
     : `<span class="empty-tag-note">还没有自定义 tag</span>`;
 }
 
+function renderManageFolderTags(work) {
+  const ids = workFolderIds(work).filter((id) => state.folders.some((folder) => folder.id === id));
+  $("#manageFolderTagList").innerHTML = ids.length
+    ? ids.map((id) => `
+      <button type="button" class="folder-membership-chip" data-remove-folder-id="${escapeHtml(id)}" title="从这个文件夹移出">
+        <span>${escapeHtml(folderName(id))}</span>
+        <b aria-hidden="true">×</b>
+      </button>
+    `).join("")
+    : `<span class="empty-tag-note">还没有加入文件夹</span>`;
+}
+
 function batchSearchWorks() {
   const query = $("#batchSearchInput")?.value.trim().toLowerCase() || "";
   return state.works
@@ -1211,6 +1223,7 @@ function openWorkManageDialog(id) {
   $("#manageTagInput").value = "";
   const swatch = $("#manageProgressColorSwatch");
   if (swatch) swatch.style.background = normalizeHexColor(state.progressAccent || defaultState.progressAccent);
+  renderManageFolderTags(work);
   renderManageTags(work);
   if (!$("#workManageDialog").open) $("#workManageDialog").showModal();
 }
@@ -3010,12 +3023,28 @@ $("#manageTagList").addEventListener("click", async (event) => {
   openWorkManageDialog(work.id);
 });
 
+$("#manageFolderTagList").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-remove-folder-id]");
+  const work = workById(managedWorkId);
+  if (!button || !work) return;
+  const removedId = button.dataset.removeFolderId;
+  const nextIds = workFolderIds(work).filter((id) => id !== removedId);
+  work.folderIds = nextIds;
+  if (work.folderId === removedId || !nextIds.includes(work.folderId)) {
+    work.folderId = nextIds[0] || "unfiled";
+  }
+  work.updatedAt = new Date().toISOString();
+  await saveState();
+  renderAll();
+  openWorkManageDialog(work.id);
+});
+
 $("#manageFolderSelect").addEventListener("change", async (event) => {
   const work = workById(managedWorkId);
   if (!work) return;
   work.folderId = event.target.value;
   work.folderIds = work.folderId === "unfiled"
-    ? workFolderIds(work)
+    ? []
     : [...new Set([...workFolderIds(work), work.folderId])];
   work.updatedAt = new Date().toISOString();
   await saveState();

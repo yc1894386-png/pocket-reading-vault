@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v93-shelf-calm-repair";
+const CACHE_NAME = "pocket-reading-vault-v94-folder-membership-tags";
 const ASSETS = [
   "./",
   "./index.html",
