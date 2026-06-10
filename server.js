@@ -12,6 +12,7 @@ const sourceHost = [[ "archive", "of", "our", "own" ].join(""), "org"].join(".")
 const downloadHost = `download.${sourceHost}`;
 const lofterHostPattern = /(^|\.)lofter\.com$/i;
 const shoubanjiangHostPattern = /(^|\.)shoubanjiang\.com$/i;
+const shauthorHostPattern = /(^|\.)shauthor\.com$/i;
 const importCache = new Map();
 const imageCache = new Map();
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://pocket-reading-vault.onrender.com";
@@ -538,7 +539,7 @@ async function parseShoubanjiangWork(html, sourceUrl) {
   }
 
   const pageCounter = { count: 0, clipped: false };
-  const maxPages = 180;
+  const maxPages = 360;
   const fetchChapter = async (chapter, index) => {
     const parts = [];
     let currentUrl = chapter.url;
@@ -607,10 +608,160 @@ async function parseShoubanjiangWork(html, sourceUrl) {
   };
 }
 
+function uniqueShauthorChapters(html, sourceUrl) {
+  const allIndex = html.indexOf("全部章节");
+  const allHtml = allIndex >= 0 ? html.slice(allIndex) : html;
+  const allBlock = firstMatch(allHtml, /<ul[^>]*class=["']p2["'][^>]*>([\s\S]*?)<\/ul>/i)
+    || firstMatch(allHtml, /<ul[^>]*>([\s\S]*?)<\/ul>/i)
+    || allHtml;
+  const items = [];
+  const seen = new Set();
+  for (const match of allBlock.matchAll(/<a[^>]+href=["']([^"']*\/read_[^"']+\/[^"']+\.html)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = absoluteUrl(match[1], sourceUrl);
+    const canonical = href.replace(/_(\d+)(\.html)$/i, "$2");
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    items.push({
+      url: canonical,
+      title: textOnly(match[2]) || `第 ${items.length + 1} 章`
+    });
+  }
+  return items;
+}
+
+async function fetchHtmlWithRetry(url, label, attempts = 2) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetchHtml(url, label);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await wait(700 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+function parseShauthorPage(html, pageUrl) {
+  const rawTitle = textOnly(firstMatch(html, /<div[^>]+id=["']chapterSet["'][^>]*>[\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/i)
+    || firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i));
+  const title = rawTitle
+    .replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)\s*/i, "")
+    .replace(/_[\s\S]*$/i, "")
+    .trim();
+  let content = firstMatch(html, /<div[^>]+id=["']novelcontent["'][^>]*>([\s\S]*?)<div[^>]+class=["']page_chapter["'][^>]*>/i)
+    || firstMatch(html, /<div[^>]+id=["']novelcontent["'][^>]*>([\s\S]*?)<\/div>/i);
+  content = content
+    .replace(/<p>\s*<font[^>]*>[\s\S]*?<\/font>\s*<\/p>/gi, "")
+    .replace(/内容未完，下一页继续阅读/g, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/^\s*<br\s*\/?>/i, "");
+  if (!content || textOnly(content).replace(/\s/g, "").length < 20) {
+    throw new Error("章节页没有返回正文，可能被站点临时拦截或限速了。");
+  }
+  const nextPageHref = firstMatch(html, /<a[^>]+href=["']([^"']+)["'][^>]*class=["']p4["'][^>]*>\s*下一页\s*<\/a>/i)
+    || firstMatch(html, /<a[^>]+class=["']p4["'][^>]*href=["']([^"']+)["'][^>]*>\s*下一页\s*<\/a>/i)
+    || firstMatch(html, /<a[^>]+href=["']([^"']+)["'][^>]*>\s*下一页\s*<\/a>/i);
+  const nextPage = nextPageHref ? absoluteUrl(nextPageHref, pageUrl) : "";
+  return { title, content: sanitizeImportedHtml(content, pageUrl), nextPage };
+}
+
+async function parseShauthorWork(html, sourceUrl) {
+  if (!/info_chapters|\/read_[^"']+\/[^"']+\.html/i.test(html)) {
+    throw new Error("这个页面没有返回可读取的章节目录，可能是站点临时拦截或页面结构变化。");
+  }
+  const title = textOnly(firstMatch(html, /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["'][^>]*>/i)
+    || firstMatch(html, /<h1[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>\s*<\/h1>/i)
+    || firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)).replace(/_[\s\S]*$/i, "") || "网页小说";
+  const author = textOnly(firstMatch(html, /<p[^>]*class=["']author["'][^>]*>([\s\S]*?)<\/p>/i)
+    || firstMatch(html, /_\(([^)]+)\)_最新章节列表/i)
+    || firstMatch(html, /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)的最新上架小说/i)) || "作者待补";
+  const intro = firstMatch(html, /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["'][^>]*>/i)
+    || firstMatch(html, /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["'][^>]*>/i);
+  const chapters = uniqueShauthorChapters(html, sourceUrl).slice(0, 100);
+  if (!chapters.length) throw new Error("这个目录页能打开，但没有找到章节链接。");
+
+  const pageCounter = { count: 0, clipped: false };
+  const maxPages = 360;
+  const fetchChapter = async (chapter, index) => {
+    const parts = [];
+    let currentUrl = chapter.url;
+    let chapterTitle = chapter.title;
+    const seenPages = new Set();
+    for (let page = 0; currentUrl && page < 45; page += 1) {
+      if (seenPages.has(currentUrl) || pageCounter.count >= maxPages) {
+        pageCounter.clipped = pageCounter.count >= maxPages;
+        break;
+      }
+      seenPages.add(currentUrl);
+      pageCounter.count += 1;
+      const pageHtml = await fetchHtmlWithRetry(currentUrl, "章节页", 2);
+      const parsed = parseShauthorPage(pageHtml, currentUrl);
+      chapterTitle = parsed.title || chapterTitle;
+      if (parsed.content) parts.push(parsed.content);
+      const sameChapter = parsed.nextPage
+        && parsed.nextPage.replace(/_(\d+)(\.html)$/i, "$2") === chapter.url;
+      currentUrl = sameChapter ? parsed.nextPage : "";
+    }
+    if (!parts.length) throw new Error(`第 ${index + 1} 章没有抓到正文`);
+    return {
+      index,
+      html: `<section class="chapter" id="chapter-${index + 1}">
+        <h2>${textOnly(chapterTitle) || `第 ${index + 1} 章`}</h2>
+        <div class="chapter-body">${parts.join("<br><br>")}</div>
+      </section>`
+    };
+  };
+
+  const results = [];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(3, chapters.length) }, async () => {
+    while (cursor < chapters.length && pageCounter.count < maxPages) {
+      const index = cursor;
+      cursor += 1;
+      try {
+        results[index] = await fetchChapter(chapters[index], index);
+      } catch {
+        results[index] = null;
+      }
+    }
+  });
+  await Promise.all(workers);
+
+  const saved = results.filter(Boolean);
+  if (!saved.length) throw new Error("章节目录能打开，但章节正文读取失败。可能是站点临时限速，请稍后再试。");
+  const contentHtml = saved.sort((a, b) => a.index - b.index).map((item) => item.html).join("\n");
+  const clippedNote = pageCounter.clipped || saved.length < chapters.length
+    ? `<p>注：这次保存了 ${saved.length}/${chapters.length} 章；站点有分页/限速，剩余章节可以稍后重新导入覆盖。</p>`
+    : "";
+  return {
+    title,
+    author,
+    sourceUrl,
+    importedAt: new Date().toISOString(),
+    summaryHtml: `<p>${textOnly(intro || "")}</p>${clippedNote}`,
+    contentHtml,
+    metadata: {
+      rating: "网页",
+      categories: ["网页小说"],
+      fandoms: [],
+      warnings: [],
+      relationships: [],
+      characters: [],
+      freeforms: ["大众文学目录导入"],
+      words: `${textLengthFromHtml(contentHtml)} 字`,
+      chapters: `${saved.length}/${chapters.length}`,
+      status: saved.length === chapters.length ? "网页导入" : "部分导入",
+      language: "中文"
+    }
+  };
+}
+
 async function parseImportedWork(html, sourceUrl) {
   const hostname = new URL(sourceUrl).hostname;
   if (lofterHostPattern.test(hostname)) return parseLofterWork(html, sourceUrl);
   if (shoubanjiangHostPattern.test(hostname)) return parseShoubanjiangWork(html, sourceUrl);
+  if (shauthorHostPattern.test(hostname)) return parseShauthorWork(html, sourceUrl);
   if (isSourceHost(hostname)) return parseSourceWork(html, sourceUrl);
   return parseReadableWork(html, sourceUrl);
 }
