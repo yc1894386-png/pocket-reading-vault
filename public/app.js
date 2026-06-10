@@ -239,9 +239,17 @@ function normalizeImages(root, baseUrl = "") {
       || img.getAttribute("data-src")
       || img.getAttribute("data-original")
       || img.getAttribute("data-lazy-src")
+      || img.getAttribute("data-cfsrc")
+      || img.getAttribute("data-orig-src")
+      || img.getAttribute("data-hi-res-src")
+      || img.getAttribute("data-full-src")
+      || img.getAttribute("data-image-src")
       || img.getAttribute("data-original-src")
       || "";
-    const srcset = img.getAttribute("srcset") || "";
+    const srcset = img.getAttribute("srcset")
+      || img.getAttribute("data-srcset")
+      || img.getAttribute("data-lazy-srcset")
+      || "";
     const original = originalImageUrlFromProxy(src)
       || img.getAttribute("data-original-src")
       || src
@@ -258,6 +266,13 @@ function normalizeImages(root, baseUrl = "") {
     img.removeAttribute("data-src");
     img.removeAttribute("data-original");
     img.removeAttribute("data-lazy-src");
+    img.removeAttribute("data-cfsrc");
+    img.removeAttribute("data-orig-src");
+    img.removeAttribute("data-hi-res-src");
+    img.removeAttribute("data-full-src");
+    img.removeAttribute("data-image-src");
+    img.removeAttribute("data-srcset");
+    img.removeAttribute("data-lazy-srcset");
   });
 }
 

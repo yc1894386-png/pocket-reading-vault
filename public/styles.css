@@ -8091,3 +8091,73 @@ body:not(.reading) .selection-toolbar {
   height: 32px !important;
   border-radius: 8px !important;
 }
+
+/* v97: stable folder chips, visible progress color, no jump on filter switch */
+.folder-list {
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 44px !important;
+  padding: 0 20px 4px 0 !important;
+}
+
+.folder-card {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  flex: 0 0 auto !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 0 15px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  transform: none !important;
+  transition: background-color 120ms ease, color 120ms ease !important;
+}
+
+.folder-card:active {
+  transform: none !important;
+}
+
+.folder-card span,
+.folder-card small {
+  display: inline-block !important;
+  flex: 0 0 auto !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+}
+
+.folder-card small {
+  min-width: 2.4em !important;
+  text-align: left !important;
+}
+
+.folder-card.active {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+.work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: auto !important;
+  border-radius: 17px 0 0 17px !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 28%, transparent) 0 calc(100% - 7px),
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 92%, var(--text) 8%) calc(100% - 7px) 100%
+    ) !important;
+  box-shadow: none !important;
+}
