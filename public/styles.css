@@ -7933,7 +7933,7 @@ body:not(.reading) .selection-toolbar {
   }
 }
 
-/* v91 eof guard: shelf chips stay in one horizontal rail; progress edge is visual only. */
+/* v93 eof guard: stable shelf rail + calm progress treatment. */
 .folder-list {
   display: flex !important;
   flex-flow: row nowrap !important;
@@ -7944,10 +7944,11 @@ body:not(.reading) .selection-toolbar {
   min-width: 0 !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  padding: 0 18px 3px 0 !important;
+  padding: 0 18px 4px 0 !important;
   scroll-padding-inline: 0 18px !important;
   scrollbar-width: none !important;
   -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-x: contain !important;
 }
 
 .folder-list::-webkit-scrollbar {
@@ -7957,8 +7958,10 @@ body:not(.reading) .selection-toolbar {
 .folder-card {
   flex: 0 0 auto !important;
   width: auto !important;
-  max-width: min(68vw, 180px) !important;
+  max-width: min(64vw, 172px) !important;
   min-width: 0 !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
   white-space: nowrap !important;
 }
 
@@ -7969,4 +7972,30 @@ body:not(.reading) .selection-toolbar {
 
 .work-progress-edge {
   pointer-events: none !important;
+}
+
+.work-card {
+  overflow: hidden !important;
+  background: var(--panel) !important;
+}
+
+.work-progress-wash {
+  inset: auto auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 4px !important;
+  border-radius: 0 !important;
+  opacity: 1 !important;
+  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 84%, var(--panel)) !important;
+}
+
+.work-progress-wash::after {
+  display: none !important;
+}
+
+.work-progress-edge {
+  display: none !important;
+}
+
+.work-card .mini-tag-row {
+  display: none !important;
 }

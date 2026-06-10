@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v92-click-highlight-repair";
+const CACHE_NAME = "pocket-reading-vault-v93-shelf-calm-repair";
 const ASSETS = [
   "./",
   "./index.html",
