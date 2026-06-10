@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v95-vellum-image-retry";
+const CACHE_NAME = "pocket-reading-vault-v96-vellum-progress-visible";
 const ASSETS = [
   "./",
   "./index.html",

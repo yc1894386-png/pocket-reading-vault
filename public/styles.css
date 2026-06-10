@@ -8062,3 +8062,32 @@ body:not(.reading) .selection-toolbar {
   object-fit: cover !important;
   flex: 0 0 auto !important;
 }
+
+/* v96: clearer shelf progress + softer Vellum wordmark */
+.work-progress-wash {
+  height: 6px !important;
+  background: var(--shelf-progress-color, #e0f4f1) !important;
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, transparent) !important;
+}
+
+.topbar h1 {
+  font-family: "Baskerville", "Libre Baskerville", "Cormorant Garamond", "Georgia", "Times New Roman", serif !important;
+  font-size: 1.46rem !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.015em !important;
+  color: var(--text) !important;
+}
+
+.brand-lockup .eyebrow {
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  color: color-mix(in srgb, var(--muted) 82%, transparent) !important;
+}
+
+.brand-logo {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+}
