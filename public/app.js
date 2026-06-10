@@ -118,6 +118,7 @@ let supabase;
 let activeHighlightId = null;
 let activeSelectionText = "";
 let activeSelectionRange = null;
+let toolbarPointerHandledAt = 0;
 let toolbarActionUntil = 0;
 let previewImageUrl = "";
 
@@ -1254,17 +1255,18 @@ function startProgressColorPress(event) {
 
 function startWorkPress(event, id) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (event.pointerType === "mouse") return;
   clearTimeout(longPressTimer);
   event.currentTarget?.setPointerCapture?.(event.pointerId);
   longPressPoint = { x: event.clientX, y: event.clientY };
   workDrag = { id, active: false, moved: false, lastY: event.clientY, lastTargetIndex: null, pointerType: event.pointerType || "mouse" };
   longPressTimer = setTimeout(() => {
-    suppressShelfClick = true;
     if (!workDrag || workDrag.id !== id) return;
     workDrag.active = true;
+    suppressShelfClick = true;
     document.body.classList.add("shelf-dragging");
     document.querySelector(`[data-work="${cssEscape(id)}"]`)?.classList.add("dragging");
-  }, event.pointerType === "mouse" ? 520 : 300);
+  }, 300);
 }
 
 async function moveDraggedWork(event) {
@@ -3412,13 +3414,26 @@ async function handleSelectionToolbarAction(event) {
 
 $("#selectionToolbar").addEventListener("pointerdown", (event) => {
   toolbarActionUntil = Date.now() + 1000;
+  const actionable = event.target.closest("[data-highlight-color], [data-highlight-action]");
+  if (actionable) {
+    toolbarPointerHandledAt = Date.now();
+    handleSelectionToolbarAction(event);
+  }
+  event.preventDefault();
   event.stopPropagation();
 });
 $("#selectionToolbar").addEventListener("touchstart", (event) => {
   toolbarActionUntil = Date.now() + 1000;
   event.stopPropagation();
 }, { passive: true });
-$("#selectionToolbar").addEventListener("click", handleSelectionToolbarAction);
+$("#selectionToolbar").addEventListener("click", (event) => {
+  if (Date.now() - toolbarPointerHandledAt < 700) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+  handleSelectionToolbarAction(event);
+});
 
 $("#closeImagePreview").addEventListener("click", () => $("#imagePreviewDialog").close());
 $("#downloadPreviewImage").addEventListener("click", downloadPreviewImage);
