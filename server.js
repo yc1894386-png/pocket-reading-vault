@@ -1,13 +1,17 @@
 ﻿import http from "node:http";
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const root = fileURLToPath(new URL("./public", import.meta.url));
+const execFileAsync = promisify(execFile);
 const port = Number(process.env.PORT || 4173);
 const sourceHost = [[ "archive", "of", "our", "own" ].join(""), "org"].join(".");
 const downloadHost = `download.${sourceHost}`;
 const lofterHostPattern = /(^|\.)lofter\.com$/i;
+const shoubanjiangHostPattern = /(^|\.)shoubanjiang\.com$/i;
 const importCache = new Map();
 const imageCache = new Map();
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://pocket-reading-vault.onrender.com";
@@ -484,9 +488,123 @@ async function parseReadableWork(html, sourceUrl) {
   };
 }
 
+function uniqueShoubanjiangChapters(html, sourceUrl) {
+  const items = [];
+  const seen = new Set();
+  for (const match of html.matchAll(/<li>\s*<a[^>]+href=["']([^"']*\/book\/\d+\/\d+(?:_\d+)?\.html)["'][^>]*>([\s\S]*?)<\/a>\s*<\/li>/gi)) {
+    const href = absoluteUrl(match[1], sourceUrl);
+    const canonical = href.replace(/_(\d+)(\.html)$/i, "$2");
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    items.push({
+      url: canonical,
+      title: textOnly(match[2]) || `第 ${items.length + 1} 章`,
+      order: Number(canonical.match(/\/(\d+)(?:_\d+)?\.html/i)?.[1] || items.length)
+    });
+  }
+  return items.sort((a, b) => a.order - b.order);
+}
+
+function parseShoubanjiangPage(html, pageUrl) {
+  const rawTitle = textOnly(firstMatch(html, /<div[^>]+class=["']chapter_name["'][^>]*>([\s\S]*?)<\/div>/i));
+  const title = rawTitle.replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)\s*$/i, "").trim() || "章节";
+  let content = firstMatch(html, /<div[^>]+class=["']chapter_content["'][^>]*>([\s\S]*?)<\/div>/i);
+  content = content
+    .replace(/内容未完，下一页继续阅读/g, "")
+    .replace(/^\s*<br\s*\/?>/i, "");
+  const nextPageHref = firstMatch(html, /<a[^>]+href=["']([^"']+)["'][^>]*>\s*下一页\s*<\/a>/i);
+  const nextPage = nextPageHref ? absoluteUrl(nextPageHref, pageUrl) : "";
+  return { title, content: sanitizeImportedHtml(content, pageUrl), nextPage };
+}
+
+async function parseShoubanjiangWork(html, sourceUrl) {
+  const title = textOnly(firstMatch(html, /<div[^>]+class=["']catalog_info_right["'][^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>/i))
+    || textOnly(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)).replace(/最新章节[\s\S]*$/i, "")
+    || "笔趣阁小说";
+  const author = textOnly(firstMatch(html, /<div[^>]+class=["']catalog_author["'][^>]*>\s*作者：\s*(?:<a[^>]*>)?([\s\S]*?)(?:<\/a>)?\s*<\/div>/i)) || "作者待补";
+  const category = textOnly(firstMatch(html, /<span[^>]+class=["']s1["'][^>]*>([\s\S]*?)<\/span>/i));
+  const status = textOnly(firstMatch(html, /<span[^>]+class=["']s2["'][^>]*>([\s\S]*?)<\/span>/i));
+  const intro = firstMatch(html, /<div[^>]+class=["']catalog_intor["'][^>]*>([\s\S]*?)<\/div>/i)
+    .replace(/^\s*本书简介：?/i, "");
+  const chapters = uniqueShoubanjiangChapters(html, sourceUrl).slice(0, 80);
+  if (!chapters.length) {
+    throw new Error("这个目录页能打开，但没有找到章节链接。");
+  }
+
+  const pageCounter = { count: 0, clipped: false };
+  const maxPages = 180;
+  const fetchChapter = async (chapter, index) => {
+    const parts = [];
+    let currentUrl = chapter.url;
+    let chapterTitle = chapter.title;
+    const seenPages = new Set();
+    for (let page = 0; currentUrl && page < 40; page += 1) {
+      if (seenPages.has(currentUrl) || pageCounter.count >= maxPages) {
+        pageCounter.clipped = pageCounter.count >= maxPages;
+        break;
+      }
+      seenPages.add(currentUrl);
+      pageCounter.count += 1;
+      const pageHtml = await fetchHtml(currentUrl, "章节页");
+      const parsed = parseShoubanjiangPage(pageHtml, currentUrl);
+      chapterTitle = parsed.title || chapterTitle;
+      if (parsed.content) parts.push(parsed.content);
+      const sameChapter = parsed.nextPage
+        && parsed.nextPage.replace(/_(\d+)(\.html)$/i, "$2") === chapter.url;
+      currentUrl = sameChapter ? parsed.nextPage : "";
+    }
+    return {
+      index,
+      html: `<section class="chapter" id="chapter-${index + 1}">
+        <h2>${chapterTitle}</h2>
+        <div class="chapter-body">${parts.join("<br><br>")}</div>
+      </section>`
+    };
+  };
+
+  const results = [];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(3, chapters.length) }, async () => {
+    while (cursor < chapters.length && pageCounter.count < maxPages) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await fetchChapter(chapters[index], index);
+    }
+  });
+  await Promise.all(workers);
+
+  const contentHtml = results.filter(Boolean).sort((a, b) => a.index - b.index).map((item) => item.html).join("\n");
+  const clippedNote = pageCounter.clipped
+    ? "<p>注：为了避免一次导入过久，这次先保存了前 180 个分页；剩余章节可以之后再做增量导入。</p>"
+    : "";
+  const summaryHtml = `<p>${intro ? textOnly(intro) : ""}</p>${clippedNote}`;
+  return {
+    title,
+    author,
+    sourceUrl,
+    importedAt: new Date().toISOString(),
+    summaryHtml,
+    contentHtml,
+    metadata: {
+      rating: "网页",
+      categories: category ? [category] : ["网页小说"],
+      fandoms: [],
+      warnings: [],
+      relationships: [],
+      characters: [],
+      freeforms: ["笔趣阁目录导入"],
+      words: `${textLengthFromHtml(contentHtml)} 字`,
+      chapters: `${results.filter(Boolean).length}/${chapters.length}`,
+      status: pageCounter.clipped ? "部分导入" : (status || "网页导入"),
+      language: "中文"
+    }
+  };
+}
+
 async function parseImportedWork(html, sourceUrl) {
   const hostname = new URL(sourceUrl).hostname;
   if (lofterHostPattern.test(hostname)) return parseLofterWork(html, sourceUrl);
+  if (shoubanjiangHostPattern.test(hostname)) return parseShoubanjiangWork(html, sourceUrl);
   if (isSourceHost(hostname)) return parseSourceWork(html, sourceUrl);
   return parseReadableWork(html, sourceUrl);
 }
@@ -556,6 +674,10 @@ function normalizeSourceUrl(url) {
   if (lofterHostPattern.test(hostname)) {
     return parsed;
   }
+  if (shoubanjiangHostPattern.test(hostname)) {
+    parsed.hash = "";
+    return parsed;
+  }
   if (!isSourceHost(hostname)) {
     return parsed;
   }
@@ -571,6 +693,7 @@ function getWorkId(parsed) {
 
 function getDownloadUrls(parsed) {
   if (lofterHostPattern.test(parsed.hostname)) return [];
+  if (shoubanjiangHostPattern.test(parsed.hostname)) return [];
   if (!isSourceHost(parsed.hostname)) return [];
   const workId = getWorkId(parsed);
   if (!workId) return [];
@@ -602,22 +725,64 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function fetchHtmlWithPython(url, label) {
+  const script = `
+import sys
+import urllib.request
+url = sys.argv[1]
+req = urllib.request.Request(url, headers={
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cookie": "view_adult=true; viewed_adult=true",
+})
+with urllib.request.urlopen(req, timeout=30) as res:
+    status = getattr(res, "status", 200)
+    if status < 200 or status >= 300:
+        raise RuntimeError(f"{status}")
+    sys.stdout.buffer.write(res.read())
+`.trim();
+  const commands = process.platform === "win32" ? ["python", "py"] : ["python3", "python"];
+  const errors = [];
+  for (const command of commands) {
+    try {
+      const { stdout } = await execFileAsync(command, ["-c", script, url], {
+        timeout: 35000,
+        maxBuffer: 1024 * 1024 * 12,
+        windowsHide: true
+      });
+      if (stdout && stdout.trim()) return stdout;
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  const error = new Error(`${label}备用读取也失败了`);
+  error.cause = errors[errors.length - 1];
+  throw error;
+}
+
 async function fetchHtml(url, label) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch(url, {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: requestHeaders(url)
-    });
+    try {
+      const response = await fetch(url, {
+        redirect: "follow",
+        signal: controller.signal,
+        headers: requestHeaders(url)
+      });
 
-    if (!response.ok) {
-      const error = new Error(`${label}返回了 ${response.status}`);
-      error.status = response.status;
+      if (!response.ok) {
+        const error = new Error(`${label}返回了 ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return await response.text();
+    } catch (error) {
+      const hostname = new URL(url).hostname;
+      if (shoubanjiangHostPattern.test(hostname)) return await fetchHtmlWithPython(url, label);
       throw error;
     }
-    return await response.text();
   } finally {
     clearTimeout(timeout);
   }
