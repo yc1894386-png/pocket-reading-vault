@@ -1774,6 +1774,21 @@ async function saveCloudNow({ silent = false } = {}) {
     });
     if (!silent) setCloudStatus(`云端已保存：${payload.works.length} 篇${cloudState?._vellumCompressed ? "，已压缩" : ""} · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
+    if (!silent && state.works.length && isCloudStateTimeout(error)) {
+      const oldCode = state.syncCode;
+      const shouldRebuild = confirm(`这个同步码 ${oldCode} 里的旧云端书架太大，已经卡住了。\n\n要换一个新同步码，并把这台设备上的 ${state.works.length} 篇书重新上传到新云端吗？\n\n另一台设备之后填新同步码同步就好。`);
+      if (shouldRebuild) {
+        state.syncCode = makeSyncCode();
+        const input = $("#cloudCode");
+        if (input) input.value = state.syncCode;
+        await dbSet("library", state);
+        renderCloudPanel();
+        syncingCloud = false;
+        await saveCloudNow({ silent: false });
+        setCloudStatus(`旧同步码已跳过。新同步码：${state.syncCode}。另一台设备填这个码同步。`);
+        return;
+      }
+    }
     setCloudStatus(`云端保存失败：${cloudRestErrorText(error)}`);
   } finally {
     syncingCloud = false;
