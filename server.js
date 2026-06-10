@@ -507,8 +507,11 @@ function uniqueShoubanjiangChapters(html, sourceUrl) {
 
 function parseShoubanjiangPage(html, pageUrl) {
   const rawTitle = textOnly(firstMatch(html, /<div[^>]+class=["']chapter_name["'][^>]*>([\s\S]*?)<\/div>/i));
-  const title = rawTitle.replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)\s*$/i, "").trim() || "章节";
+  const title = rawTitle.replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)\s*$/i, "").trim();
   let content = firstMatch(html, /<div[^>]+class=["']chapter_content["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (!content || textOnly(content).replace(/\s/g, "").length < 20) {
+    throw new Error("章节页没有返回正文，可能被原站临时拦截了。");
+  }
   content = content
     .replace(/内容未完，下一页继续阅读/g, "")
     .replace(/^\s*<br\s*\/?>/i, "");
@@ -518,6 +521,9 @@ function parseShoubanjiangPage(html, pageUrl) {
 }
 
 async function parseShoubanjiangWork(html, sourceUrl) {
+  if (!/catalog_info|catalog_list|chapter_list|\/book\/\d+\/\d+(?:_\d+)?\.html/i.test(html)) {
+    throw new Error("这个站点这次返回的是拦截页，不是真正目录。请稍后再试，或在浏览器打开原文后用手动导入保存。");
+  }
   const title = textOnly(firstMatch(html, /<div[^>]+class=["']catalog_info_right["'][^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>/i))
     || textOnly(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)).replace(/最新章节[\s\S]*$/i, "")
     || "笔趣阁小说";
@@ -556,7 +562,7 @@ async function parseShoubanjiangWork(html, sourceUrl) {
     return {
       index,
       html: `<section class="chapter" id="chapter-${index + 1}">
-        <h2>${chapterTitle}</h2>
+        <h2>${textOnly(chapterTitle) || `第 ${index + 1} 章`}</h2>
         <div class="chapter-body">${parts.join("<br><br>")}</div>
       </section>`
     };
