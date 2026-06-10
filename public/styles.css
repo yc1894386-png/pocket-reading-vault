@@ -8079,6 +8079,233 @@ body:not(.reading) .selection-toolbar {
   color: var(--text) !important;
 }
 
+/* v98: restore visible palette progress and give shelf cards a softer book-card depth */
+.work-card {
+  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent) !important;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.035),
+    0 1px 0 rgba(0, 0, 0, 0.025) !important;
+  background: var(--panel) !important;
+}
+
+.work-card:hover {
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.045),
+    0 1px 0 rgba(0, 0, 0, 0.025) !important;
+}
+
+.work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: auto !important;
+  border-radius: 17px 0 0 17px !important;
+  opacity: 1 !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 52%, transparent) 0 calc(100% - 7px),
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 92%, var(--text) 4%) calc(100% - 7px) 100%
+    ) !important;
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, transparent) !important;
+}
+
+.work-progress-wash::after {
+  display: none !important;
+}
+
+.work-progress-edge {
+  display: none !important;
+}
+
+:root.dark .work-card {
+  box-shadow: none !important;
+}
+
+/* v101: final no-jump shelf filters and stronger progress tint. Keep this at EOF. */
+.folder-list {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  padding: 2px 18px 6px 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  contain: layout paint !important;
+}
+
+.folder-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.folder-card,
+.folder-card.active,
+.folder-card:active,
+.folder-card:focus,
+.folder-card:hover {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  font-variation-settings: normal !important;
+  font-synthesis-weight: none !important;
+  line-height: 40px !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  transform: none !important;
+  scale: 1 !important;
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease !important;
+}
+
+.folder-card span,
+.folder-card small,
+.folder-card.active span,
+.folder-card.active small {
+  display: inline-block !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  font-variation-settings: normal !important;
+  line-height: 40px !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  transform: none !important;
+}
+
+.folder-card small {
+  min-width: auto !important;
+  color: inherit !important;
+  opacity: 0.78 !important;
+}
+
+.folder-card {
+  background: var(--soft) !important;
+  color: var(--muted) !important;
+}
+
+.folder-card.active {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+.work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: auto !important;
+  min-height: 100% !important;
+  border-radius: 17px 0 0 17px !important;
+  opacity: 1 !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 56%, transparent) 0 calc(100% - 7px),
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 96%, var(--text) 4%) calc(100% - 7px) 100%
+    ) !important;
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, transparent) !important;
+}
+
+.work-progress-wash::after,
+.work-progress-edge {
+  display: none !important;
+}
+
+/* v105 absolute final: visible progress wash, appended at EOF on purpose. */
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  opacity: 1 !important;
+  border-radius: 17px 0 0 17px !important;
+  background:
+    linear-gradient(
+      180deg,
+      var(--shelf-progress-color, #e0f4f1) 0 calc(100% - 7px),
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) calc(100% - 7px) 100%
+    ) !important;
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%),
+    inset 0 -7px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.work-card .work-progress-wash::after,
+.work-card .work-progress-edge {
+  display: none !important;
+}
+
+/* v105 final: keep the original visible progress wash after all legacy overrides. */
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  opacity: 1 !important;
+  border-radius: 17px 0 0 17px !important;
+  background:
+    linear-gradient(
+      180deg,
+      var(--shelf-progress-color, #e0f4f1) 0 calc(100% - 7px),
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) calc(100% - 7px) 100%
+    ) !important;
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%),
+    inset 0 -7px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.work-card .work-progress-wash::after,
+.work-card .work-progress-edge {
+  display: none !important;
+}
+
+/* v104: force original solid progress color, no mixing and no transparency. */
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  opacity: 1 !important;
+  border-radius: 17px 0 0 17px !important;
+  background: var(--shelf-progress-color, #e0f4f1) !important;
+  box-shadow:
+    inset -1px 0 0 var(--shelf-progress-color, #e0f4f1),
+    inset 0 -7px 0 var(--shelf-progress-color, #e0f4f1) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
 .brand-lockup .eyebrow {
   font-size: 0.68rem !important;
   font-weight: 600 !important;
@@ -8161,3 +8388,126 @@ body:not(.reading) .selection-toolbar {
     ) !important;
   box-shadow: none !important;
 }
+
+/* v102 true final: no-jump shelf filters and original progress colors. */
+.folder-list {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  padding: 2px 18px 6px 0 !important;
+  margin: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  contain: layout paint !important;
+  font-size: 0 !important;
+}
+
+.folder-list::-webkit-scrollbar {
+  display: none !important;
+}
+
+.folder-card,
+.folder-card.active,
+.folder-card:active,
+.folder-card:focus,
+.folder-card:hover {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  font-variation-settings: normal !important;
+  font-synthesis-weight: none !important;
+  line-height: 40px !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  transform: none !important;
+  scale: 1 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease !important;
+}
+
+.folder-card span,
+.folder-card small,
+.folder-card.active span,
+.folder-card.active small {
+  display: inline-block !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  font-variation-settings: normal !important;
+  line-height: 40px !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  transform: none !important;
+}
+
+.folder-card small {
+  min-width: auto !important;
+  color: inherit !important;
+  opacity: 0.78 !important;
+  text-align: left !important;
+}
+
+.folder-card {
+  background: var(--soft) !important;
+  color: var(--muted) !important;
+}
+
+.folder-card.active {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border-radius: 17px 0 0 17px !important;
+  opacity: 1 !important;
+  background:
+    linear-gradient(
+      180deg,
+      var(--shelf-progress-color, #e0f4f1) 0 calc(100% - 7px),
+      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) calc(100% - 7px) 100%
+    ) !important;
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%),
+    inset 0 -7px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.work-card .work-progress-wash::after,
+.work-card .work-progress-edge {
+  display: none !important;
+}
+

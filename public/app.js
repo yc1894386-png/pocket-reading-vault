@@ -2,6 +2,7 @@
 const DB_VERSION = 1;
 const STORE = "state";
 const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
+const CLOUD_PROXY_BASE = IMPORT_API_BASE;
 const SUPABASE_URL = "https://bhliywysdezcykoyyozw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
 
@@ -245,10 +246,19 @@ function normalizeImages(root, baseUrl = "") {
       || img.getAttribute("data-full-src")
       || img.getAttribute("data-image-src")
       || img.getAttribute("data-original-src")
+      || img.getAttribute("data-actualsrc")
+      || img.getAttribute("data-url")
+      || img.getAttribute("data-img-url")
+      || img.getAttribute("data-preview-src")
+      || img.getAttribute("data-large-file")
+      || img.getAttribute("data-medium-file")
+      || img.getAttribute("data-orig-file")
       || "";
     const srcset = img.getAttribute("srcset")
       || img.getAttribute("data-srcset")
       || img.getAttribute("data-lazy-srcset")
+      || img.getAttribute("data-cfsrcset")
+      || img.getAttribute("data-original-srcset")
       || "";
     const original = originalImageUrlFromProxy(src)
       || img.getAttribute("data-original-src")
@@ -271,13 +281,23 @@ function normalizeImages(root, baseUrl = "") {
     img.removeAttribute("data-hi-res-src");
     img.removeAttribute("data-full-src");
     img.removeAttribute("data-image-src");
+    img.removeAttribute("data-actualsrc");
+    img.removeAttribute("data-url");
+    img.removeAttribute("data-img-url");
+    img.removeAttribute("data-preview-src");
+    img.removeAttribute("data-large-file");
+    img.removeAttribute("data-medium-file");
+    img.removeAttribute("data-orig-file");
     img.removeAttribute("data-srcset");
     img.removeAttribute("data-lazy-srcset");
+    img.removeAttribute("data-cfsrcset");
+    img.removeAttribute("data-original-srcset");
   });
 }
 
 function prepareReaderImages() {
   const work = activeWork();
+  normalizeImages($("#workContent"), work?.sourceUrl || "");
   const images = [...$("#workContent").querySelectorAll("img")];
   images.forEach((img, index) => {
     const original = img.getAttribute("data-original-src") || originalImageUrlFromProxy(img.getAttribute("src") || "") || img.getAttribute("src") || "";
@@ -599,6 +619,12 @@ function renderFolders() {
   `).join("");
 }
 
+function syncFolderActiveState() {
+  document.querySelectorAll("#folderList [data-folder]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.folder === state.selectedFolder);
+  });
+}
+
 function renderWorks() {
   const works = filteredWorks();
   $("#workList").innerHTML = works.length ? works.map((work) => {
@@ -620,11 +646,25 @@ function renderWorks() {
         <span class="work-progress-edge" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
-        <p>${progressText} · ${chapters.length} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
+        <p class="work-progress-text">${progressText} · ${chapters.length} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
         ${customTags.length ? `<div class="mini-tag-row">${customTags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </button>
     `;
   }).join("") : `<div class="empty-state compact-empty"><p>这里还没有作品。</p></div>`;
+}
+
+function syncWorkCardProgress(work, ratio = readingToWholeRatio(work)) {
+  if (!work) return;
+  const card = document.querySelector(`[data-work="${cssEscape(work.id)}"]`);
+  if (!card) return;
+  const chapters = getChapters(work);
+  const progress = Math.round(Math.max(0, Math.min(1, ratio)) * 100);
+  card.style.setProperty("--work-progress", `${progress}%`);
+  const progressLine = card.querySelector(".work-progress-text");
+  if (progressLine) {
+    const words = work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`;
+    progressLine.textContent = `${progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读"} · ${chapters.length} 章 · ${words}`;
+  }
 }
 
 function updateReaderChapterLabels(work = activeWork(), chapters = work ? getChapters(work) : []) {
@@ -1382,8 +1422,17 @@ function setCloudStatus(message) {
 
 function cloudRestErrorText(error) {
   const message = error?.message || "未知错误";
+  if (/backup cloud channel|备用通道/i.test(message)) {
+    return "备用同步通道也失败了。请稍后再试，或检查 Render 是否已经部署新版。";
+  }
   if (/failed to fetch|network|load failed/i.test(message)) {
-    return "连不上云端。请确认手机/电脑能打开 Supabase，或稍后重试。";
+    return "连不上云端。新版会自动走备用同步通道；如果仍失败，请确认 Render 已部署新版。";
+  }
+  if (/statement timeout|canceling statement|timeout/i.test(message)) {
+    return "云端旧书架太大，读取或写入超时。请在有完整书库的设备点「只上传」，先把云端压缩成新版。";
+  }
+  if (/504|云端备用通道连接 Supabase 超时/i.test(message)) {
+    return "云端旧书架太大，备用通道读取超时。请在有完整书库的设备点「只上传」，先把云端压缩成新版。";
   }
   if (/shared_library_states|schema cache|relation|404/i.test(message)) {
     return "云端同步表还没建好。需要在 Supabase 运行同步码 SQL。";
@@ -1392,6 +1441,38 @@ function cloudRestErrorText(error) {
     return "云端表权限没放行。需要在 Supabase 运行新版同步码 SQL。";
   }
   return message;
+}
+
+function isCloudStateTimeout(error) {
+  return /statement timeout|canceling statement|timeout|504|云端备用通道连接 Supabase 超时/i.test(error?.message || "");
+}
+
+function syncCodeFromPostgrestQuery(query = "") {
+  const match = query.match(/[?&]sync_code=eq\.([^&]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+async function supabaseProxyRest(path, { method = "GET", query = "", body = null } = {}) {
+  if (path !== "shared_library_states") throw new Error("backup cloud channel only supports shelf sync");
+  const syncCode = body?.sync_code || syncCodeFromPostgrestQuery(query);
+  const response = await fetch(`${CLOUD_PROXY_BASE}/api/cloud${method === "GET" ? `?syncCode=${encodeURIComponent(syncCode)}` : ""}`, {
+    method,
+    headers: {
+      accept: "application/json",
+      ...(method === "POST" ? { "content-type": "application/json" } : {})
+    },
+    body: method === "POST" ? JSON.stringify({ syncCode, state: body?.state }) : undefined
+  });
+  const text = await response.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error("备用同步通道还没部署新版。请上传最外层文件并等待 Render 更新。");
+  }
+  if (!response.ok) throw new Error(json?.error || `备用通道 ${response.status}`);
+  if (method === "GET") return json ? [json] : [];
+  return json;
 }
 
 async function supabaseRest(path, { method = "GET", query = "", body = null, prefer = "" } = {}) {
@@ -1403,11 +1484,17 @@ async function supabaseRest(path, { method = "GET", query = "", body = null, pre
   };
   if (body !== null) headers["content-type"] = "application/json";
   if (prefer) headers.prefer = prefer;
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body === null ? undefined : JSON.stringify(body)
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body === null ? undefined : JSON.stringify(body)
+    });
+  } catch (error) {
+    if (path === "shared_library_states") return supabaseProxyRest(path, { method, query, body });
+    throw error;
+  }
   if (!response.ok) {
     let detail = "";
     try {
@@ -1466,6 +1553,165 @@ function cloneLibraryState(value) {
   });
 }
 
+function cloudWorkContentScore(work = {}) {
+  const html = work.contentHtml || "";
+  if (!html) return 0;
+  const textLength = textFromHtml(html).replace(/\s/g, "").length;
+  const imageCount = (html.match(/<img\b/gi) || []).length;
+  const chapterCount = Math.max(1, (html.match(/\bclass=["'][^"']*chapter/gi) || []).length);
+  const hasChapterRoot = /id=["']chapters["']|class=["'][^"']*reader-chapter/i.test(html) ? 1000 : 0;
+  return textLength + imageCount * 500 + Math.max(0, chapterCount - 1) * 300 + hasChapterRoot;
+}
+
+function usefulValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value === null || value === undefined) return false;
+  const text = String(value).trim();
+  return Boolean(text && !/^(未知|作者待补|字数未知|0 字|undefined|null)$/i.test(text));
+}
+
+function uniqueValues(values = []) {
+  return [...new Set(values.filter((item) => item !== null && item !== undefined && String(item).trim()).map((item) => String(item).trim()))];
+}
+
+function mergeAnnotationList(localItems = [], cloudItems = []) {
+  const map = new Map();
+  for (const item of [...localItems, ...cloudItems]) {
+    if (!item) continue;
+    const key = item.id || `${item.chapterIndex || 0}|${item.text || item.title || ""}`.slice(0, 220);
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, item);
+      continue;
+    }
+    const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+    const nextTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+    map.set(key, nextTime >= existingTime ? { ...existing, ...item } : { ...item, ...existing });
+  }
+  return [...map.values()];
+}
+
+function mergeMetadata(localMetadata = {}, cloudMetadata = {}, newerMetadata = {}, richerMetadata = {}) {
+  const merged = { ...localMetadata, ...cloudMetadata, ...newerMetadata };
+  const keys = new Set([
+    ...Object.keys(localMetadata || {}),
+    ...Object.keys(cloudMetadata || {}),
+    ...Object.keys(newerMetadata || {}),
+    ...Object.keys(richerMetadata || {})
+  ]);
+  for (const key of keys) {
+    const values = [localMetadata?.[key], cloudMetadata?.[key], newerMetadata?.[key], richerMetadata?.[key]].filter((value) => value !== undefined);
+    if (values.some(Array.isArray)) {
+      merged[key] = uniqueValues(values.flatMap((value) => Array.isArray(value) ? value : usefulValue(value) ? [value] : []));
+      continue;
+    }
+    if (!usefulValue(merged[key])) {
+      const fallback = values.find(usefulValue);
+      if (fallback !== undefined) merged[key] = fallback;
+    }
+  }
+  for (const key of ["words", "chapters"]) {
+    if (usefulValue(richerMetadata?.[key])) merged[key] = richerMetadata[key];
+  }
+  return merged;
+}
+
+function mergeWorkRecords(localWork, cloudWork) {
+  const local = normalizeWork(structuredClone(localWork || {}));
+  const cloud = normalizeWork(structuredClone(cloudWork || {}));
+  const localTime = new Date(local.updatedAt || local.importedAt || 0).getTime();
+  const cloudTime = new Date(cloud.updatedAt || cloud.importedAt || 0).getTime();
+  const newer = cloudTime >= localTime ? cloud : local;
+  const older = cloudTime >= localTime ? local : cloud;
+  const localScore = cloudWorkContentScore(local);
+  const cloudScore = cloudWorkContentScore(cloud);
+  const richer = cloudScore > localScore ? cloud : local;
+  const merged = normalizeWork({
+    ...older,
+    ...newer,
+    title: usefulValue(newer.title) ? newer.title : older.title,
+    author: usefulValue(newer.author) ? newer.author : older.author,
+    sourceUrl: usefulValue(newer.sourceUrl) ? newer.sourceUrl : older.sourceUrl,
+    contentHtml: richer.contentHtml || newer.contentHtml || older.contentHtml || "",
+    summaryHtml: textFromHtml(richer.summaryHtml || "").length >= textFromHtml(newer.summaryHtml || older.summaryHtml || "").length
+      ? richer.summaryHtml
+      : (newer.summaryHtml || older.summaryHtml || ""),
+    metadata: mergeMetadata(local.metadata, cloud.metadata, newer.metadata, richer.metadata),
+    folderId: newer.folderId || older.folderId || "unfiled",
+    folderIds: uniqueValues([...(local.folderIds || []), ...(cloud.folderIds || [])]).filter((id) => id !== "all" && id !== "unfiled"),
+    customTags: uniqueValues([...(local.customTags || []), ...(cloud.customTags || [])]),
+    note: usefulValue(newer.note) ? newer.note : (older.note || ""),
+    bookmarks: mergeAnnotationList(local.bookmarks, cloud.bookmarks),
+    highlights: mergeAnnotationList(local.highlights, cloud.highlights),
+    reading: newer.reading || older.reading || { chapterIndex: 0, ratio: 0 },
+    sortOrder: Math.min(Number(local.sortOrder || Date.now()), Number(cloud.sortOrder || Date.now())),
+    importedAt: local.importedAt && cloud.importedAt
+      ? (new Date(local.importedAt).getTime() <= new Date(cloud.importedAt).getTime() ? local.importedAt : cloud.importedAt)
+      : (local.importedAt || cloud.importedAt || new Date().toISOString()),
+    updatedAt: new Date(Math.max(localTime || 0, cloudTime || 0) || Date.now()).toISOString()
+  });
+  if (cloudScore > localScore && cloudScore > 120) merged.updatedAt = cloud.updatedAt || merged.updatedAt;
+  if (localScore > cloudScore && localScore > 120) merged.updatedAt = local.updatedAt || merged.updatedAt;
+  return merged;
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToUint8Array(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+async function gzipBase64Text(text) {
+  if (typeof CompressionStream === "undefined") return "";
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+  const buffer = await new Response(stream).arrayBuffer();
+  return arrayBufferToBase64(buffer);
+}
+
+async function gunzipBase64Text(value) {
+  if (typeof DecompressionStream === "undefined") throw new Error("这个浏览器暂时不能解压云端书库。");
+  const stream = new Blob([base64ToUint8Array(value)]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return await new Response(stream).text();
+}
+
+async function serializeCloudState(payload) {
+  const json = JSON.stringify(payload);
+  try {
+    const compressed = await gzipBase64Text(json);
+    if (compressed && compressed.length < json.length * 0.9) {
+      return {
+        _vellumCompressed: 1,
+        format: "gzip-base64-json",
+        data: compressed,
+        originalLength: json.length,
+        compressedLength: compressed.length,
+        writer: payload._lastWriter || "",
+        writerAt: payload._lastWriterAt || new Date().toISOString()
+      };
+    }
+  } catch {
+    // Fall back to plain JSON if the browser cannot compress.
+  }
+  return payload;
+}
+
+async function deserializeCloudState(rawState) {
+  if (!rawState?._vellumCompressed) return cloneLibraryState(rawState);
+  const text = await gunzipBase64Text(rawState.data || "");
+  return cloneLibraryState(JSON.parse(text));
+}
+
 function mergeLibraryState(localState, cloudState) {
   const merged = cloneLibraryState(localState);
   const folderMap = new Map((merged.folders || []).map((folder) => [folder.id, folder]));
@@ -1481,9 +1727,7 @@ function mergeLibraryState(localState, cloudState) {
       workMap.set(cloudWork.id, normalizeWork(cloudWork));
       continue;
     }
-    const localTime = new Date(existing.updatedAt || existing.importedAt || 0).getTime();
-    const cloudTime = new Date(cloudWork.updatedAt || cloudWork.importedAt || 0).getTime();
-    workMap.set(cloudWork.id, normalizeWork(cloudTime > localTime ? cloudWork : existing));
+    workMap.set(cloudWork.id, mergeWorkRecords(existing, cloudWork));
   }
   merged.works = [...workMap.values()];
   merged.readerFontSize = localState.readerFontSize || cloudState.readerFontSize || defaultState.readerFontSize;
@@ -1506,7 +1750,7 @@ async function getCloudState() {
   const query = `?select=state,updated_at&sync_code=eq.${encodeURIComponent(state.syncCode)}&limit=1`;
   const rows = await supabaseRest("shared_library_states", { query });
   const row = Array.isArray(rows) ? rows[0] : rows;
-  return row?.state ? cloneLibraryState(row.state) : null;
+  return row?.state ? await deserializeCloudState(row.state) : null;
 }
 
 async function saveCloudNow({ silent = false } = {}) {
@@ -1517,17 +1761,18 @@ async function saveCloudNow({ silent = false } = {}) {
     const payload = cloneLibraryState(state);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
+    const cloudState = await serializeCloudState(payload);
     await supabaseRest("shared_library_states", {
       method: "POST",
       query: "?on_conflict=sync_code",
       prefer: "resolution=merge-duplicates,return=minimal",
       body: {
         sync_code: state.syncCode,
-        state: payload,
+        state: cloudState,
         updated_at: new Date().toISOString()
       }
     });
-    setCloudStatus(`云端已保存：${new Date().toLocaleTimeString()}`);
+    if (!silent) setCloudStatus(`云端已保存：${payload.works.length} 篇${cloudState?._vellumCompressed ? "，已压缩" : ""} · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
     setCloudStatus(`云端保存失败：${cloudRestErrorText(error)}`);
   } finally {
@@ -1578,11 +1823,15 @@ async function loadCloudIntoLocal({ merge = true } = {}) {
     return;
   }
   syncingCloud = true;
+  const localCount = state.works.length;
+  const cloudCount = cloudState.works?.length || 0;
   state = merge ? mergeLibraryState(state, cloudState) : cloneLibraryState(cloudState);
   await dbSet("library", state);
   syncingCloud = false;
   renderAll();
-  setCloudStatus(merge ? "已合并云端书架。" : "已下载云端书架。");
+  setCloudStatus(merge
+    ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。`
+    : `已下载云端书架：${state.works.length} 篇。`);
   if (merge) await saveCloudNow({ silent: true });
 }
 
@@ -1900,14 +2149,31 @@ function createCollectorBookmarklet() {
     chapters = chapters.cloneNode(true);
     qa("script, form", chapters).forEach((node) => node.remove());
     qa("img", chapters).forEach((img) => {
-      const src = img.getAttribute("src") || img.getAttribute("data-src") || img.getAttribute("data-original") || img.getAttribute("data-lazy-src");
+      const src = img.getAttribute("src")
+        || img.getAttribute("data-src")
+        || img.getAttribute("data-original")
+        || img.getAttribute("data-lazy-src")
+        || img.getAttribute("data-cfsrc")
+        || img.getAttribute("data-orig-src")
+        || img.getAttribute("data-hi-res-src")
+        || img.getAttribute("data-full-src")
+        || img.getAttribute("data-image-src")
+        || img.getAttribute("data-actualsrc")
+        || img.getAttribute("data-url")
+        || img.getAttribute("data-img-url")
+        || img.getAttribute("data-preview-src")
+        || img.getAttribute("data-large-file")
+        || img.getAttribute("data-medium-file")
+        || img.getAttribute("data-orig-file");
       if (src) img.setAttribute("src", new URL(src, location.href).href);
-      const srcset = img.getAttribute("srcset");
-      if (!src && srcset) img.setAttribute("src", new URL(srcset.split(",")[0].trim().split(/\\s+/)[0], location.href).href);
-      img.removeAttribute("data-src");
-      img.removeAttribute("data-original");
-      img.removeAttribute("data-lazy-src");
+      const srcset = img.getAttribute("srcset")
+        || img.getAttribute("data-srcset")
+        || img.getAttribute("data-lazy-srcset")
+        || img.getAttribute("data-cfsrcset")
+        || img.getAttribute("data-original-srcset");
+      if (!src && srcset) img.setAttribute("src", new URL(srcset.split(",")[0].trim().split(/\s+/)[0], location.href).href);
     });
+    normalizeImages(chapters, location.href);
     let title = text("h2.title.heading", "h1.title", "h1", "title")
       .replace(/\\s+-\\s+Chapter\\s+\\d+[\\s\\S]*$/i, "")
       .replace(/\\s*\\|\\s*Archive[\\s\\S]*$/i, "")
@@ -2181,6 +2447,10 @@ function canUseSwipeTurn() {
   return isPagedMode() && (mode === "tap" || mode === "swipe");
 }
 
+function isDesktopReaderLayout() {
+  return window.matchMedia?.("(min-width: 760px) and (pointer: fine)")?.matches;
+}
+
 function setControlsOpen(open) {
   controlsOpen = open;
   $("#readingBar").classList.toggle("hidden", !activeWork() || !controlsOpen);
@@ -2208,6 +2478,9 @@ function updateProgressBar() {
   if (!work) return;
   const ratio = chapterScrollRatio();
   const chapters = getChapters(work);
+  normalizeWork(work);
+  work.reading.wholeRatio = ratio;
+  work.reading.ratio = ratio;
   work.reading.chapterIndex = visibleReaderChapterIndex();
   $("#progressRange").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
@@ -2216,6 +2489,7 @@ function updateProgressBar() {
   $("#consoleBookmarkCount").textContent = String(bookmarkCount);
   updateReaderChapterLabels(work, chapters);
   updatePageCount();
+  syncWorkCardProgress(work, ratio);
 }
 
 function updatePageCount() {
@@ -2724,7 +2998,13 @@ $("#cloudStartButton").addEventListener("click", async () => {
     await saveState();
     renderCloudPanel();
     startCloudRealtime();
-    await loadCloudIntoLocal({ merge: true });
+    try {
+      await loadCloudIntoLocal({ merge: true });
+    } catch (error) {
+      if (!state.works.length || !isCloudStateTimeout(error)) throw error;
+      setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
+      await saveCloudNow({ silent: false });
+    }
     await saveCloudNow({ silent: true });
     setCloudStatus("同步码已连接。手机电脑填同一个码就会同步。");
   } catch (error) {
@@ -2824,9 +3104,15 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
   }
   try {
     setCloudStatus("正在同步……");
-    await loadCloudIntoLocal({ merge: true });
+    try {
+      await loadCloudIntoLocal({ merge: true });
+    } catch (error) {
+      if (!state.works.length || !isCloudStateTimeout(error)) throw error;
+      setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
+      await saveCloudNow({ silent: false });
+    }
     await saveCloudNow({ silent: true });
-    setCloudStatus(`同步完成：${new Date().toLocaleTimeString()}`);
+    setCloudStatus(`同步完成：现在本机有 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
     setCloudStatus(`同步失败：${cloudRestErrorText(error)}`);
   }
@@ -2850,8 +3136,10 @@ $("#folderList").addEventListener("click", async (event) => {
   }
   state.selectedFolder = button.dataset.folder;
   state.selectedWorkId = null;
+  syncFolderActiveState();
   await saveState();
-  renderAll();
+  renderWorks();
+  renderReader();
 });
 
 $("#folderList").addEventListener("pointerdown", (event) => {
@@ -3361,11 +3649,17 @@ $("#workContent").addEventListener("click", (event) => {
   const selection = window.getSelection();
   if (selection && !selection.isCollapsed) return;
   if (!isPagedMode()) {
-    setControlsOpen(!controlsOpen);
+    if (isDesktopReaderLayout()) openReaderDialog("chapters");
+    else setControlsOpen(!controlsOpen);
     return;
   }
   if (isMenuZone) {
-    setControlsOpen(!controlsOpen);
+    if (isDesktopReaderLayout()) {
+      setControlsOpen(false);
+      openReaderDialog("chapters");
+    } else {
+      setControlsOpen(!controlsOpen);
+    }
     return;
   }
   if (normalizedTurnMode() === "scroll") return;

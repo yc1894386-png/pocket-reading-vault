@@ -16,6 +16,8 @@ const shauthorHostPattern = /(^|\.)shauthor\.com$/i;
 const importCache = new Map();
 const imageCache = new Map();
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://pocket-reading-vault.onrender.com";
+const supabaseUrl = process.env.SUPABASE_URL || "https://bhliywysdezcykoyyozw.supabase.co";
+const supabaseKey = process.env.SUPABASE_KEY || "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -31,11 +33,33 @@ function sendJson(res, status, value) {
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type, accept",
     "content-length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 20 * 1024 * 1024) {
+        reject(new Error("请求太大了。"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      if (!body.trim()) return resolve({});
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        reject(new Error("云端请求格式不对。"));
+      }
+    });
+    req.on("error", reject);
+  });
 }
 
 function sendText(res, status, value) {
@@ -368,6 +392,67 @@ async function proxyImage(targetUrl, refererUrl = "") {
     imageCache.set(`${targetUrl}|${referer}`, image);
     if (imageCache.size > 160) imageCache.delete(imageCache.keys().next().value);
     return image;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function cleanSyncCode(value = "") {
+  return String(value).toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
+}
+
+async function supabaseSharedRequest({ method = "GET", syncCode = "", state = null }) {
+  const code = cleanSyncCode(syncCode);
+  if (!/^[A-Z0-9-]{8,32}$/.test(code)) {
+    const error = new Error("同步码格式不对。");
+    error.status = 400;
+    throw error;
+  }
+  const headers = {
+    apikey: supabaseKey,
+    authorization: `Bearer ${supabaseKey}`,
+    accept: "application/json"
+  };
+  let url = `${supabaseUrl}/rest/v1/shared_library_states`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  const options = { method, headers, signal: controller.signal };
+  if (method === "GET") {
+    url += `?select=state,updated_at&sync_code=eq.${encodeURIComponent(code)}&limit=1`;
+  } else {
+    headers["content-type"] = "application/json";
+    headers.prefer = "resolution=merge-duplicates,return=minimal";
+    url += "?on_conflict=sync_code";
+    options.body = JSON.stringify({
+      sync_code: code,
+      state,
+      updated_at: new Date().toISOString()
+    });
+  }
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      let detail = "";
+      try {
+        const json = await response.json();
+        detail = json.message || json.details || JSON.stringify(json);
+      } catch {
+        detail = await response.text();
+      }
+      const error = new Error(`${response.status} ${detail}`.trim());
+      error.status = response.status;
+      throw error;
+    }
+    if (response.status === 204) return null;
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error("云端备用通道连接 Supabase 超时。");
+      timeoutError.status = 504;
+      throw timeoutError;
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -997,7 +1082,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
       res.writeHead(204, {
         "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET, OPTIONS",
+        "access-control-allow-methods": "GET, POST, OPTIONS",
         "access-control-allow-headers": "content-type, accept"
       });
       return res.end();
@@ -1029,6 +1114,24 @@ const server = http.createServer(async (req, res) => {
         return res.end(image.bytes);
       } catch (error) {
         return sendText(res, error.status || 502, error.message || "图片暂时不能读取。");
+      }
+    }
+
+    if (url.pathname === "/api/cloud") {
+      try {
+        if (req.method === "GET") {
+          const syncCode = url.searchParams.get("syncCode") || "";
+          const rows = await supabaseSharedRequest({ method: "GET", syncCode });
+          return sendJson(res, 200, Array.isArray(rows) ? rows[0] || null : rows);
+        }
+        if (req.method === "POST") {
+          const body = await readJsonBody(req);
+          await supabaseSharedRequest({ method: "POST", syncCode: body.syncCode, state: body.state });
+          return sendJson(res, 200, { ok: true });
+        }
+        return sendJson(res, 405, { error: "不支持这个云端请求。" });
+      } catch (error) {
+        return sendJson(res, error.status || 502, { error: error.message || "云端备用通道失败。" });
       }
     }
 

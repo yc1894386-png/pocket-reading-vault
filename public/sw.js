@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v97-progress-tabs-images";
+const CACHE_NAME = "pocket-reading-vault-v110-cloud-sync-repair";
 const ASSETS = [
   "./",
   "./index.html",
