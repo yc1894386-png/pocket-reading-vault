@@ -133,6 +133,19 @@ function rewriteSrcset(value = "", baseUrl) {
   }).filter(Boolean).join(", ");
 }
 
+function attrValue(attrs = "", names = []) {
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = attrs.match(new RegExp(`\\s${escaped}=["']([^"']+)["']`, "i"));
+    if (match?.[1]) return decodeEntities(match[1]);
+  }
+  return "";
+}
+
+function firstSrcsetUrl(value = "") {
+  return value.split(",")[0]?.trim().split(/\s+/)[0] || "";
+}
+
 function extractElementHtml(html, openTagIndex) {
   const open = html.slice(openTagIndex).match(/^<([a-z0-9:-]+)\b[^>]*>/i);
   if (!open) return "";
@@ -203,14 +216,41 @@ function cleanWorkHtml(html, sourceUrl) {
     .replace(/\son\w+=["'][\s\S]*?["']/gi, "")
     .replace(/href=["']javascript:[\s\S]*?["']/gi, "")
     .replace(/<img\b([^>]*)>/gi, (tag, attrs) => {
-      const src = firstMatch(attrs, /\s(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["']/i);
-      const srcset = firstMatch(attrs, /\ssrcset=["']([^"']+)["']/i);
+      const src = attrValue(attrs, [
+        "src",
+        "data-src",
+        "data-original",
+        "data-lazy-src",
+        "data-cfsrc",
+        "data-orig-src",
+        "data-hi-res-src",
+        "data-full-src",
+        "data-image-src",
+        "data-original-src",
+        "data-actualsrc",
+        "data-url",
+        "data-img-url",
+        "data-preview-src",
+        "data-large-file",
+        "data-medium-file",
+        "data-orig-file"
+      ]);
+      const srcset = attrValue(attrs, [
+        "srcset",
+        "data-srcset",
+        "data-lazy-srcset",
+        "data-cfsrcset",
+        "data-original-srcset"
+      ]);
+      const original = src || firstSrcsetUrl(srcset);
       let nextAttrs = attrs
-        .replace(/\s(?:src|srcset|data-src|data-original|data-lazy-src)=["'][^"']*["']/gi, "")
+        .replace(/\s(?:src|srcset|data-src|data-original|data-lazy-src|data-cfsrc|data-orig-src|data-hi-res-src|data-full-src|data-image-src|data-original-src|data-actualsrc|data-url|data-img-url|data-preview-src|data-large-file|data-medium-file|data-orig-file|data-srcset|data-lazy-srcset|data-cfsrcset|data-original-srcset)=["'][^"']*["']/gi, "")
         .replace(/\sloading=["'][^"']*["']/i, "")
         .replace(/\sdecoding=["'][^"']*["']/i, "");
-      if (src) nextAttrs += ` src="${proxiedImageUrl(src, sourceUrl)}"`;
-      if (!src && srcset) nextAttrs += ` src="${proxiedImageUrl(srcset.split(",")[0].trim().split(/\s+/)[0], sourceUrl)}"`;
+      if (original) {
+        nextAttrs += ` src="${proxiedImageUrl(original, sourceUrl)}"`;
+        nextAttrs += ` data-original-src="${absoluteUrl(original, sourceUrl)}"`;
+      }
       if (srcset) nextAttrs += ` srcset="${rewriteSrcset(srcset, sourceUrl)}"`;
       nextAttrs += ` loading="lazy" decoding="async"`;
       return `<img${nextAttrs}>`;
