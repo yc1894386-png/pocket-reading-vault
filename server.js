@@ -129,6 +129,22 @@ function isProxyableImageUrl(value = "") {
   return /^https?:\/\//i.test(value) && !/^(https?:\/\/)(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.|192\.168\.|0\.0\.0\.0)/i.test(value);
 }
 
+function isSourceHost(hostname = "") {
+  const host = hostname.toLowerCase();
+  return host === sourceHost || host.endsWith(`.${sourceHost}`);
+}
+
+function isPrivateHostname(hostname = "") {
+  const host = hostname.toLowerCase();
+  return host === "localhost"
+    || host === "0.0.0.0"
+    || host.startsWith("127.")
+    || host.startsWith("10.")
+    || /^192\.168\./.test(host)
+    || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    || /^\[?::1\]?$/.test(host);
+}
+
 function proxiedImageUrl(value, baseUrl) {
   const absolute = absoluteUrl(value, baseUrl);
   if (!isProxyableImageUrl(absolute)) return absolute;
@@ -224,7 +240,11 @@ function cleanWorkHtml(html, sourceUrl) {
   ]);
   if (!chapters) chapters = largestElementHtml(html, /<(div|section|blockquote)[^>]+class=["'][^"']*userstuff[^"']*["'][^>]*>/gi);
 
-  return chapters
+  return sanitizeImportedHtml(chapters, sourceUrl);
+}
+
+function sanitizeImportedHtml(html = "", sourceUrl = "") {
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/\son\w+=["'][\s\S]*?["']/gi, "")
     .replace(/href=["']javascript:[\s\S]*?["']/gi, "")
@@ -414,6 +434,63 @@ function parseLofterWork(html, sourceUrl) {
   };
 }
 
+async function parseReadableWork(html, sourceUrl) {
+  let JSDOM;
+  let Readability;
+  try {
+    ({ JSDOM } = await import("jsdom"));
+    ({ Readability } = await import("@mozilla/readability"));
+  } catch {
+    throw new Error("通用阅读模式还没有安装完成。请上传包含 package.json 的最外层文件，等 Render 重新部署后再试。");
+  }
+
+  const dom = new JSDOM(html, {
+    url: sourceUrl,
+    contentType: "text/html"
+  });
+  const reader = new Readability(dom.window.document, {
+    charThreshold: 120,
+    keepClasses: true
+  });
+  const article = reader.parse();
+  if (!article?.content || textLengthFromHtml(article.content) < 80) {
+    throw new Error("通用阅读模式没有提取到足够正文。这个网页可能是动态加载、需要登录，或正文被分页/防护隐藏。");
+  }
+
+  const contentHtml = sanitizeImportedHtml(article.content, sourceUrl);
+  const title = textOnly(article.title || firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)) || "网页导入";
+  const byline = textOnly(article.byline || "");
+  const excerpt = article.excerpt ? `<p>${textOnly(article.excerpt)}</p>` : "";
+  return {
+    title,
+    author: byline || new URL(sourceUrl).hostname.replace(/^www\./, ""),
+    sourceUrl,
+    importedAt: new Date().toISOString(),
+    summaryHtml: excerpt,
+    contentHtml,
+    metadata: {
+      rating: "网页",
+      categories: ["通用阅读模式"],
+      fandoms: [],
+      warnings: [],
+      relationships: [],
+      characters: [],
+      freeforms: ["通用导入"],
+      words: `${textLengthFromHtml(contentHtml)} 字`,
+      chapters: "1/1",
+      status: "网页导入",
+      language: ""
+    }
+  };
+}
+
+async function parseImportedWork(html, sourceUrl) {
+  const hostname = new URL(sourceUrl).hostname;
+  if (lofterHostPattern.test(hostname)) return parseLofterWork(html, sourceUrl);
+  if (isSourceHost(hostname)) return parseSourceWork(html, sourceUrl);
+  return parseReadableWork(html, sourceUrl);
+}
+
 function parseSourceWork(html, sourceUrl) {
   if (lofterHostPattern.test(new URL(sourceUrl).hostname)) return parseLofterWork(html, sourceUrl);
   const titleParts = parseTitleParts(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i));
@@ -472,12 +549,15 @@ function parseSourceWork(html, sourceUrl) {
 
 function normalizeSourceUrl(url) {
   const parsed = new URL(url);
+  if (!/^https?:$/i.test(parsed.protocol) || isPrivateHostname(parsed.hostname)) {
+    throw new Error("这个链接不能导入。请使用公开的 http/https 网页链接。");
+  }
   const hostname = parsed.hostname.toLowerCase();
   if (lofterHostPattern.test(hostname)) {
     return parsed;
   }
-  if (hostname !== sourceHost && !hostname.endsWith(`.${sourceHost}`)) {
-    throw new Error("目前支持 AO3 作品链接和公开 LOFTER 文章链接。");
+  if (!isSourceHost(hostname)) {
+    return parsed;
   }
   parsed.pathname = parsed.pathname.replace(/\/chapters\/\d+\/?$/i, "");
   parsed.searchParams.set("view_adult", "true");
@@ -491,6 +571,7 @@ function getWorkId(parsed) {
 
 function getDownloadUrls(parsed) {
   if (lofterHostPattern.test(parsed.hostname)) return [];
+  if (!isSourceHost(parsed.hostname)) return [];
   const workId = getWorkId(parsed);
   if (!workId) return [];
   return [
@@ -584,7 +665,7 @@ async function importSource(url) {
   }
 
   const result = await fetchFirstAvailable(candidates);
-  const work = parseSourceWork(result.html, result.url);
+  const work = await parseImportedWork(result.html, result.url);
   importCache.set(cacheKey, { at: Date.now(), work });
   return work;
 }
