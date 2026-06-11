@@ -78,20 +78,6 @@ const PROGRESS_PALETTES = [
   }
 ];
 
-const PROGRESS_DISPLAY_COLORS = {
-  "#E2F0D9": "#C8E5BE",
-  "#FDF2D5": "#F2DDA4",
-  "#E0F4F1": "#B7E5DF",
-  "#E6F0FA": "#C5DDF3",
-  "#EBE8F5": "#D2CDEB",
-  "#ECEFF1": "#D1D9DE",
-  "#FCE8E6": "#F3C8C4",
-  "#FDF0E6": "#F1D0B9",
-  "#F9EBF2": "#EDCADC",
-  "#1E293B": "#1E293B",
-  "#3F2424": "#3F2424"
-};
-
 let state = structuredClone(defaultState);
 let db;
 let noteTimer;
@@ -708,13 +694,13 @@ function renderWorks() {
     const ratio = lightweightReadingRatio(work);
     const progress = Math.round(ratio * 100);
     const safeProgress = Math.min(100, Math.max(0, progress));
+    const progressWidth = Math.round(Math.max(0, Math.min(1, ratio)) * 1000) / 10;
     const progressText = progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读";
     const customTags = (work.customTags || []).slice(0, 3);
     const contrastClass = isDarkHex(state.progressAccent) && safeProgress > 18 ? "progress-contrast" : "";
     return `
-      <button class="work-card ${contrastClass} ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}" style="--work-progress: ${safeProgress}%;">
+      <button class="work-card ${contrastClass} ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}" data-progress-width="${progressWidth}%" style="--work-progress: ${progressWidth}%;">
         <span class="work-progress-wash" aria-hidden="true"></span>
-        <span class="work-progress-edge" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
         <p class="work-progress-text">${progressText} · ${chapterCount} 章 · ${escapeHtml(lightweightWordText(work))}</p>
@@ -728,11 +714,18 @@ function syncWorkCardProgress(work, ratio = lightweightReadingRatio(work)) {
   if (!work) return;
   const card = document.querySelector(`[data-work="${cssEscape(work.id)}"]`);
   if (!card) return;
-  const progress = Math.round(Math.max(0, Math.min(1, ratio)) * 100);
-  card.style.setProperty("--work-progress", `${progress}%`);
+  const clamped = Math.max(0, Math.min(1, ratio));
+  const progress = Math.round(clamped * 100);
+  const preciseProgress = Math.round(clamped * 1000) / 10;
+  const nextWidth = `${preciseProgress}%`;
+  if (card.dataset.progressWidth !== nextWidth) {
+    card.dataset.progressWidth = nextWidth;
+    card.style.setProperty("--work-progress", nextWidth);
+  }
   const progressLine = card.querySelector(".work-progress-text");
   if (progressLine) {
-    progressLine.textContent = `${progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读"} · ${lightweightChapterCount(work)} 章 · ${lightweightWordText(work)}`;
+    const nextText = `${progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读"} · ${lightweightChapterCount(work)} 章 · ${lightweightWordText(work)}`;
+    if (progressLine.textContent !== nextText) progressLine.textContent = nextText;
   }
 }
 

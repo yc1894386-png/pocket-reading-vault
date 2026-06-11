@@ -642,82 +642,6 @@ body.cloud-open .cloud-section {
   }
 }
 
-*** End of File
-
-/* v91 final-final: this must stay at EOF so older shelf rules cannot override it. */
-.folder-list {
-  display: flex !important;
-  flex-flow: row nowrap !important;
-  align-items: center !important;
-  gap: 8px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  padding: 0 18px 3px 0 !important;
-  scroll-padding-inline: 0 18px !important;
-  scrollbar-width: none !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-
-.folder-list::-webkit-scrollbar {
-  display: none !important;
-}
-
-.folder-card {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  max-width: min(68vw, 180px) !important;
-  min-width: 0 !important;
-  white-space: nowrap !important;
-}
-
-.folder-card span,
-.folder-card small {
-  white-space: nowrap !important;
-}
-
-.work-progress-edge {
-  pointer-events: none !important;
-}
-/* v91: final shelf stability - folder chips must stay in one horizontal rail */
-.folder-list {
-  display: flex !important;
-  flex-flow: row nowrap !important;
-  align-items: center !important;
-  gap: 8px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  padding: 0 18px 3px 0 !important;
-  scroll-padding-inline: 0 18px !important;
-  scrollbar-width: none !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-
-.folder-list::-webkit-scrollbar {
-  display: none !important;
-}
-
-.folder-card {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  max-width: min(68vw, 180px) !important;
-  min-width: 0 !important;
-  white-space: nowrap !important;
-}
-
-.folder-card span,
-.folder-card small {
-  white-space: nowrap !important;
-}
-
-.work-progress-edge {
-  pointer-events: none !important;
-}
 
 @keyframes archiveSpinOut {
   from {
@@ -2564,7 +2488,7 @@ dialog,
   touch-action: pan-y;
 }
 
-.work-card > :not(.work-progress-wash):not(.work-progress-edge) {
+.work-card > :not(.work-progress-wash) {
   position: relative;
   z-index: 1;
 }
@@ -2575,35 +2499,12 @@ dialog,
   z-index: 0;
   width: var(--work-progress, 0%);
   border-radius: 17px 0 0 17px;
-  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, var(--panel));
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4);
   pointer-events: none;
 }
 
 .work-progress-wash::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: min(120px, 28%);
-  height: 100%;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent);
-}
-
-.work-progress-edge {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 2;
-  height: 3px;
-  border-radius: 0;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 82%, var(--text) 10%) 0 var(--work-progress, 0%),
-    transparent var(--work-progress, 0%) 100%
-  );
-  cursor: crosshair;
-  touch-action: none;
+  display: none;
 }
 
 .work-card.active,
@@ -2614,7 +2515,7 @@ dialog,
 
 .work-card.active .work-progress-wash,
 .work-card:active .work-progress-wash {
-  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 76%, var(--panel));
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4);
 }
 
 .work-card.progress-contrast p {
@@ -7933,68 +7834,6 @@ body:not(.reading) .selection-toolbar {
   }
 }
 
-/* v93 eof guard: stable shelf rail + calm progress treatment. */
-.folder-list {
-  display: flex !important;
-  flex-flow: row nowrap !important;
-  align-items: center !important;
-  gap: 8px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  padding: 0 18px 4px 0 !important;
-  scroll-padding-inline: 0 18px !important;
-  scrollbar-width: none !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-x: contain !important;
-}
-
-.folder-list::-webkit-scrollbar {
-  display: none !important;
-}
-
-.folder-card {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  max-width: min(64vw, 172px) !important;
-  min-width: 0 !important;
-  min-height: 40px !important;
-  padding: 0 14px !important;
-  white-space: nowrap !important;
-}
-
-.folder-card span,
-.folder-card small {
-  white-space: nowrap !important;
-}
-
-.work-progress-edge {
-  pointer-events: none !important;
-}
-
-.work-card {
-  overflow: hidden !important;
-  background: var(--panel) !important;
-}
-
-.work-progress-wash {
-  inset: auto auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 4px !important;
-  border-radius: 0 !important;
-  opacity: 1 !important;
-  background: color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 84%, var(--panel)) !important;
-}
-
-.work-progress-wash::after {
-  display: none !important;
-}
-
-.work-progress-edge {
-  display: none !important;
-}
 
 .work-card .mini-tag-row {
   display: none !important;
@@ -8063,12 +7902,6 @@ body:not(.reading) .selection-toolbar {
   flex: 0 0 auto !important;
 }
 
-/* v96: clearer shelf progress + softer Vellum wordmark */
-.work-progress-wash {
-  height: 6px !important;
-  background: var(--shelf-progress-color, #e0f4f1) !important;
-  box-shadow: 0 -1px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, transparent) !important;
-}
 
 .topbar h1 {
   font-family: "Baskerville", "Libre Baskerville", "Cormorant Garamond", "Georgia", "Times New Roman", serif !important;
@@ -8079,391 +7912,7 @@ body:not(.reading) .selection-toolbar {
   color: var(--text) !important;
 }
 
-/* v98: restore visible palette progress and give shelf cards a softer book-card depth */
-.work-card {
-  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent) !important;
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.035),
-    0 1px 0 rgba(0, 0, 0, 0.025) !important;
-  background: var(--panel) !important;
-}
 
-.work-card:hover {
-  box-shadow:
-    0 10px 26px rgba(0, 0, 0, 0.045),
-    0 1px 0 rgba(0, 0, 0, 0.025) !important;
-}
-
-.work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: auto !important;
-  border-radius: 17px 0 0 17px !important;
-  opacity: 1 !important;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 52%, transparent) 0 calc(100% - 7px),
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 92%, var(--text) 4%) calc(100% - 7px) 100%
-    ) !important;
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, transparent) !important;
-}
-
-.work-progress-wash::after {
-  display: none !important;
-}
-
-.work-progress-edge {
-  display: none !important;
-}
-
-:root.dark .work-card {
-  box-shadow: none !important;
-}
-
-/* v101: final no-jump shelf filters and stronger progress tint. Keep this at EOF. */
-.folder-list {
-  box-sizing: border-box !important;
-  display: flex !important;
-  flex-flow: row nowrap !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 10px !important;
-  width: 100% !important;
-  min-height: 48px !important;
-  max-height: 48px !important;
-  padding: 2px 18px 6px 0 !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  scrollbar-width: none !important;
-  -webkit-overflow-scrolling: touch !important;
-  contain: layout paint !important;
-}
-
-.folder-list::-webkit-scrollbar {
-  display: none !important;
-}
-
-.folder-card,
-.folder-card.active,
-.folder-card:active,
-.folder-card:focus,
-.folder-card:hover {
-  box-sizing: border-box !important;
-  display: inline-flex !important;
-  flex: 0 0 auto !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 6px !important;
-  width: auto !important;
-  min-width: 0 !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  max-height: 40px !important;
-  margin: 0 !important;
-  padding: 0 16px !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  font-variation-settings: normal !important;
-  font-synthesis-weight: none !important;
-  line-height: 40px !important;
-  letter-spacing: 0 !important;
-  white-space: nowrap !important;
-  transform: none !important;
-  scale: 1 !important;
-  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease !important;
-}
-
-.folder-card span,
-.folder-card small,
-.folder-card.active span,
-.folder-card.active small {
-  display: inline-block !important;
-  flex: 0 0 auto !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  font-family: inherit !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  font-variation-settings: normal !important;
-  line-height: 40px !important;
-  letter-spacing: 0 !important;
-  white-space: nowrap !important;
-  transform: none !important;
-}
-
-.folder-card small {
-  min-width: auto !important;
-  color: inherit !important;
-  opacity: 0.78 !important;
-}
-
-.folder-card {
-  background: var(--soft) !important;
-  color: var(--muted) !important;
-}
-
-.folder-card.active {
-  background: #000 !important;
-  color: #fff !important;
-}
-
-.work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: auto !important;
-  min-height: 100% !important;
-  border-radius: 17px 0 0 17px !important;
-  opacity: 1 !important;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 56%, transparent) 0 calc(100% - 7px),
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 96%, var(--text) 4%) calc(100% - 7px) 100%
-    ) !important;
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 72%, transparent) !important;
-}
-
-.work-progress-wash::after,
-.work-progress-edge {
-  display: none !important;
-}
-
-/* v105 absolute final: visible progress wash, appended at EOF on purpose. */
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  opacity: 1 !important;
-  border-radius: 17px 0 0 17px !important;
-  background:
-    linear-gradient(
-      180deg,
-      var(--shelf-progress-color, #e0f4f1) 0 calc(100% - 7px),
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) calc(100% - 7px) 100%
-    ) !important;
-  box-shadow:
-    inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%),
-    inset 0 -7px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
-
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
-  display: none !important;
-}
-
-/* v122 actual EOF: exact palette color at 40%, overriding every older progress experiment above. */
-.work-card {
-  background: var(--panel) !important;
-  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
-  box-shadow:
-    0 8px 22px rgba(20, 20, 20, 0.045),
-    0 1px 0 rgba(20, 20, 20, 0.03) !important;
-}
-
-.work-card:hover {
-  box-shadow:
-    0 11px 28px rgba(20, 20, 20, 0.055),
-    0 1px 0 rgba(20, 20, 20, 0.03) !important;
-}
-
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  opacity: 1 !important;
-  border-radius: 17px 0 0 17px !important;
-  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.16),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
-
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
-  display: none !important;
-}
-
-:root.dark .work-card {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: none !important;
-}
-
-:root.dark .work-card .work-progress-wash,
-:root.dark .work-card.active .work-progress-wash,
-:root.dark .work-card:active .work-progress-wash {
-  background: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.18),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
-}
-
-/* v121 final: use the exact user palette at 40% opacity. Keep this at EOF. */
-.work-card {
-  background: var(--panel) !important;
-  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
-  box-shadow:
-    0 8px 22px rgba(20, 20, 20, 0.045),
-    0 1px 0 rgba(20, 20, 20, 0.03) !important;
-}
-
-.work-card:hover {
-  box-shadow:
-    0 11px 28px rgba(20, 20, 20, 0.055),
-    0 1px 0 rgba(20, 20, 20, 0.03) !important;
-}
-
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  opacity: 1 !important;
-  border-radius: 17px 0 0 17px !important;
-  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.16),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
-
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
-  display: none !important;
-}
-
-:root.dark .work-card {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: none !important;
-}
-
-:root.dark .work-card .work-progress-wash,
-:root.dark .work-card.active .work-progress-wash,
-:root.dark .work-card:active .work-progress-wash {
-  background: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.18),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
-}
-
-/* v117: smoother shelf progress wash. Keep this last so older progress experiments cannot fight it. */
-.work-card {
-  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent) !important;
-  box-shadow:
-    0 9px 24px rgba(20, 20, 20, 0.045),
-    0 1px 0 rgba(20, 20, 20, 0.035) !important;
-}
-
-.work-card:hover {
-  box-shadow:
-    0 12px 28px rgba(20, 20, 20, 0.055),
-    0 1px 0 rgba(20, 20, 20, 0.035) !important;
-}
-
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  border-radius: 17px 0 0 17px !important;
-  opacity: 1 !important;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(var(--shelf-progress-rgb, 183, 229, 223), 0.4) 0 calc(100% - 6px),
-      rgba(var(--shelf-progress-rgb, 183, 229, 223), 0.48) calc(100% - 6px) 100%
-    ) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 183, 229, 223), 0.2),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 183, 229, 223), 0.48) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
-
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
-  display: none !important;
-}
-
-:root.dark .work-card {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: none !important;
-}
-
-:root.dark .work-card .work-progress-wash,
-:root.dark .work-card.active .work-progress-wash,
-:root.dark .work-card:active .work-progress-wash {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) 0 calc(100% - 6px),
-      rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.52) calc(100% - 6px) 100%
-    ) !important;
-}
-
-/* v105 final: keep the original visible progress wash after all legacy overrides. */
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  opacity: 1 !important;
-  border-radius: 17px 0 0 17px !important;
-  background:
-    linear-gradient(
-      180deg,
-      var(--shelf-progress-color, #e0f4f1) 0 calc(100% - 7px),
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) calc(100% - 7px) 100%
-    ) !important;
-  box-shadow:
-    inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%),
-    inset 0 -7px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
-
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
-  display: none !important;
-}
-
-/* v104: force original solid progress color, no mixing and no transparency. */
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  opacity: 1 !important;
-  border-radius: 17px 0 0 17px !important;
-  background: var(--shelf-progress-color, #e0f4f1) !important;
-  box-shadow:
-    inset -1px 0 0 var(--shelf-progress-color, #e0f4f1),
-    inset 0 -7px 0 var(--shelf-progress-color, #e0f4f1) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
 
 .brand-lockup .eyebrow {
   font-size: 0.68rem !important;
@@ -8478,77 +7927,7 @@ body:not(.reading) .selection-toolbar {
   border-radius: 8px !important;
 }
 
-/* v97: stable folder chips, visible progress color, no jump on filter switch */
-.folder-list {
-  align-items: center !important;
-  gap: 8px !important;
-  min-height: 44px !important;
-  padding: 0 20px 4px 0 !important;
-}
-
-.folder-card {
-  box-sizing: border-box !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 6px !important;
-  flex: 0 0 auto !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  max-height: 40px !important;
-  padding: 0 15px !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  line-height: 1 !important;
-  letter-spacing: 0 !important;
-  white-space: nowrap !important;
-  transform: none !important;
-  transition: background-color 120ms ease, color 120ms ease !important;
-}
-
-.folder-card:active {
-  transform: none !important;
-}
-
-.folder-card span,
-.folder-card small {
-  display: inline-block !important;
-  flex: 0 0 auto !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  line-height: 1 !important;
-  letter-spacing: 0 !important;
-  white-space: nowrap !important;
-}
-
-.folder-card small {
-  min-width: 2.4em !important;
-  text-align: left !important;
-}
-
-.folder-card.active {
-  background: #000 !important;
-  color: #fff !important;
-}
-
-.work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: auto !important;
-  border-radius: 17px 0 0 17px !important;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 28%, transparent) 0 calc(100% - 7px),
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 92%, var(--text) 8%) calc(100% - 7px) 100%
-    ) !important;
-  box-shadow: none !important;
-}
-
-/* v102 true final: no-jump shelf filters and original progress colors. */
+/* Stable shelf filters. */
 .folder-list {
   box-sizing: border-box !important;
   display: flex !important;
@@ -8643,67 +8022,46 @@ body:not(.reading) .selection-toolbar {
   color: #fff !important;
 }
 
-.work-card .work-progress-wash,
-.work-card.active .work-progress-wash,
-.work-card:active .work-progress-wash {
-  inset: 0 auto 0 0 !important;
-  width: var(--work-progress, 0%) !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  border-radius: 17px 0 0 17px !important;
-  opacity: 1 !important;
-  background:
-    linear-gradient(
-      180deg,
-      var(--shelf-progress-color, #e0f4f1) 0 calc(100% - 7px),
-      color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) calc(100% - 7px) 100%
-    ) !important;
-  box-shadow:
-    inset -1px 0 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%),
-    inset 0 -7px 0 color-mix(in srgb, var(--shelf-progress-color, #e0f4f1) 94%, var(--text) 6%) !important;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-}
 
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
-  display: none !important;
-}
 
-/* v122 real final: exact palette color at 40%, overriding every older progress experiment above. */
+
+/* v123 clean shelf progress: one fast rule, exact palette at 40%. */
 .work-card {
   background: var(--panel) !important;
   border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
-  box-shadow:
-    0 8px 22px rgba(20, 20, 20, 0.045),
-    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+  box-shadow: 0 8px 22px rgba(20, 20, 20, 0.045) !important;
 }
 
 .work-card:hover {
-  box-shadow:
-    0 11px 28px rgba(20, 20, 20, 0.055),
-    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+  box-shadow: 0 10px 26px rgba(20, 20, 20, 0.055) !important;
+}
+
+.work-card > :not(.work-progress-wash) {
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 .work-card .work-progress-wash,
 .work-card.active .work-progress-wash,
 .work-card:active .work-progress-wash {
+  position: absolute !important;
   inset: 0 auto 0 0 !important;
+  z-index: 0 !important;
   width: var(--work-progress, 0%) !important;
   height: 100% !important;
   min-height: 100% !important;
-  opacity: 1 !important;
   border-radius: 17px 0 0 17px !important;
-  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.16),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  background-color: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  box-shadow: none !important;
   filter: none !important;
   mix-blend-mode: normal !important;
+  pointer-events: none !important;
+  transition: none !important;
+  will-change: width !important;
+  transform: translateZ(0) !important;
 }
 
-.work-card .work-progress-wash::after,
-.work-card .work-progress-edge {
+.work-card .work-progress-wash::after {
   display: none !important;
 }
 
@@ -8715,9 +8073,5 @@ body:not(.reading) .selection-toolbar {
 :root.dark .work-card .work-progress-wash,
 :root.dark .work-card.active .work-progress-wash,
 :root.dark .work-card:active .work-progress-wash {
-  background: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
-  box-shadow:
-    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.18),
-    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+  background-color: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
 }
-
