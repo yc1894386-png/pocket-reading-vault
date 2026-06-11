@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v115-light-start-library";
+const CACHE_NAME = "pocket-reading-vault-v116-no-fullscan-start";
 const ASSETS = [
   "./",
   "./index.html",

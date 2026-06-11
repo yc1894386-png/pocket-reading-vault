@@ -123,6 +123,7 @@ let activeSelectionRange = null;
 let toolbarPointerHandledAt = 0;
 let toolbarActionUntil = 0;
 let previewImageUrl = "";
+let localLibraryLoaded = false;
 
 function lockPortraitMode() {
   screen.orientation?.lock?.("portrait").catch(() => {});
@@ -358,7 +359,7 @@ function ensureFolderNames(names = []) {
 }
 
 function workFolderIds(work) {
-  normalizeWork(work);
+  normalizeWork(work, { light: true });
   return [...new Set([...(work.folderIds || []), work.folderId].filter((id) => id && id !== "unfiled"))];
 }
 
@@ -392,7 +393,7 @@ function normalizeWork(work, options = {}) {
   if (!work.author || work.author === "未知作者") {
     work.author = "作者待补";
   }
-  if (!work.metadata.words || work.metadata.words === "字数未知") {
+  if (!options.light && (!work.metadata.words || work.metadata.words === "字数未知")) {
     const count = textFromHtml(work.contentHtml || "").replace(/\s/g, "").length;
     if (count) work.metadata.words = `${count} 字`;
   }
@@ -2893,7 +2894,35 @@ async function downloadPreviewImage() {
 async function boot() {
   supabase = { mode: "rest" };
   db = await openDb();
-  state = { ...defaultState, ...(await dbGet("library") || {}) };
+  state = structuredClone(defaultState);
+  try {
+    const shell = await dbGet("library-shell");
+    if (shell?.syncCode) state.syncCode = shell.syncCode;
+    if (shell?.theme) state.theme = shell.theme;
+    if (shell?.progressAccent) state.progressAccent = shell.progressAccent;
+  } catch {}
+  localLibraryLoaded = false;
+  normalizePendingImports();
+  renderAll();
+  setCloudStatus("已轻量打开。旧浏览器如果本机书架太大，请先用同步码「只下载」；需要读取本机旧记录再点「恢复本机书架」。");
+  if (supabase) {
+    await refreshCloudSession({ initial: false });
+  } else {
+    renderCloudPanel();
+  }
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+
+async function loadLocalLibrary() {
+  setCloudStatus("正在读取本机书架……如果旧浏览器数据太大，可能会比较久。");
+  const saved = await dbGet("library");
+  if (!saved) {
+    setCloudStatus("这一个浏览器里没有本机书架。可以填同步码后点「只下载」。");
+    return;
+  }
+  state = { ...defaultState, ...saved };
   let imageMigrationNeeded = false;
   state.works = (state.works || []).map((work) => {
     const before = work.contentHtml || "";
@@ -2923,16 +2952,16 @@ async function boot() {
   if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
   state.selectedWorkId = null;
   if (imageMigrationNeeded) await dbSet("library", state);
+  localLibraryLoaded = true;
+  await dbSet("library-shell", {
+    syncCode: state.syncCode || "",
+    theme: state.theme || defaultState.theme,
+    progressAccent: state.progressAccent || defaultState.progressAccent
+  });
   renderAll();
+  renderCloudPanel();
   if (!SAFE_MODE) schedulePendingImports();
-  if (supabase) {
-    await refreshCloudSession({ initial: false });
-  } else {
-    renderCloudPanel();
-  }
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
-  }
+  setCloudStatus(`本机书架已恢复：${state.works.length} 篇。`);
 }
 
 $("#importForm").addEventListener("submit", async (event) => {
