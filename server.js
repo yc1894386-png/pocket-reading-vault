@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { createHash } from "node:crypto";
+import { gzipSync, gunzipSync } from "node:zlib";
 
 const root = fileURLToPath(new URL("./public", import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -45,7 +47,7 @@ function readJsonBody(req) {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 20 * 1024 * 1024) {
+      if (body.length > 100 * 1024 * 1024) {
         reject(new Error("请求太大了。"));
         req.destroy();
       }
@@ -401,6 +403,95 @@ function cleanSyncCode(value = "") {
   return String(value).toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32);
 }
 
+function cloudShardKey(syncCode, work = {}) {
+  const hash = createHash("sha1")
+    .update(`${syncCode}|${work.id || work.sourceUrl || work.title || Math.random()}`)
+    .digest("base64url")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase()
+    .slice(0, 10);
+  return `${syncCode}-W-${hash}`.slice(0, 32);
+}
+
+function compressCloudState(state) {
+  if (!state || state._vellumCompressed) return state;
+  const json = JSON.stringify(state);
+  const compressed = gzipSync(Buffer.from(json, "utf8")).toString("base64");
+  return {
+    _vellumCompressed: 1,
+    format: "gzip-base64-json",
+    data: compressed,
+    originalLength: json.length,
+    compressedLength: compressed.length,
+    writer: state._lastWriter || "",
+    writerAt: state._lastWriterAt || new Date().toISOString(),
+    compressedBy: "render"
+  };
+}
+
+function decompressCloudState(state) {
+  if (!state?._vellumCompressed) return state;
+  const text = gunzipSync(Buffer.from(state.data || "", "base64")).toString("utf8");
+  return JSON.parse(text);
+}
+
+function lightweightWork(work = {}, shardKey = "") {
+  const {
+    contentHtml,
+    summaryHtml,
+    highlights,
+    bookmarks,
+    ...rest
+  } = work;
+  return {
+    ...rest,
+    contentHtml: "",
+    summaryHtml: "",
+    highlights: [],
+    bookmarks: [],
+    shardKey,
+    hasCloudShard: true
+  };
+}
+
+function makeShardedManifest(state, syncCode) {
+  const works = Array.isArray(state?.works) ? state.works : [];
+  return {
+    ...state,
+    works: works.map((work) => lightweightWork(work, cloudShardKey(syncCode, work))),
+    _vellumSharded: 1,
+    shardVersion: 1,
+    shardCount: works.length,
+    shardedAt: new Date().toISOString()
+  };
+}
+
+function buildShardRows(syncCode, state) {
+  const works = Array.isArray(state?.works) ? state.works : [];
+  const now = new Date().toISOString();
+  const rows = [
+    {
+      sync_code: syncCode,
+      state: compressCloudState(makeShardedManifest(state, syncCode)),
+      updated_at: now
+    }
+  ];
+  for (const work of works) {
+    rows.push({
+      sync_code: cloudShardKey(syncCode, work),
+      state: compressCloudState({
+        _vellumWorkShard: 1,
+        parentSyncCode: syncCode,
+        workId: work.id || "",
+        work,
+        updatedAt: work.updatedAt || now
+      }),
+      updated_at: work.updatedAt || now
+    });
+  }
+  return rows;
+}
+
 async function supabaseSharedRequest({ method = "GET", syncCode = "", state = null }) {
   const code = cleanSyncCode(syncCode);
   if (!/^[A-Z0-9-]{8,32}$/.test(code)) {
@@ -456,6 +547,132 @@ async function supabaseSharedRequest({ method = "GET", syncCode = "", state = nu
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function supabaseSharedBulkUpsert(rows = []) {
+  if (!rows.length) return null;
+  const url = `${supabaseUrl}/rest/v1/shared_library_states?on_conflict=sync_code`;
+  const headers = {
+    apikey: supabaseKey,
+    authorization: `Bearer ${supabaseKey}`,
+    accept: "application/json",
+    "content-type": "application/json",
+    prefer: "resolution=merge-duplicates,return=minimal"
+  };
+  for (let index = 0; index < rows.length; index += 25) {
+    const batch = rows.slice(index, index + 25);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify(batch)
+      });
+      if (!response.ok) {
+        let detail = "";
+        try {
+          const json = await response.json();
+          detail = json.message || json.details || JSON.stringify(json);
+        } catch {
+          detail = await response.text();
+        }
+        const error = new Error(`${response.status} ${detail}`.trim());
+        error.status = response.status;
+        throw error;
+      }
+    } catch (error) {
+      if (error.name === "AbortError") {
+        const timeoutError = new Error("云端分篇上传超时。");
+        timeoutError.status = 504;
+        throw timeoutError;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  return null;
+}
+
+async function supabaseSharedGetMany(syncCodes = []) {
+  const rows = [];
+  const uniqueCodes = [...new Set(syncCodes.map(cleanSyncCode).filter(Boolean))];
+  for (let index = 0; index < uniqueCodes.length; index += 40) {
+    const batch = uniqueCodes.slice(index, index + 40);
+    const encoded = batch.map((code) => `"${code}"`).join(",");
+    const url = `${supabaseUrl}/rest/v1/shared_library_states?select=sync_code,state,updated_at&sync_code=in.(${encoded})`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        signal: controller.signal,
+        headers: {
+          apikey: supabaseKey,
+          authorization: `Bearer ${supabaseKey}`,
+          accept: "application/json"
+        }
+      });
+      if (!response.ok) {
+        let detail = "";
+        try {
+          const json = await response.json();
+          detail = json.message || json.details || JSON.stringify(json);
+        } catch {
+          detail = await response.text();
+        }
+        const error = new Error(`${response.status} ${detail}`.trim());
+        error.status = response.status;
+        throw error;
+      }
+      rows.push(...await response.json());
+    } catch (error) {
+      if (error.name === "AbortError") {
+        const timeoutError = new Error("云端分篇读取超时。");
+        timeoutError.status = 504;
+        throw timeoutError;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  return rows;
+}
+
+async function saveCloudStateSharded(syncCode, state) {
+  const plainState = decompressCloudState(state);
+  const rows = buildShardRows(syncCode, plainState);
+  await supabaseSharedBulkUpsert(rows);
+  return {
+    ok: true,
+    sharded: true,
+    works: Array.isArray(plainState?.works) ? plainState.works.length : 0,
+    rows: rows.length
+  };
+}
+
+async function loadCloudStateSharded(row) {
+  if (!row?.state) return row;
+  const state = decompressCloudState(row.state);
+  if (!state?._vellumSharded) {
+    row.state = state;
+    return row;
+  }
+  const refs = Array.isArray(state.works) ? state.works : [];
+  const shardKeys = refs.map((work) => work.shardKey).filter(Boolean);
+  const shardRows = await supabaseSharedGetMany(shardKeys);
+  const shardMap = new Map(shardRows.map((item) => [item.sync_code, decompressCloudState(item.state)]));
+  row.state = {
+    ...state,
+    works: refs.map((ref) => {
+      const shard = shardMap.get(ref.shardKey);
+      return shard?.work ? { ...ref, ...shard.work } : ref;
+    })
+  };
+  return row;
 }
 
 function parseLofterWork(html, sourceUrl) {
@@ -1122,12 +1339,12 @@ const server = http.createServer(async (req, res) => {
         if (req.method === "GET") {
           const syncCode = url.searchParams.get("syncCode") || "";
           const rows = await supabaseSharedRequest({ method: "GET", syncCode });
-          return sendJson(res, 200, Array.isArray(rows) ? rows[0] || null : rows);
+          const row = Array.isArray(rows) ? rows[0] || null : rows;
+          return sendJson(res, 200, await loadCloudStateSharded(row));
         }
         if (req.method === "POST") {
           const body = await readJsonBody(req);
-          await supabaseSharedRequest({ method: "POST", syncCode: body.syncCode, state: body.state });
-          return sendJson(res, 200, { ok: true });
+          return sendJson(res, 200, await saveCloudStateSharded(body.syncCode, body.state));
         }
         return sendJson(res, 405, { error: "不支持这个云端请求。" });
       } catch (error) {

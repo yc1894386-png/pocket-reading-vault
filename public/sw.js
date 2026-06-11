@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v111-cloud-code-rebuild";
+const CACHE_NAME = "pocket-reading-vault-v113-sharded-cloud-sync";
 const ASSETS = [
   "./",
   "./index.html",

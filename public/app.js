@@ -1476,6 +1476,13 @@ async function supabaseProxyRest(path, { method = "GET", query = "", body = null
 }
 
 async function supabaseRest(path, { method = "GET", query = "", body = null, prefer = "" } = {}) {
+  if (path === "shared_library_states") {
+    try {
+      return await supabaseProxyRest(path, { method, query, body });
+    } catch (proxyError) {
+      if (method === "POST") throw proxyError;
+    }
+  }
   const url = `${SUPABASE_URL}/rest/v1/${path}${query}`;
   const headers = {
     apikey: SUPABASE_KEY,
@@ -1503,7 +1510,9 @@ async function supabaseRest(path, { method = "GET", query = "", body = null, pre
     } catch {
       detail = await response.text();
     }
-    throw new Error(`${response.status} ${detail}`.trim());
+    const error = new Error(`${response.status} ${detail}`.trim());
+    if (path === "shared_library_states") return supabaseProxyRest(path, { method, query, body });
+    throw error;
   }
   if (response.status === 204) return null;
   const text = await response.text();
@@ -1762,7 +1771,7 @@ async function saveCloudNow({ silent = false } = {}) {
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
     const cloudState = await serializeCloudState(payload);
-    await supabaseRest("shared_library_states", {
+    const uploadResult = await supabaseRest("shared_library_states", {
       method: "POST",
       query: "?on_conflict=sync_code",
       prefer: "resolution=merge-duplicates,return=minimal",
@@ -1772,7 +1781,9 @@ async function saveCloudNow({ silent = false } = {}) {
         updated_at: new Date().toISOString()
       }
     });
-    if (!silent) setCloudStatus(`云端已保存：${payload.works.length} 篇${cloudState?._vellumCompressed ? "，已压缩" : ""} · ${new Date().toLocaleTimeString()}`);
+    const compressed = cloudState?._vellumCompressed || uploadResult?.compressed || uploadResult?.sharded;
+    const mode = uploadResult?.sharded ? `，分篇 ${uploadResult.works || payload.works.length} 篇` : (compressed ? "，已压缩" : "");
+    if (!silent) setCloudStatus(`云端已保存：${payload.works.length} 篇${mode} · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
     if (!silent && state.works.length && isCloudStateTimeout(error)) {
       const oldCode = state.syncCode;
