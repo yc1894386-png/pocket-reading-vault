@@ -5,6 +5,7 @@ const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
 const CLOUD_PROXY_BASE = IMPORT_API_BASE;
 const SUPABASE_URL = "https://bhliywysdezcykoyyozw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
+const SAFE_MODE = new URLSearchParams(location.search).has("safe");
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -1551,6 +1552,7 @@ function renderCloudPanel() {
   $("#cloudDownloadButton").disabled = !connected;
   $("#cloudUser").textContent = connected ? `同步码：${state.syncCode}` : "未连接同步码";
   $("#cloudAccountDetails").open = !connected;
+  if (SAFE_MODE) setCloudStatus("安全模式：已暂停自动云端同步。可以先导出书架或手动同步。");
 }
 
 function cloneLibraryState(value) {
@@ -1807,7 +1809,7 @@ async function saveCloudNow({ silent = false } = {}) {
 }
 
 function queueCloudSave() {
-  if (!state.syncCode || syncingCloud) return;
+  if (!state.syncCode || syncingCloud || SAFE_MODE) return;
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 1200);
 }
@@ -1820,7 +1822,7 @@ function stopCloudRealtime() {
 
 function startCloudRealtime() {
   stopCloudRealtime();
-  if (!supabase || !state.syncCode) return;
+  if (!supabase || !state.syncCode || SAFE_MODE) return;
   cloudRealtimeTimer = setInterval(async () => {
     if (syncingCloud || !state.syncCode) return;
     try {
@@ -1836,8 +1838,8 @@ function startCloudRealtime() {
       syncingCloud = false;
       setCloudStatus(`自动同步失败：${cloudRestErrorText(error)}`);
     }
-  }, 8000);
-  setCloudStatus("同步码已连接，会自动检查云端。");
+  }, 60000);
+  setCloudStatus("同步码已连接。为避免大书库卡顿，自动同步会低频检查；需要立刻同步请点「立即同步」。");
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
@@ -1864,9 +1866,8 @@ async function loadCloudIntoLocal({ merge = true } = {}) {
 async function refreshCloudSession({ initial = false } = {}) {
   renderCloudPanel();
   if (state.syncCode) {
-    setCloudStatus("同步码已连接。");
+    setCloudStatus(SAFE_MODE ? "安全模式：同步码已连接，但不会自动读取云端。" : "同步码已连接。");
     startCloudRealtime();
-    if (initial) await loadCloudIntoLocal({ merge: true });
   } else {
     stopCloudRealtime();
     setCloudStatus("输入同一个同步码，手机和电脑会自动同步。");
@@ -2870,7 +2871,7 @@ async function boot() {
   let imageMigrationNeeded = false;
   state.works = (state.works || []).map((work) => {
     const before = work.contentHtml || "";
-    const normalized = normalizeWork(work);
+    const normalized = SAFE_MODE ? work : normalizeWork(work);
     if ((normalized.contentHtml || "") !== before) imageMigrationNeeded = true;
     return normalized;
   });
@@ -2896,9 +2897,9 @@ async function boot() {
   if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
   if (imageMigrationNeeded) await dbSet("library", state);
   renderAll();
-  schedulePendingImports();
+  if (!SAFE_MODE) schedulePendingImports();
   if (supabase) {
-    await refreshCloudSession({ initial: true });
+    await refreshCloudSession({ initial: false });
   } else {
     renderCloudPanel();
   }
