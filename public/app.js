@@ -153,6 +153,17 @@ function openDb() {
   });
 }
 
+function nextPaint() {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+
+function unregisterServiceWorkers() {
+  if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return;
+  navigator.serviceWorker.getRegistrations?.()
+    .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    .catch(() => {});
+}
+
 function dbGet(key) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
@@ -2932,25 +2943,34 @@ async function downloadPreviewImage() {
 
 async function boot() {
   supabase = { mode: "rest" };
-  db = await openDb();
   state = structuredClone(defaultState);
+  localLibraryLoaded = false;
+  normalizePendingImports();
+  renderAll();
+  setCloudStatus("页面已打开。本机书架和云端会在后台准备，不会挡住进入。");
+  unregisterServiceWorkers();
+  await nextPaint();
+
+  try {
+    db = await openDb();
+  } catch (error) {
+    setCloudStatus("本机数据库暂时打不开，但页面可以先用。换浏览器或刷新后可重试。");
+    renderCloudPanel();
+    return;
+  }
+
   try {
     const shell = await dbGet("library-shell");
     if (shell?.syncCode) state.syncCode = shell.syncCode;
     if (shell?.theme) state.theme = shell.theme;
     if (shell?.progressAccent) state.progressAccent = shell.progressAccent;
   } catch {}
-  localLibraryLoaded = false;
-  normalizePendingImports();
   renderAll();
-  setCloudStatus("已轻量打开。旧浏览器如果本机书架太大，请先用同步码「只下载」；需要读取本机旧记录再点「恢复本机书架」。");
+  setCloudStatus("已轻量打开。要读取这台浏览器旧记录，请点「恢复本机书架」；云端会稍后后台检查。");
   if (supabase) {
-    await refreshCloudSession({ initial: false });
+    refreshCloudSession({ initial: false });
   } else {
     renderCloudPanel();
-  }
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
   }
 }
 
