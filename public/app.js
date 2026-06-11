@@ -78,6 +78,20 @@ const PROGRESS_PALETTES = [
   }
 ];
 
+const PROGRESS_DISPLAY_COLORS = {
+  "#E2F0D9": "#C8E5BE",
+  "#FDF2D5": "#F2DDA4",
+  "#E0F4F1": "#B7E5DF",
+  "#E6F0FA": "#C5DDF3",
+  "#EBE8F5": "#D2CDEB",
+  "#ECEFF1": "#D1D9DE",
+  "#FCE8E6": "#F3C8C4",
+  "#FDF0E6": "#F1D0B9",
+  "#F9EBF2": "#EDCADC",
+  "#1E293B": "#1E293B",
+  "#3F2424": "#3F2424"
+};
+
 let state = structuredClone(defaultState);
 let db;
 let noteTimer;
@@ -116,6 +130,7 @@ let cloudSession = null;
 let syncingCloud = false;
 let cloudRealtimeChannel = null;
 let cloudRealtimeTimer = null;
+let cloudPullTimer = null;
 let supabase;
 let activeHighlightId = null;
 let activeSelectionText = "";
@@ -606,6 +621,11 @@ function isDarkHex(value) {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 96;
 }
 
+function progressDisplayColor(value) {
+  const hex = normalizeHexColor(value || defaultState.progressAccent, defaultState.progressAccent);
+  return PROGRESS_DISPLAY_COLORS[hex] || hex;
+}
+
 function renderProgressColorChoices() {
   const current = normalizeHexColor(state.progressAccent || defaultState.progressAccent);
   const groups = $("#progressColorGroups");
@@ -1005,9 +1025,10 @@ function renderAll() {
   document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
   document.documentElement.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
   document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
-  const progressRgb = hexToRgb(state.progressAccent || defaultState.progressAccent);
+  const displayProgressColor = progressDisplayColor(state.progressAccent || defaultState.progressAccent);
+  const progressRgb = hexToRgb(displayProgressColor);
   document.documentElement.style.setProperty("--shelf-progress-rgb", `${progressRgb.r}, ${progressRgb.g}, ${progressRgb.b}`);
-  document.documentElement.style.setProperty("--shelf-progress-color", normalizeHexColor(state.progressAccent || defaultState.progressAccent));
+  document.documentElement.style.setProperty("--shelf-progress-color", displayProgressColor);
   renderFolders();
   renderWorks();
   renderReader();
@@ -1838,35 +1859,51 @@ async function saveCloudNow({ silent = false } = {}) {
 function queueCloudSave() {
   if (!state.syncCode || syncingCloud || SAFE_MODE) return;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 1200);
+  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 2800);
 }
 
 function stopCloudRealtime() {
   clearInterval(cloudRealtimeTimer);
+  clearTimeout(cloudPullTimer);
   cloudRealtimeTimer = null;
+  cloudPullTimer = null;
   cloudRealtimeChannel = null;
+}
+
+async function pullCloudInBackground({ initial = false } = {}) {
+  if (!supabase || !state.syncCode || syncingCloud || SAFE_MODE) return;
+  syncingCloud = true;
+  try {
+    const remoteState = await getCloudState();
+    if (!remoteState) {
+      syncingCloud = false;
+      if (!initial) setCloudStatus("云端暂时没有书架，这台设备的改动会自动上传。");
+      return;
+    }
+    if (remoteState._lastWriter === CLIENT_ID) {
+      syncingCloud = false;
+      return;
+    }
+    const cloudCount = remoteState.works?.length || 0;
+    const beforeCount = state.works.length;
+    state = mergeLibraryState(state, remoteState);
+    if (cloudCount || localLibraryLoaded) await dbSet("library", state);
+    syncingCloud = false;
+    renderAll();
+    setCloudStatus(`已后台同步：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
+    if (beforeCount !== state.works.length && state.syncCode) queueCloudSave();
+  } catch (error) {
+    syncingCloud = false;
+    setCloudStatus(initial ? "云端会在后台继续重试，不影响本机阅读。" : `自动同步失败：${cloudRestErrorText(error)}`);
+  }
 }
 
 function startCloudRealtime() {
   stopCloudRealtime();
   if (!supabase || !state.syncCode || SAFE_MODE) return;
-  cloudRealtimeTimer = setInterval(async () => {
-    if (syncingCloud || !state.syncCode) return;
-    try {
-      const remoteState = await getCloudState();
-      if (!remoteState || remoteState._lastWriter === CLIENT_ID) return;
-      syncingCloud = true;
-      state = mergeLibraryState(state, remoteState);
-      await dbSet("library", state);
-      syncingCloud = false;
-      renderAll();
-      setCloudStatus(`已自动同步：${new Date().toLocaleTimeString()}`);
-    } catch (error) {
-      syncingCloud = false;
-      setCloudStatus(`自动同步失败：${cloudRestErrorText(error)}`);
-    }
-  }, 60000);
-  setCloudStatus("同步码已连接。为避免大书库卡顿，自动同步会低频检查；需要立刻同步请点「立即同步」。");
+  cloudPullTimer = setTimeout(() => pullCloudInBackground({ initial: true }), 1800);
+  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 20000);
+  setCloudStatus("同步码已连接。页面先打开，云端会在后台自动同步。");
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
@@ -3923,8 +3960,8 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 window.addEventListener("pagehide", () => {
-  if (!activeWork()) return;
-  persistProgress();
+  if (activeWork()) persistProgress();
+  if (state.syncCode && cloudTimer && !syncingCloud) saveCloudNow({ silent: true });
 });
 
 document.addEventListener("visibilitychange", () => {
