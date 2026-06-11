@@ -372,7 +372,7 @@ function folderNamesForWork(work) {
   return names.length ? names.join(" / ") : "未分组";
 }
 
-function normalizeWork(work) {
+function normalizeWork(work, options = {}) {
   work.folderId ||= "unfiled";
   work.folderIds ||= [];
   if (work.folderId && work.folderId !== "unfiled" && !work.folderIds.includes(work.folderId)) {
@@ -396,7 +396,7 @@ function normalizeWork(work) {
     const count = textFromHtml(work.contentHtml || "").replace(/\s/g, "").length;
     if (count) work.metadata.words = `${count} 字`;
   }
-  if (work.contentHtml && /<img\b/i.test(work.contentHtml)) {
+  if (!options.light && work.contentHtml && /<img\b/i.test(work.contentHtml)) {
     const contentRoot = document.createElement("div");
     contentRoot.innerHTML = work.contentHtml;
     normalizeImages(contentRoot, work.sourceUrl || "");
@@ -507,6 +507,34 @@ function splitLooseChapters(root) {
 function currentChapterIndex(work, chapters = getChapters(work)) {
   const index = Number(work.reading?.chapterIndex || 0);
   return Math.max(0, Math.min(index, chapters.length - 1));
+}
+
+function lightweightChapterCount(work) {
+  const chapterText = work?.metadata?.chapters || "";
+  const fraction = String(chapterText).match(/(\d+)\s*\/\s*(\d+|\?)/);
+  if (fraction) return Math.max(1, Number(fraction[2] === "?" ? fraction[1] : fraction[2]) || Number(fraction[1]) || 1);
+  const single = String(chapterText).match(/(\d+)\s*(章|chapter|chapters)/i);
+  if (single) return Math.max(1, Number(single[1]) || 1);
+  const html = work?.contentHtml || "";
+  const classCount = (html.match(/\bclass=["'][^"']*chapter/gi) || []).length;
+  if (classCount > 1) return classCount;
+  return 1;
+}
+
+function lightweightWordText(work) {
+  if (work?.metadata?.words && work.metadata.words !== "字数未知") return work.metadata.words;
+  const cached = Number(work?.wordCount || work?.metadata?.wordCount || 0);
+  if (cached) return `${cached} 字`;
+  return "字数待统计";
+}
+
+function lightweightReadingRatio(work) {
+  if (!work) return 0;
+  if (work.reading?.wholeRatio !== undefined) return Math.max(0, Math.min(1, Number(work.reading.wholeRatio || 0)));
+  const total = Math.max(1, lightweightChapterCount(work));
+  const index = Math.max(0, Math.min(total - 1, Number(work.reading?.chapterIndex || 0)));
+  const ratio = Math.max(0, Math.min(1, Number(work.reading?.ratio || 0)));
+  return Math.max(0, Math.min(1, (index + ratio) / total));
 }
 
 function readingToWholeRatio(work, chapters = getChapters(work)) {
@@ -629,13 +657,13 @@ function syncFolderActiveState() {
 function renderWorks() {
   const works = filteredWorks();
   $("#workList").innerHTML = works.length ? works.map((work) => {
-    normalizeWork(work);
+    normalizeWork(work, { light: true });
     const rel = work.metadata?.relationships?.[0] || work.customTags?.[0] || folderNamesForWork(work);
-    const chapters = getChapters(work);
+    const chapterCount = lightweightChapterCount(work);
     const chapterText = work.metadata?.chapters || "";
     const complete = /(\d+)\s*\/\s*\1/.test(chapterText) || /complete|完结/i.test(work.metadata?.status || "");
     const status = complete ? "完结" : (chapterText ? "连载" : "未知");
-    const ratio = readingToWholeRatio(work, chapters);
+    const ratio = lightweightReadingRatio(work);
     const progress = Math.round(ratio * 100);
     const safeProgress = Math.min(100, Math.max(0, progress));
     const progressText = progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读";
@@ -647,24 +675,22 @@ function renderWorks() {
         <span class="work-progress-edge" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
-        <p class="work-progress-text">${progressText} · ${chapters.length} 章 · ${escapeHtml(work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`)}</p>
+        <p class="work-progress-text">${progressText} · ${chapterCount} 章 · ${escapeHtml(lightweightWordText(work))}</p>
         ${customTags.length ? `<div class="mini-tag-row">${customTags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </button>
     `;
   }).join("") : `<div class="empty-state compact-empty"><p>这里还没有作品。</p></div>`;
 }
 
-function syncWorkCardProgress(work, ratio = readingToWholeRatio(work)) {
+function syncWorkCardProgress(work, ratio = lightweightReadingRatio(work)) {
   if (!work) return;
   const card = document.querySelector(`[data-work="${cssEscape(work.id)}"]`);
   if (!card) return;
-  const chapters = getChapters(work);
   const progress = Math.round(Math.max(0, Math.min(1, ratio)) * 100);
   card.style.setProperty("--work-progress", `${progress}%`);
   const progressLine = card.querySelector(".work-progress-text");
   if (progressLine) {
-    const words = work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`;
-    progressLine.textContent = `${progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读"} · ${chapters.length} 章 · ${words}`;
+    progressLine.textContent = `${progress > 0 ? `进度：${Math.min(100, progress)}%` : "未读"} · ${lightweightChapterCount(work)} 章 · ${lightweightWordText(work)}`;
   }
 }
 
@@ -2871,7 +2897,7 @@ async function boot() {
   let imageMigrationNeeded = false;
   state.works = (state.works || []).map((work) => {
     const before = work.contentHtml || "";
-    const normalized = SAFE_MODE ? work : normalizeWork(work);
+    const normalized = normalizeWork(work, { light: true });
     if ((normalized.contentHtml || "") !== before) imageMigrationNeeded = true;
     return normalized;
   });
@@ -2895,6 +2921,7 @@ async function boot() {
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
+  state.selectedWorkId = null;
   if (imageMigrationNeeded) await dbSet("library", state);
   renderAll();
   if (!SAFE_MODE) schedulePendingImports();
