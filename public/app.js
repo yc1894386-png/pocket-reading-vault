@@ -182,9 +182,19 @@ function dbSet(key, value) {
   });
 }
 
+async function saveShellState() {
+  if (!db) return;
+  await dbSet("library-shell", {
+    syncCode: state.syncCode || "",
+    theme: state.theme || defaultState.theme,
+    progressAccent: state.progressAccent || defaultState.progressAccent
+  });
+}
+
 async function saveState() {
   state.updatedAt = new Date().toISOString();
   await dbSet("library", state);
+  await saveShellState();
   queueCloudSave();
 }
 
@@ -2959,14 +2969,18 @@ async function boot() {
     return;
   }
 
+  let shell = null;
   try {
-    const shell = await dbGet("library-shell");
+    shell = await dbGet("library-shell");
     if (shell?.syncCode) state.syncCode = shell.syncCode;
     if (shell?.theme) state.theme = shell.theme;
     if (shell?.progressAccent) state.progressAccent = shell.progressAccent;
   } catch {}
   renderAll();
-  setCloudStatus("已轻量打开。要读取这台浏览器旧记录，请点「恢复本机书架」；云端会稍后后台检查。");
+  setCloudStatus("正在自动恢复本机书架；云端只是同步备份，不会挡住本机阅读。");
+  setTimeout(() => loadLocalLibrary({ auto: true, shell }).catch((error) => {
+    setCloudStatus(`本机书架自动恢复失败：${error.message}。可以稍后点「恢复本机书架」。`);
+  }), 250);
   if (supabase) {
     refreshCloudSession({ initial: false });
   } else {
@@ -2974,14 +2988,23 @@ async function boot() {
   }
 }
 
-async function loadLocalLibrary() {
-  setCloudStatus("正在读取本机书架……如果旧浏览器数据太大，可能会比较久。");
+async function loadLocalLibrary({ auto = false, shell = null } = {}) {
+  const remembered = {
+    syncCode: state.syncCode || shell?.syncCode || "",
+    theme: state.theme || shell?.theme || defaultState.theme,
+    progressAccent: state.progressAccent || shell?.progressAccent || defaultState.progressAccent
+  };
+  setCloudStatus(auto ? "正在恢复本机书架……" : "正在读取本机书架……如果旧浏览器数据太大，可能会比较久。");
   const saved = await dbGet("library");
   if (!saved) {
-    setCloudStatus("这一个浏览器里没有本机书架。可以填同步码后点「只下载」。");
+    await saveShellState();
+    setCloudStatus("这一个浏览器里没有本机书架。若云端可用，可以用同步码「只下载」。");
     return;
   }
   state = { ...defaultState, ...saved };
+  if (!state.syncCode && remembered.syncCode) state.syncCode = remembered.syncCode;
+  state.theme ||= remembered.theme;
+  state.progressAccent ||= remembered.progressAccent;
   let imageMigrationNeeded = false;
   state.works = (state.works || []).map((work) => {
     const before = work.contentHtml || "";
@@ -3012,15 +3035,11 @@ async function loadLocalLibrary() {
   state.selectedWorkId = null;
   if (imageMigrationNeeded) await dbSet("library", state);
   localLibraryLoaded = true;
-  await dbSet("library-shell", {
-    syncCode: state.syncCode || "",
-    theme: state.theme || defaultState.theme,
-    progressAccent: state.progressAccent || defaultState.progressAccent
-  });
+  await saveShellState();
   renderAll();
   renderCloudPanel();
   if (!SAFE_MODE) schedulePendingImports();
-  setCloudStatus(`本机书架已恢复：${state.works.length} 篇。`);
+  setCloudStatus(`本机书架已恢复：${state.works.length} 篇。${state.syncCode ? "云端会稍后自动同步。" : ""}`);
 }
 
 $("#importForm").addEventListener("submit", async (event) => {
