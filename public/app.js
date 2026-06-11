@@ -1859,7 +1859,7 @@ async function saveCloudNow({ silent = false } = {}) {
 function queueCloudSave() {
   if (!state.syncCode || syncingCloud || SAFE_MODE) return;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 2800);
+  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 6500);
 }
 
 function stopCloudRealtime() {
@@ -1872,6 +1872,8 @@ function stopCloudRealtime() {
 
 async function pullCloudInBackground({ initial = false } = {}) {
   if (!supabase || !state.syncCode || syncingCloud || SAFE_MODE) return;
+  if (activeWork()) return;
+  if (document.visibilityState && document.visibilityState !== "visible") return;
   syncingCloud = true;
   try {
     const remoteState = await getCloudState();
@@ -1901,9 +1903,9 @@ async function pullCloudInBackground({ initial = false } = {}) {
 function startCloudRealtime() {
   stopCloudRealtime();
   if (!supabase || !state.syncCode || SAFE_MODE) return;
-  cloudPullTimer = setTimeout(() => pullCloudInBackground({ initial: true }), 1800);
-  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 20000);
-  setCloudStatus("同步码已连接。页面先打开，云端会在后台自动同步。");
+  cloudPullTimer = setTimeout(() => pullCloudInBackground({ initial: true }), 12000);
+  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 90000);
+  setCloudStatus("同步码已连接。页面会先打开，云端稍后在后台自动同步。");
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
