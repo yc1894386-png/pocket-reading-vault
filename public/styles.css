@@ -8260,6 +8260,108 @@ body:not(.reading) .selection-toolbar {
   display: none !important;
 }
 
+/* v122 actual EOF: exact palette color at 40%, overriding every older progress experiment above. */
+.work-card {
+  background: var(--panel) !important;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
+  box-shadow:
+    0 8px 22px rgba(20, 20, 20, 0.045),
+    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+}
+
+.work-card:hover {
+  box-shadow:
+    0 11px 28px rgba(20, 20, 20, 0.055),
+    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+}
+
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  opacity: 1 !important;
+  border-radius: 17px 0 0 17px !important;
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.16),
+    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.work-card .work-progress-wash::after,
+.work-card .work-progress-edge {
+  display: none !important;
+}
+
+:root.dark .work-card {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+:root.dark .work-card .work-progress-wash,
+:root.dark .work-card.active .work-progress-wash,
+:root.dark .work-card:active .work-progress-wash {
+  background: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.18),
+    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+}
+
+/* v121 final: use the exact user palette at 40% opacity. Keep this at EOF. */
+.work-card {
+  background: var(--panel) !important;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
+  box-shadow:
+    0 8px 22px rgba(20, 20, 20, 0.045),
+    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+}
+
+.work-card:hover {
+  box-shadow:
+    0 11px 28px rgba(20, 20, 20, 0.055),
+    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+}
+
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  opacity: 1 !important;
+  border-radius: 17px 0 0 17px !important;
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.16),
+    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.work-card .work-progress-wash::after,
+.work-card .work-progress-edge {
+  display: none !important;
+}
+
+:root.dark .work-card {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+:root.dark .work-card .work-progress-wash,
+:root.dark .work-card.active .work-progress-wash,
+:root.dark .work-card:active .work-progress-wash {
+  background: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.18),
+    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+}
+
 /* v117: smoother shelf progress wash. Keep this last so older progress experiments cannot fight it. */
 .work-card {
   border: 1px solid color-mix(in srgb, var(--line) 86%, transparent) !important;
@@ -8566,5 +8668,56 @@ body:not(.reading) .selection-toolbar {
 .work-card .work-progress-wash::after,
 .work-card .work-progress-edge {
   display: none !important;
+}
+
+/* v122 real final: exact palette color at 40%, overriding every older progress experiment above. */
+.work-card {
+  background: var(--panel) !important;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
+  box-shadow:
+    0 8px 22px rgba(20, 20, 20, 0.045),
+    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+}
+
+.work-card:hover {
+  box-shadow:
+    0 11px 28px rgba(20, 20, 20, 0.055),
+    0 1px 0 rgba(20, 20, 20, 0.03) !important;
+}
+
+.work-card .work-progress-wash,
+.work-card.active .work-progress-wash,
+.work-card:active .work-progress-wash {
+  inset: 0 auto 0 0 !important;
+  width: var(--work-progress, 0%) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  opacity: 1 !important;
+  border-radius: 17px 0 0 17px !important;
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.16),
+    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.work-card .work-progress-wash::after,
+.work-card .work-progress-edge {
+  display: none !important;
+}
+
+:root.dark .work-card {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+:root.dark .work-card .work-progress-wash,
+:root.dark .work-card.active .work-progress-wash,
+:root.dark .work-card:active .work-progress-wash {
+  background: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.18),
+    inset 0 -6px 0 rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
 }
 

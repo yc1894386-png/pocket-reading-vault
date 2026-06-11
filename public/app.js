@@ -644,7 +644,7 @@ function isDarkHex(value) {
 
 function progressDisplayColor(value) {
   const hex = normalizeHexColor(value || defaultState.progressAccent, defaultState.progressAccent);
-  return PROGRESS_DISPLAY_COLORS[hex] || hex;
+  return hex;
 }
 
 function renderProgressColorChoices() {
