@@ -215,7 +215,10 @@ function normalizeReading(reading = {}, fallback = {}) {
 }
 
 function readingEntryForWork(work) {
-  return normalizeReading(work?.reading || {}, { updatedAt: work?.updatedAt || work?.importedAt });
+  return {
+    ...normalizeReading(work?.reading || {}, { updatedAt: work?.updatedAt || work?.importedAt }),
+    sortOrder: Number(work?.sortOrder || 0) || undefined
+  };
 }
 
 async function loadReadingProgressCache() {
@@ -236,6 +239,7 @@ function applyReadingProgressOverlay(work) {
   const currentTime = readingTime(work);
   if (entryTime >= currentTime) {
     work.reading = normalizeReading(entry, work.reading || {});
+    if (entry.sortOrder !== undefined) work.sortOrder = Number(entry.sortOrder || work.sortOrder || 0);
   }
   return work;
 }
@@ -248,6 +252,7 @@ async function saveReadingProgress(work) {
   readingProgressCache.updatedAt = entry.updatedAt;
   readingProgressLoaded = true;
   await dbSet("reading-progress", readingProgressCache);
+  await saveShellState();
   queueCloudSave();
 }
 
@@ -672,6 +677,19 @@ function filteredWorks() {
       return haystack.includes(query);
     })
     .sort((a, b) => (Number(b.sortOrder || 0) - Number(a.sortOrder || 0)) || (new Date(b.importedAt) - new Date(a.importedAt)));
+}
+
+function promoteWorkToRecent(work, now = new Date().toISOString()) {
+  if (!work) return false;
+  const nextOrder = Math.max(
+    Date.now(),
+    ...state.works.map((item) => Number(item.sortOrder || 0)).filter(Number.isFinite)
+  ) + 1;
+  work.sortOrder = nextOrder;
+  normalizeWork(work, { light: true });
+  work.reading.updatedAt = now;
+  work.updatedAt = now;
+  return true;
 }
 
 function visibleFolders() {
@@ -1454,7 +1472,6 @@ function startProgressColorPress(event) {
 
 function startWorkPress(event, id) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
-  if (event.pointerType === "mouse") return;
   clearTimeout(longPressTimer);
   event.currentTarget?.setPointerCapture?.(event.pointerId);
   longPressPoint = { x: event.clientX, y: event.clientY };
@@ -1465,12 +1482,13 @@ function startWorkPress(event, id) {
     suppressShelfClick = true;
     document.body.classList.add("shelf-dragging");
     document.querySelector(`[data-work="${cssEscape(id)}"]`)?.classList.add("dragging");
-  }, 300);
+  }, event.pointerType === "mouse" ? 180 : 300);
 }
 
 async function moveDraggedWork(event) {
   if (!workDrag) return;
   if (!workDrag.active) {
+    if (!longPressPoint) return;
     const movedEarly = Math.abs(event.clientX - longPressPoint.x) > 16 || Math.abs(event.clientY - longPressPoint.y) > 16;
     if (movedEarly) cancelWorkPress();
     return;
@@ -2752,6 +2770,7 @@ async function persistProgress() {
   work.reading.chapterIndex = visibleReaderChapterIndex();
   work.reading.updatedAt = now;
   work.updatedAt = now;
+  promoteWorkToRecent(work, now);
   await saveReadingProgress(work);
   updateProgressBar();
 }
@@ -3457,7 +3476,9 @@ $("#workList").addEventListener("click", (event) => {
   }
   state.selectedWorkId = button.dataset.work;
   const work = activeWork();
+  promoteWorkToRecent(work);
   pendingJump = work ? readingToWholeRatio(work) : 0;
+  if (work) saveReadingProgress(work).catch(() => {});
   requestReadingFullscreen();
   renderAll();
 });
