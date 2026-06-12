@@ -125,6 +125,8 @@ let toolbarPointerHandledAt = 0;
 let toolbarActionUntil = 0;
 let previewImageUrl = "";
 let localLibraryLoaded = false;
+let readingProgressCache = { works: {}, updatedAt: "" };
+let readingProgressLoaded = false;
 
 function lockPortraitMode() {
   screen.orientation?.lock?.("portrait").catch(() => {});
@@ -150,6 +152,23 @@ function unregisterServiceWorkers() {
     .catch(() => {});
 }
 
+function shellWork(work = {}) {
+  return {
+    id: work.id,
+    title: work.title,
+    author: work.author,
+    sourceUrl: work.sourceUrl,
+    folderId: work.folderId,
+    folderIds: work.folderIds || [],
+    customTags: work.customTags || [],
+    metadata: work.metadata || {},
+    reading: readingEntryForWork(work),
+    importedAt: work.importedAt,
+    updatedAt: work.updatedAt,
+    sortOrder: work.sortOrder
+  };
+}
+
 function dbGet(key) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
@@ -173,8 +192,63 @@ async function saveShellState() {
   await dbSet("library-shell", {
     syncCode: state.syncCode || "",
     theme: state.theme || defaultState.theme,
-    progressAccent: state.progressAccent || defaultState.progressAccent
+    progressAccent: state.progressAccent || defaultState.progressAccent,
+    selectedFolder: state.selectedFolder || "all",
+    folders: state.folders || defaultState.folders,
+    works: (state.works || []).map(shellWork),
+    updatedAt: new Date().toISOString()
   });
+}
+
+function readingTime(value) {
+  return new Date(value?.reading?.updatedAt || value?.updatedAt || value?.importedAt || 0).getTime() || 0;
+}
+
+function normalizeReading(reading = {}, fallback = {}) {
+  const ratio = Math.max(0, Math.min(1, Number(reading.wholeRatio ?? reading.ratio ?? fallback.wholeRatio ?? fallback.ratio ?? 0)));
+  return {
+    chapterIndex: Math.max(0, Number(reading.chapterIndex ?? fallback.chapterIndex ?? 0) || 0),
+    ratio,
+    wholeRatio: ratio,
+    updatedAt: reading.updatedAt || fallback.updatedAt || new Date().toISOString()
+  };
+}
+
+function readingEntryForWork(work) {
+  return normalizeReading(work?.reading || {}, { updatedAt: work?.updatedAt || work?.importedAt });
+}
+
+async function loadReadingProgressCache() {
+  if (!db || readingProgressLoaded) return readingProgressCache;
+  const saved = await dbGet("reading-progress").catch(() => null);
+  readingProgressCache = {
+    works: saved?.works && typeof saved.works === "object" ? saved.works : {},
+    updatedAt: saved?.updatedAt || ""
+  };
+  readingProgressLoaded = true;
+  return readingProgressCache;
+}
+
+function applyReadingProgressOverlay(work) {
+  const entry = readingProgressCache.works?.[work.id];
+  if (!entry) return work;
+  const entryTime = new Date(entry.updatedAt || 0).getTime() || 0;
+  const currentTime = readingTime(work);
+  if (entryTime >= currentTime) {
+    work.reading = normalizeReading(entry, work.reading || {});
+  }
+  return work;
+}
+
+async function saveReadingProgress(work) {
+  if (!db || !work?.id) return;
+  const entry = readingEntryForWork(work);
+  readingProgressCache.works ||= {};
+  readingProgressCache.works[work.id] = entry;
+  readingProgressCache.updatedAt = entry.updatedAt;
+  readingProgressLoaded = true;
+  await dbSet("reading-progress", readingProgressCache);
+  queueCloudSave();
 }
 
 async function saveState() {
@@ -435,9 +509,7 @@ function normalizeWork(work, options = {}) {
     note: item.note || "",
     createdAt: item.createdAt || new Date().toISOString()
   })).filter((item) => item.text);
-  work.reading ||= { chapterIndex: 0, ratio: 0 };
-  work.reading.chapterIndex ||= 0;
-  work.reading.ratio ||= 0;
+  work.reading = normalizeReading(work.reading || {}, { updatedAt: work.updatedAt || work.importedAt });
   work.sortOrder ??= Date.parse(work.importedAt || work.updatedAt || "") || Date.now();
   return work;
 }
@@ -1699,6 +1771,7 @@ function mergeWorkRecords(localWork, cloudWork) {
   const localScore = cloudWorkContentScore(local);
   const cloudScore = cloudWorkContentScore(cloud);
   const richer = cloudScore > localScore ? cloud : local;
+  const reading = readingTime(cloud) > readingTime(local) ? cloud.reading : local.reading;
   const merged = normalizeWork({
     ...older,
     ...newer,
@@ -1716,7 +1789,7 @@ function mergeWorkRecords(localWork, cloudWork) {
     note: usefulValue(newer.note) ? newer.note : (older.note || ""),
     bookmarks: mergeAnnotationList(local.bookmarks, cloud.bookmarks),
     highlights: mergeAnnotationList(local.highlights, cloud.highlights),
-    reading: newer.reading || older.reading || { chapterIndex: 0, ratio: 0 },
+    reading,
     sortOrder: Math.min(Number(local.sortOrder || Date.now()), Number(cloud.sortOrder || Date.now())),
     importedAt: local.importedAt && cloud.importedAt
       ? (new Date(local.importedAt).getTime() <= new Date(cloud.importedAt).getTime() ? local.importedAt : cloud.importedAt)
@@ -2575,7 +2648,7 @@ function snapToNearestPage() {
   pageCache.current = Math.min(metrics.total, Math.max(1, Math.round(target / metrics.step) + 1));
 }
 
-function queueProgressPersist(delay = 700) {
+function queueProgressPersist(delay = 320) {
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persistProgress, delay);
 }
@@ -2628,11 +2701,13 @@ async function persistProgress() {
   const work = activeWork();
   if (!work) return;
   normalizeWork(work);
+  const now = new Date().toISOString();
   work.reading.wholeRatio = chapterScrollRatio();
   work.reading.ratio = work.reading.wholeRatio;
   work.reading.chapterIndex = visibleReaderChapterIndex();
-  work.updatedAt = new Date().toISOString();
-  await saveState();
+  work.reading.updatedAt = now;
+  work.updatedAt = now;
+  await saveReadingProgress(work);
   updateProgressBar();
 }
 
@@ -2642,10 +2717,12 @@ function changeChapter(delta) {
   const chapters = getChapters(work);
   const nextIndex = Math.max(0, Math.min(visibleReaderChapterIndex() + delta, chapters.length - 1));
   const nextRatio = chapterStartRatio(nextIndex, chapters);
+  const now = new Date().toISOString();
   work.reading.chapterIndex = nextIndex;
   work.reading.wholeRatio = nextRatio;
   work.reading.ratio = nextRatio;
-  work.updatedAt = new Date().toISOString();
+  work.reading.updatedAt = now;
+  work.updatedAt = now;
   pendingJump = nextRatio;
   pendingChapterJump = { index: nextIndex, ratio: 0 };
   saveState().then(renderAll);
@@ -2657,10 +2734,12 @@ function goToChapter(index, ratio = 0) {
   const chapters = getChapters(work);
   const nextIndex = Math.max(0, Math.min(index, chapters.length - 1));
   const nextRatio = Math.max(0, Math.min(1, chapterStartRatio(nextIndex, chapters) + (ratio / Math.max(1, chapters.length))));
+  const now = new Date().toISOString();
   work.reading.chapterIndex = nextIndex;
   work.reading.wholeRatio = nextRatio;
   work.reading.ratio = nextRatio;
-  work.updatedAt = new Date().toISOString();
+  work.reading.updatedAt = now;
+  work.updatedAt = now;
   pendingJump = nextRatio;
   pendingChapterJump = { index: nextIndex, ratio };
   saveState().then(renderAll);
@@ -2673,10 +2752,12 @@ function goToHighlight(highlight) {
   const chapters = getChapters(work);
   const index = Math.max(0, Math.min(Number(highlight.chapterIndex || 0), chapters.length - 1));
   const nextRatio = chapterStartRatio(index, chapters);
+  const now = new Date().toISOString();
   work.reading.chapterIndex = index;
   work.reading.wholeRatio = nextRatio;
   work.reading.ratio = nextRatio;
-  work.updatedAt = new Date().toISOString();
+  work.reading.updatedAt = now;
+  work.updatedAt = now;
   pendingJump = nextRatio;
   pendingChapterJump = { index, ratio: 0 };
   pendingHighlightJumpId = highlight.id;
@@ -2968,17 +3049,25 @@ async function boot() {
     if (shell?.syncCode) state.syncCode = shell.syncCode;
     if (shell?.theme) state.theme = shell.theme;
     if (shell?.progressAccent) state.progressAccent = shell.progressAccent;
+    if (Array.isArray(shell?.folders)) state.folders = shell.folders;
+    if (Array.isArray(shell?.works) && shell.works.length) {
+      state.works = shell.works.map((work) => normalizeWork(work, { light: true }));
+      state.selectedFolder = shell.selectedFolder || "all";
+      localLibraryLoaded = false;
+    }
   } catch {}
   renderAll();
-  setCloudStatus("正在自动恢复本机书架；云端只是同步备份，不会挡住本机阅读。");
+  setCloudStatus(shell?.works?.length ? "已先显示轻量书架，正在恢复正文内容。" : "正在自动恢复本机书架；云端只是同步备份，不会挡住本机阅读。");
   setTimeout(() => loadLocalLibrary({ auto: true, shell }).catch((error) => {
     setCloudStatus(`本机书架自动恢复失败：${error.message}。可以稍后点「恢复本机书架」。`);
   }), 250);
-  if (supabase) {
-    refreshCloudSession({ initial: false });
-  } else {
-    renderCloudPanel();
-  }
+  window.setTimeout(() => {
+    if (supabase) {
+      refreshCloudSession({ initial: false });
+    } else {
+      renderCloudPanel();
+    }
+  }, 3200);
 }
 
 async function loadLocalLibrary({ auto = false, shell = null } = {}) {
@@ -2998,12 +3087,10 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
   if (!state.syncCode && remembered.syncCode) state.syncCode = remembered.syncCode;
   state.theme ||= remembered.theme;
   state.progressAccent ||= remembered.progressAccent;
-  let imageMigrationNeeded = false;
+  await loadReadingProgressCache();
   state.works = (state.works || []).map((work) => {
-    const before = work.contentHtml || "";
     const normalized = normalizeWork(work, { light: true });
-    if ((normalized.contentHtml || "") !== before) imageMigrationNeeded = true;
-    return normalized;
+    return applyReadingProgressOverlay(normalized);
   });
   state.readerLineHeight ||= defaultState.readerLineHeight;
   state.readerSideMargin ||= defaultState.readerSideMargin;
@@ -3026,7 +3113,6 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
   state.selectedWorkId = null;
-  if (imageMigrationNeeded) await dbSet("library", state);
   localLibraryLoaded = true;
   await saveShellState();
   renderAll();
@@ -3319,12 +3405,16 @@ $("#workList").addEventListener("click", (event) => {
     suppressShelfClick = false;
     return;
   }
+  const nextWork = state.works.find((item) => item.id === button.dataset.work);
+  if (nextWork && !nextWork.contentHtml && !localLibraryLoaded) {
+    setCloudStatus("正文还在恢复中，稍等一下就能打开。");
+    return;
+  }
   state.selectedWorkId = button.dataset.work;
   const work = activeWork();
   pendingJump = work ? readingToWholeRatio(work) : 0;
   requestReadingFullscreen();
   renderAll();
-  saveState().catch(() => {});
 });
 
 $("#workList").addEventListener("pointerdown", (event) => {
@@ -3971,7 +4061,7 @@ $("#workContent").addEventListener("touchend", (event) => {
 $("#workContent").addEventListener("scroll", () => {
   scheduleReaderScrollUpdate();
   clearTimeout(progressTimer);
-  progressTimer = setTimeout(persistProgress, normalizedTurnMode() === "scroll" ? 450 : 900);
+  progressTimer = setTimeout(persistProgress, normalizedTurnMode() === "scroll" ? 220 : 360);
   clearTimeout(snapTimer);
   if (normalizedTurnMode() === "swipe") {
     snapTimer = setTimeout(snapToNearestPage, 90);
@@ -3990,7 +4080,7 @@ window.addEventListener("scroll", () => {
   if (!activeWork()) return;
   updateProgressBar();
   clearTimeout(progressTimer);
-  progressTimer = setTimeout(persistProgress, 900);
+  progressTimer = setTimeout(persistProgress, 360);
 }, { passive: true });
 
 window.addEventListener("pagehide", () => {

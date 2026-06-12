@@ -2499,7 +2499,7 @@ dialog,
   z-index: 0;
   width: var(--work-progress, 0%);
   border-radius: 17px 0 0 17px;
-  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4);
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.6);
   pointer-events: none;
 }
 
@@ -2515,7 +2515,7 @@ dialog,
 
 .work-card.active .work-progress-wash,
 .work-card:active .work-progress-wash {
-  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4);
+  background: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.6);
 }
 
 .work-card.progress-contrast p {
@@ -8025,7 +8025,7 @@ body:not(.reading) .selection-toolbar {
 
 
 
-/* v123 clean shelf progress: one fast rule, exact palette at 40%. */
+/* v124 clean shelf progress: one fast rule, exact palette at 60%. */
 .work-card {
   background: var(--panel) !important;
   border: 1px solid color-mix(in srgb, var(--line) 88%, transparent) !important;
@@ -8051,7 +8051,7 @@ body:not(.reading) .selection-toolbar {
   height: 100% !important;
   min-height: 100% !important;
   border-radius: 17px 0 0 17px !important;
-  background-color: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.4) !important;
+  background-color: rgba(var(--shelf-progress-rgb, 224, 244, 241), 0.6) !important;
   box-shadow: none !important;
   filter: none !important;
   mix-blend-mode: normal !important;
@@ -8073,5 +8073,5 @@ body:not(.reading) .selection-toolbar {
 :root.dark .work-card .work-progress-wash,
 :root.dark .work-card.active .work-progress-wash,
 :root.dark .work-card:active .work-progress-wash {
-  background-color: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.4) !important;
+  background-color: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.6) !important;
 }
