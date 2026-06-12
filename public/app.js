@@ -858,23 +858,26 @@ function renderReader() {
   ].filter(Boolean).slice(0, 28);
   $("#workTags").innerHTML = tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
   $("#metadataBlock").innerHTML = renderMetadata(work);
-  updateProgressBar();
-  updatePageCount();
+  const shouldRestorePosition = pendingJump !== null || pendingChapterJump || pendingHighlightJumpId;
+  if (!shouldRestorePosition) {
+    updateProgressBar();
+    updatePageCount();
+  }
 
   if (pendingJump !== null) {
     const ratio = pendingJump;
     pendingJump = null;
-    requestAnimationFrame(() => scrollToChapterRatio(ratio));
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToChapterRatio(ratio)));
   }
   if (pendingChapterJump) {
     const { index: jumpIndex, ratio } = pendingChapterJump;
     pendingChapterJump = null;
-    requestAnimationFrame(() => jumpToChapterElement(jumpIndex, ratio));
+    requestAnimationFrame(() => requestAnimationFrame(() => jumpToChapterElement(jumpIndex, ratio)));
   }
   if (pendingHighlightJumpId) {
     const id = pendingHighlightJumpId;
     pendingHighlightJumpId = null;
-    requestAnimationFrame(() => jumpToHighlightMark(id));
+    requestAnimationFrame(() => requestAnimationFrame(() => jumpToHighlightMark(id)));
   }
 }
 
@@ -2398,43 +2401,33 @@ function createCollectorBookmarklet() {
 function chapterScrollRatio() {
   const content = $("#workContent");
   if (!content || content.classList.contains("hidden")) return 0;
+  const vertical = readerVerticalMetrics(content);
+  if (vertical) return vertical.ratio;
   if (isPagedMode()) {
-    if (normalizedTurnMode() === "scroll") {
-      const maxY = Math.max(1, content.scrollHeight - content.clientHeight);
-      return Math.max(0, Math.min(1, content.scrollTop / maxY));
-    }
     const metrics = refreshPageCache();
     if (metrics.total <= 1) return 0;
     return Math.max(0, Math.min(1, (metrics.current - 1) / (metrics.total - 1)));
   }
-  const rect = content.getBoundingClientRect();
-  const start = window.scrollY + rect.top;
-  const max = Math.max(1, content.scrollHeight - window.innerHeight + 120);
-  return Math.max(0, Math.min(1, (window.scrollY - start + 20) / max));
+  return 0;
 }
 
 function scrollToChapterRatio(ratio) {
   const content = $("#workContent");
+  if (!content) return;
+  const vertical = readerVerticalMetrics(content);
+  if (vertical) {
+    vertical.scrollTo(ratio);
+    updateProgressBar();
+    updatePageCount();
+    return;
+  }
   if (isPagedMode()) {
-    if (normalizedTurnMode() === "scroll") {
-      const maxY = Math.max(1, content.scrollHeight - content.clientHeight);
-      content.scrollTo({ top: maxY * ratio, behavior: "auto" });
-      updateProgressBar();
-      updatePageCount();
-      return;
-    }
     const metrics = refreshPageCache(true);
     const page = Math.round(Math.max(0, Math.min(1, ratio)) * (metrics.total - 1)) + 1;
     setReaderPage(page);
     updateProgressBar();
     return;
   }
-  const rect = content.getBoundingClientRect();
-  const start = window.scrollY + rect.top;
-  const max = Math.max(1, content.scrollHeight - window.innerHeight + 120);
-  window.scrollTo({ top: start + max * ratio, behavior: "auto" });
-  updateProgressBar();
-  updatePageCount();
 }
 
 function visibleReaderChapterIndex() {
@@ -2444,9 +2437,11 @@ function visibleReaderChapterIndex() {
   const chapters = getChapters(work);
   const sections = [...content.querySelectorAll("[data-reader-chapter]")];
   if (!sections.length) return currentChapterIndex(work, chapters);
-  const box = content.getBoundingClientRect();
-  const targetX = box.left + Math.min(box.width - 1, Math.max(1, box.width * 0.5));
-  const targetY = box.top + Math.min(box.height - 1, Math.max(1, box.height * 0.34));
+  const contentBox = content.getBoundingClientRect();
+  const panel = !isPagedMode() ? content.closest(".reader-panel") : null;
+  const viewBox = panel && panel.scrollHeight > panel.clientHeight + 4 ? panel.getBoundingClientRect() : contentBox;
+  const targetX = contentBox.left + Math.min(contentBox.width - 1, Math.max(1, contentBox.width * 0.5));
+  const targetY = viewBox.top + Math.min(viewBox.height - 1, Math.max(1, viewBox.height * 0.34));
   let best = { index: currentChapterIndex(work, chapters), score: Infinity };
   for (const section of sections) {
     const index = Number(section.dataset.readerChapter || 0);
@@ -2479,7 +2474,22 @@ function jumpToChapterElement(index, innerRatio = 0) {
   const section = content.querySelector(`[data-reader-chapter="${Number(index)}"]`);
   if (!section) return false;
   const ratio = Math.max(0, Math.min(1, Number(innerRatio || 0)));
-  if (normalizedTurnMode() === "scroll") {
+  if (!isPagedMode() || normalizedTurnMode() === "scroll") {
+    if (!isPagedMode()) {
+      const panel = content.closest(".reader-panel");
+      const rect = section.getBoundingClientRect();
+      if (panel && panel.scrollHeight > panel.clientHeight + 4) {
+        const panelRect = panel.getBoundingClientRect();
+        const top = Math.max(0, panel.scrollTop + rect.top - panelRect.top + Math.max(0, section.scrollHeight - panel.clientHeight) * ratio);
+        panel.scrollTo({ top, behavior: "auto" });
+        updateProgressBar();
+        return true;
+      }
+      const top = Math.max(0, window.scrollY + rect.top + Math.max(0, section.scrollHeight - window.innerHeight) * ratio);
+      window.scrollTo({ top, behavior: "auto" });
+      updateProgressBar();
+      return true;
+    }
     const top = Math.max(0, section.offsetTop + Math.max(0, section.scrollHeight - content.clientHeight) * ratio);
     content.scrollTo({ top, behavior: "auto" });
     updateProgressBar();
@@ -2651,6 +2661,41 @@ function snapToNearestPage() {
 function queueProgressPersist(delay = 320) {
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persistProgress, delay);
+}
+
+function readerVerticalMetrics(content = $("#workContent")) {
+  if (!content) return null;
+  const clampRatio = (value) => Math.max(0, Math.min(1, Number(value || 0)));
+
+  if (isPagedMode() && normalizedTurnMode() === "scroll") {
+    const max = Math.max(1, content.scrollHeight - content.clientHeight);
+    return {
+      ratio: clampRatio(content.scrollTop / max),
+      scrollTo: (ratio) => content.scrollTo({ top: max * clampRatio(ratio), behavior: "auto" })
+    };
+  }
+
+  if (isPagedMode()) return null;
+
+  const panel = content.closest(".reader-panel");
+  if (panel && panel.scrollHeight > panel.clientHeight + 4) {
+    const panelRect = panel.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+    const start = panel.scrollTop + contentRect.top - panelRect.top;
+    const max = Math.max(1, content.scrollHeight - panel.clientHeight + 120);
+    return {
+      ratio: clampRatio((panel.scrollTop - start + 20) / max),
+      scrollTo: (ratio) => panel.scrollTo({ top: start + max * clampRatio(ratio), behavior: "auto" })
+    };
+  }
+
+  const rect = content.getBoundingClientRect();
+  const start = window.scrollY + rect.top;
+  const max = Math.max(1, content.scrollHeight - window.innerHeight + 120);
+  return {
+    ratio: clampRatio((window.scrollY - start + 20) / max),
+    scrollTo: (ratio) => window.scrollTo({ top: start + max * clampRatio(ratio), behavior: "auto" })
+  };
 }
 
 function updateProgressBar() {
@@ -4066,6 +4111,13 @@ $("#workContent").addEventListener("scroll", () => {
   if (normalizedTurnMode() === "swipe") {
     snapTimer = setTimeout(snapToNearestPage, 90);
   }
+}, { passive: true });
+
+document.querySelector(".reader-panel")?.addEventListener("scroll", () => {
+  if (!activeWork() || isPagedMode()) return;
+  updateProgressBar();
+  clearTimeout(progressTimer);
+  progressTimer = setTimeout(persistProgress, 320);
 }, { passive: true });
 
 window.addEventListener("resize", () => {
