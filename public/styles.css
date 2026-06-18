@@ -8182,7 +8182,10 @@ body:not(.reading) .selection-toolbar {
 #highlightLibraryDialog .highlight-preview-card {
   gap: 12px !important;
   min-height: 0 !important;
-  overflow: hidden !important;
+  max-height: calc(84dvh - 128px) !important;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  overflow: auto !important;
+  overflow-x: hidden !important;
 }
 
 #highlightLibraryDialog .highlight-preview-top {
@@ -8233,21 +8236,49 @@ body:not(.reading) .selection-toolbar {
 }
 
 #highlightLibraryDialog .highlight-preview-paper {
-  min-height: min(54dvh, 430px) !important;
-  max-height: min(58dvh, 520px) !important;
+  min-height: min(48dvh, 390px) !important;
+  max-height: min(52dvh, 480px) !important;
+  padding-left: 76px !important;
+  padding-right: 76px !important;
   overflow: hidden !important;
 }
 
 #highlightLibraryDialog .highlight-preview-paper p {
-  max-height: min(48dvh, 430px) !important;
+  max-height: min(42dvh, 390px) !important;
   padding-right: 4px !important;
   overflow: auto !important;
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
 }
 
+#highlightLibraryDialog .highlight-preview-nav {
+  width: 34px !important;
+  height: 52px !important;
+  background: rgba(245, 245, 245, 0.72) !important;
+  color: #777 !important;
+  pointer-events: auto !important;
+}
+
+#highlightLibraryDialog .highlight-preview-nav.prev {
+  left: 18px !important;
+}
+
+#highlightLibraryDialog .highlight-preview-nav.next {
+  right: 18px !important;
+}
+
 #highlightLibraryDialog .highlight-preview-actions {
-  grid-template-columns: 1fr auto auto 1fr !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+}
+
+#highlightLibraryDialog .highlight-preview-actions button {
+  min-width: 0 !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 #highlightLibraryDialog .highlight-preview-actions [data-library-preview-save] {
@@ -8269,17 +8300,36 @@ body:not(.reading) .selection-toolbar {
   }
 
   #highlightLibraryDialog .highlight-preview-paper {
-    min-height: 46dvh !important;
-    max-height: 50dvh !important;
-    padding: 26px 42px !important;
+    min-height: 38dvh !important;
+    max-height: 42dvh !important;
+    padding: 24px 62px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-paper p {
+    max-height: 34dvh !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-nav {
+    width: 30px !important;
+    height: 48px !important;
+    font-size: 1.45rem !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-nav.prev {
+    left: 14px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-nav.next {
+    right: 14px !important;
   }
 
   #highlightLibraryDialog .highlight-preview-actions {
-    grid-template-columns: 1fr 58px 88px 1fr !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
   }
 
   #highlightLibraryDialog .highlight-preview-actions button {
+    min-height: 40px !important;
     min-width: 0 !important;
     padding-left: 8px !important;
     padding-right: 8px !important;
