@@ -990,6 +990,19 @@ function sortedHighlights(work) {
   });
 }
 
+function highlightChapterLabel(highlight) {
+  return `第 ${Number(highlight?.chapterIndex || 0) + 1} 章`;
+}
+
+function highlightColorHex(color = "yellow") {
+  return {
+    yellow: "#F6D85F",
+    green: "#BFE3C2",
+    blue: "#A8D7EE",
+    pink: "#F5B8C8"
+  }[String(color || "yellow").toLowerCase()] || "#F6D85F";
+}
+
 function setHighlightPreviewByOffset(offset) {
   const selected = highlightLibraryWorkId ? state.works.find((work) => work.id === highlightLibraryWorkId) : null;
   const highlights = sortedHighlights(selected);
@@ -998,6 +1011,112 @@ function setHighlightPreviewByOffset(offset) {
   const nextIndex = (currentIndex + offset + highlights.length) % highlights.length;
   highlightLibraryPreviewId = highlights[nextIndex].id;
   renderHighlightLibrary();
+}
+
+async function copyTextToClipboard(text) {
+  const value = String(text || "");
+  if (!value) return false;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return true;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  const ok = document.execCommand("copy");
+  textarea.remove();
+  return ok;
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const raw = String(text || "").replace(/\r/g, "").split("\n");
+  const lines = [];
+  for (const paragraph of raw) {
+    let current = "";
+    for (const char of paragraph) {
+      const next = current + char;
+      if (ctx.measureText(next).width > maxWidth && current) {
+        lines.push(current);
+        current = char;
+      } else {
+        current = next;
+      }
+    }
+    lines.push(current || "");
+  }
+  return lines;
+}
+
+function downloadHighlightImage(work, highlight) {
+  if (!work || !highlight) return;
+  const scale = Math.max(2, Math.min(3, window.devicePixelRatio || 2));
+  const width = 980;
+  const padding = 72;
+  const textWidth = width - padding * 2;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.font = '38px "Noto Serif SC", "Songti SC", "SimSun", serif';
+  const lines = wrapCanvasText(ctx, highlight.text || "", textWidth);
+  const lineHeight = 72;
+  const height = Math.max(760, 260 + lines.length * lineHeight);
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#F7F7F7";
+  roundRect(ctx, 36, 36, width - 72, height - 72, 34);
+  ctx.fill();
+  ctx.strokeStyle = "#EAEAEA";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = highlightColorHex(highlight.color);
+  ctx.beginPath();
+  ctx.arc(84, 92, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#666666";
+  ctx.font = '26px "Noto Serif SC", "Songti SC", "SimSun", serif';
+  ctx.fillText(`${highlightChapterLabel(highlight)} · ${highlight.note || "无备注"}`, 112, 102);
+
+  ctx.fillStyle = "#111111";
+  ctx.font = '42px "Noto Serif SC", "Songti SC", "SimSun", serif';
+  ctx.fillText(work.title || "未命名作品", padding, 172);
+
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.font = '96px Georgia, "Times New Roman", serif';
+  ctx.fillText("“", padding, 278);
+
+  ctx.fillStyle = "#151515";
+  ctx.font = '38px "Noto Serif SC", "Songti SC", "SimSun", serif';
+  ctx.textBaseline = "top";
+  lines.forEach((line, index) => ctx.fillText(line, padding, 270 + index * lineHeight));
+
+  ctx.fillStyle = "#888888";
+  ctx.font = '24px "Noto Serif SC", "Songti SC", "SimSun", serif';
+  ctx.fillText("Vellum 摘录", padding, height - 94);
+
+  const link = document.createElement("a");
+  link.download = `${safeFilename(work.title || "摘录")}-${highlightChapterLabel(highlight)}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
 }
 
 function renderHighlightLibrary() {
@@ -1024,22 +1143,24 @@ function renderHighlightLibrary() {
   const preview = highlightLibraryPreviewId ? highlights.find((highlight) => highlight.id === highlightLibraryPreviewId) : null;
   if (preview) {
     const previewIndex = Math.max(0, highlights.findIndex((highlight) => highlight.id === preview.id));
-    $("#highlightLibraryHint").textContent = `${selected.title || "未命名作品"} · 第 ${Number(preview.chapterIndex || 0) + 1} 章`;
+    $("#highlightLibraryHint").textContent = `${selected.title || "未命名作品"} · ${highlightChapterLabel(preview)}`;
     $("#highlightLibraryList").innerHTML = `
       <article class="highlight-preview-card">
         <div class="highlight-preview-top">
           <span class="highlight-preview-pin ${escapeHtml(preview.color || "yellow")}"></span>
           <span>${previewIndex + 1} / ${highlights.length}</span>
+          <button type="button" class="highlight-copy-icon" data-library-preview-copy="${preview.id}" aria-label="复制全文" title="复制全文"></button>
         </div>
         <div class="highlight-preview-paper">
           <button type="button" class="highlight-preview-nav prev" data-library-preview-move="-1" aria-label="上一条">‹</button>
           <p>${escapeHtml(preview.text || "")}</p>
           <button type="button" class="highlight-preview-nav next" data-library-preview-move="1" aria-label="下一条">›</button>
         </div>
-        <small>${preview.note ? escapeHtml(preview.note) : "无备注"} · 第 ${Number(preview.chapterIndex || 0) + 1} 章</small>
+        <small>${preview.note ? escapeHtml(preview.note) : "无备注"} · ${highlightChapterLabel(preview)}</small>
         <div class="highlight-preview-actions">
           <button type="button" class="ghost-button" data-library-preview-back>摘录列表</button>
           <button type="button" class="mini-delete" data-library-delete-highlight="${preview.id}">删除</button>
+          <button type="button" class="ghost-button" data-library-preview-save="${preview.id}">保存长图</button>
           <button type="button" data-library-preview-jump="${preview.id}">跳到原文</button>
         </div>
       </article>
@@ -1051,8 +1172,9 @@ function renderHighlightLibrary() {
       <span class="highlight-dot ${escapeHtml(highlight.color || "yellow")}" aria-hidden="true"></span>
       <span class="highlight-passage-text">
         <span>${escapeHtml(highlight.text || "")}</span>
-        <small>${highlight.note ? escapeHtml(highlight.note) : "无备注"} · 第 ${Number(highlight.chapterIndex || 0) + 1} 章</small>
+        <small>${highlight.note ? escapeHtml(highlight.note) : "无备注"} · ${highlightChapterLabel(highlight)}</small>
       </span>
+      <span class="highlight-passage-chapter">${highlightChapterLabel(highlight)}</span>
       <span class="highlight-passage-arrow" aria-hidden="true">›</span>
     </button>
   `).join("") : `<p class="status">这本还没有高亮。</p>`;
@@ -4240,6 +4362,23 @@ $("#highlightLibraryList").addEventListener("click", async (event) => {
 
   const selected = highlightLibraryWorkId ? state.works.find((work) => work.id === highlightLibraryWorkId) : null;
   if (!selected) return;
+
+  const copyButton = event.target.closest("[data-library-preview-copy]");
+  if (copyButton) {
+    const highlight = selected.highlights?.find((item) => item.id === copyButton.dataset.libraryPreviewCopy);
+    if (!highlight) return;
+    await copyTextToClipboard(highlight.text || "");
+    setCloudStatus("已复制摘录全文。");
+    return;
+  }
+
+  const saveButton = event.target.closest("[data-library-preview-save]");
+  if (saveButton) {
+    const highlight = selected.highlights?.find((item) => item.id === saveButton.dataset.libraryPreviewSave);
+    if (!highlight) return;
+    downloadHighlightImage(selected, highlight);
+    return;
+  }
 
   const deleteButton = event.target.closest("[data-library-delete-highlight]");
   if (deleteButton) {

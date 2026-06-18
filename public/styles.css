@@ -8075,3 +8075,214 @@ body:not(.reading) .selection-toolbar {
 :root.dark .work-card:active .work-progress-wash {
   background-color: rgba(var(--shelf-progress-rgb, 30, 41, 59), 0.6) !important;
 }
+
+/* v127 excerpt library: stable list cards, quote preview, copy and image export controls. */
+#highlightLibraryDialog .highlight-library-list {
+  gap: 12px !important;
+  padding-bottom: 26px !important;
+}
+
+#highlightLibraryDialog .highlight-passage-row {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr) auto 18px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 86px !important;
+  padding: 13px 14px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 22px !important;
+  background: #f5f5f5 !important;
+  text-align: left !important;
+}
+
+#highlightLibraryDialog .highlight-dot {
+  width: 13px !important;
+  min-width: 13px !important;
+  height: 13px !important;
+  align-self: center !important;
+  border-radius: 999px !important;
+}
+
+#highlightLibraryDialog .highlight-dot.yellow,
+#highlightLibraryDialog .highlight-preview-pin.yellow {
+  background: #f6d85f !important;
+}
+
+#highlightLibraryDialog .highlight-dot.green,
+#highlightLibraryDialog .highlight-preview-pin.green {
+  background: #bfe3c2 !important;
+}
+
+#highlightLibraryDialog .highlight-dot.blue,
+#highlightLibraryDialog .highlight-preview-pin.blue {
+  background: #a8d7ee !important;
+}
+
+#highlightLibraryDialog .highlight-dot.pink,
+#highlightLibraryDialog .highlight-preview-pin.pink {
+  background: #f5b8c8 !important;
+}
+
+#highlightLibraryDialog .highlight-passage-text {
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+#highlightLibraryDialog .highlight-passage-text > span {
+  display: -webkit-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  color: var(--text) !important;
+  font-size: clamp(0.96rem, 3.8vw, 1.08rem) !important;
+  font-weight: 750 !important;
+  line-height: 1.45 !important;
+  text-overflow: ellipsis !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+#highlightLibraryDialog .highlight-passage-text small {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  color: #777 !important;
+  font-size: 0.82rem !important;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#highlightLibraryDialog .highlight-passage-chapter {
+  min-width: 54px !important;
+  max-width: 66px !important;
+  overflow: hidden !important;
+  color: #777 !important;
+  font-size: 0.82rem !important;
+  text-align: right !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#highlightLibraryDialog .highlight-passage-arrow {
+  width: 18px !important;
+  min-width: 18px !important;
+  color: #777 !important;
+  text-align: right !important;
+}
+
+#highlightLibraryDialog .highlight-preview-card {
+  gap: 12px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#highlightLibraryDialog .highlight-preview-top {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+#highlightLibraryDialog .highlight-preview-top > span:nth-child(2) {
+  justify-self: end !important;
+}
+
+#highlightLibraryDialog .highlight-copy-icon {
+  position: relative !important;
+  display: block !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--soft) 86%, #fff) !important;
+  box-shadow: none !important;
+}
+
+#highlightLibraryDialog .highlight-copy-icon::before,
+#highlightLibraryDialog .highlight-copy-icon::after {
+  content: "" !important;
+  position: absolute !important;
+  width: 15px !important;
+  height: 15px !important;
+  border: 2px solid #666 !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+}
+
+#highlightLibraryDialog .highlight-copy-icon::before {
+  left: 10px !important;
+  top: 10px !important;
+}
+
+#highlightLibraryDialog .highlight-copy-icon::after {
+  left: 15px !important;
+  top: 15px !important;
+  background: color-mix(in srgb, var(--soft) 86%, #fff) !important;
+}
+
+#highlightLibraryDialog .highlight-preview-paper {
+  min-height: min(54dvh, 430px) !important;
+  max-height: min(58dvh, 520px) !important;
+  overflow: hidden !important;
+}
+
+#highlightLibraryDialog .highlight-preview-paper p {
+  max-height: min(48dvh, 430px) !important;
+  padding-right: 4px !important;
+  overflow: auto !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+#highlightLibraryDialog .highlight-preview-actions {
+  grid-template-columns: 1fr auto auto 1fr !important;
+}
+
+#highlightLibraryDialog .highlight-preview-actions [data-library-preview-save] {
+  background: var(--soft) !important;
+  color: var(--text) !important;
+}
+
+@media (max-width: 879px) {
+  #highlightLibraryDialog .highlight-passage-row {
+    grid-template-columns: 17px minmax(0, 1fr) 52px 16px !important;
+    min-height: 78px !important;
+    padding: 12px !important;
+  }
+
+  #highlightLibraryDialog .highlight-passage-chapter {
+    min-width: 48px !important;
+    max-width: 52px !important;
+    font-size: 0.76rem !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-paper {
+    min-height: 46dvh !important;
+    max-height: 50dvh !important;
+    padding: 26px 42px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-actions {
+    grid-template-columns: 1fr 58px 88px 1fr !important;
+    gap: 8px !important;
+  }
+
+  #highlightLibraryDialog .highlight-preview-actions button {
+    min-width: 0 !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    font-size: 0.88rem !important;
+  }
+}
