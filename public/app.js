@@ -118,6 +118,8 @@ let cloudRealtimeChannel = null;
 let cloudRealtimeTimer = null;
 let cloudPullTimer = null;
 let supabase;
+let cloudPausedUntil = Number(localStorage.getItem("vellum-cloud-paused-until") || 0);
+let cloudPausedReason = localStorage.getItem("vellum-cloud-paused-reason") || "";
 let activeHighlightId = null;
 let activeSelectionText = "";
 let activeSelectionRange = null;
@@ -125,6 +127,7 @@ let toolbarPointerHandledAt = 0;
 let toolbarActionUntil = 0;
 let previewImageUrl = "";
 let localLibraryLoaded = false;
+let localLibraryPromise = null;
 let readingProgressCache = { works: {}, updatedAt: "" };
 let readingProgressLoaded = false;
 
@@ -1594,6 +1597,7 @@ function startProgressColorPress(event) {
 
 function startWorkPress(event, id) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (event.pointerType === "mouse") return;
   clearTimeout(longPressTimer);
   event.currentTarget?.setPointerCapture?.(event.pointerId);
   longPressPoint = { x: event.clientX, y: event.clientY };
@@ -1642,6 +1646,36 @@ function cancelWorkPress() {
   longPressPoint = null;
   document.body.classList.remove("shelf-dragging");
   document.querySelectorAll(".work-card.dragging").forEach((card) => card.classList.remove("dragging"));
+}
+
+async function openWorkFromShelf(id) {
+  let work = state.works.find((item) => item.id === id);
+  if (!work) return;
+  if (!work.contentHtml && !localLibraryLoaded) {
+    setCloudStatus("正在恢复正文，马上打开这篇。");
+    try {
+      if (localLibraryPromise) {
+        await localLibraryPromise;
+      } else {
+        localLibraryPromise = loadLocalLibrary({ auto: true }).finally(() => {
+          localLibraryPromise = null;
+        });
+        await localLibraryPromise;
+      }
+    } catch (error) {
+      setCloudStatus(`正文恢复失败：${error.message}`);
+      return;
+    }
+    work = state.works.find((item) => item.id === id);
+    if (!work) return;
+  }
+  state.selectedWorkId = id;
+  work = activeWork();
+  promoteWorkToRecent(work);
+  pendingJump = work ? readingToWholeRatio(work) : 0;
+  if (work) saveReadingProgress(work).catch(() => {});
+  requestReadingFullscreen();
+  renderAll();
 }
 
 function enableBackdropClose(selector) {
@@ -1698,8 +1732,44 @@ function setCloudStatus(message) {
   if (node) node.textContent = message;
 }
 
+function isCloudPaymentError(error) {
+  return /(^|\D)402(\D|$)|payment required|quota|billing|额度|计费/i.test(error?.message || "");
+}
+
+function cloudPauseMessage() {
+  return cloudPausedReason || "云端现在拒绝请求，本机书架先照常使用。";
+}
+
+function isCloudPaused() {
+  if (!cloudPausedUntil) return false;
+  if (Date.now() < cloudPausedUntil) return true;
+  cloudPausedUntil = 0;
+  cloudPausedReason = "";
+  localStorage.removeItem("vellum-cloud-paused-until");
+  localStorage.removeItem("vellum-cloud-paused-reason");
+  return false;
+}
+
+function pauseCloudSync(reason, minutes = 20) {
+  cloudPausedUntil = Date.now() + minutes * 60 * 1000;
+  cloudPausedReason = reason;
+  localStorage.setItem("vellum-cloud-paused-until", String(cloudPausedUntil));
+  localStorage.setItem("vellum-cloud-paused-reason", reason);
+  stopCloudRealtime();
+}
+
+function resumeCloudSync() {
+  cloudPausedUntil = 0;
+  cloudPausedReason = "";
+  localStorage.removeItem("vellum-cloud-paused-until");
+  localStorage.removeItem("vellum-cloud-paused-reason");
+}
+
 function cloudRestErrorText(error) {
   const message = error?.message || "未知错误";
+  if (/(^|\D)402(\D|$)|payment required/i.test(message)) {
+    return "云端项目现在返回 402（额度/计费被拒绝）。本机书架没有丢，我会先暂停自动同步，避免网页被云端拖卡。需要到 Supabase 看项目是否暂停、欠费或额度用完。";
+  }
   if (/backup cloud channel|备用通道/i.test(message)) {
     return "备用同步通道也失败了。请稍后再试，或检查 Render 是否已经部署新版。";
   }
@@ -1733,32 +1803,50 @@ function syncCodeFromPostgrestQuery(query = "") {
 async function supabaseProxyRest(path, { method = "GET", query = "", body = null } = {}) {
   if (path !== "shared_library_states") throw new Error("backup cloud channel only supports shelf sync");
   const syncCode = body?.sync_code || syncCodeFromPostgrestQuery(query);
-  const response = await fetch(`${CLOUD_PROXY_BASE}/api/cloud${method === "GET" ? `?syncCode=${encodeURIComponent(syncCode)}` : ""}`, {
-    method,
-    headers: {
-      accept: "application/json",
-      ...(method === "POST" ? { "content-type": "application/json" } : {})
-    },
-    body: method === "POST" ? JSON.stringify({ syncCode, state: body?.state }) : undefined
-  });
-  const text = await response.text();
-  let json = null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
   try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error("备用同步通道还没部署新版。请上传最外层文件并等待 Render 更新。");
+    const response = await fetch(`${CLOUD_PROXY_BASE}/api/cloud${method === "GET" ? `?syncCode=${encodeURIComponent(syncCode)}` : ""}`, {
+      method,
+      signal: controller.signal,
+      headers: {
+        accept: "application/json",
+        ...(method === "POST" ? { "content-type": "application/json" } : {})
+      },
+      body: method === "POST" ? JSON.stringify({ syncCode, state: body?.state }) : undefined
+    });
+    const text = await response.text();
+    let json = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      throw new Error("备用同步通道还没部署新版。请上传最外层文件并等待 Render 更新。");
+    }
+    if (!response.ok) {
+      const error = new Error(json?.error || `备用通道 ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    if (method === "GET") return json ? [json] : [];
+    return json;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error("备用同步通道启动太慢，已跳过这次请求。");
+      timeoutError.status = 504;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  if (!response.ok) throw new Error(json?.error || `备用通道 ${response.status}`);
-  if (method === "GET") return json ? [json] : [];
-  return json;
 }
 
 async function supabaseRest(path, { method = "GET", query = "", body = null, prefer = "" } = {}) {
-  if (path === "shared_library_states") {
+  if (path === "shared_library_states" && method === "POST") {
     try {
       return await supabaseProxyRest(path, { method, query, body });
     } catch (proxyError) {
-      if (method === "POST") throw proxyError;
+      if (isCloudPaymentError(proxyError)) throw proxyError;
     }
   }
   const url = `${SUPABASE_URL}/rest/v1/${path}${query}`;
@@ -1770,15 +1858,26 @@ async function supabaseRest(path, { method = "GET", query = "", body = null, pre
   if (body !== null) headers["content-type"] = "application/json";
   if (prefer) headers.prefer = prefer;
   let response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     response = await fetch(url, {
       method,
       headers,
+      signal: controller.signal,
       body: body === null ? undefined : JSON.stringify(body)
     });
   } catch (error) {
-    if (path === "shared_library_states") return supabaseProxyRest(path, { method, query, body });
+    if (error.name === "AbortError") {
+      const timeoutError = new Error("云端直连超时。");
+      timeoutError.status = 504;
+      if (path === "shared_library_states" && method === "GET") return supabaseProxyRest(path, { method, query, body });
+      throw timeoutError;
+    }
+    if (path === "shared_library_states" && method === "GET") return supabaseProxyRest(path, { method, query, body });
     throw error;
+  } finally {
+    clearTimeout(timeout);
   }
   if (!response.ok) {
     let detail = "";
@@ -1789,7 +1888,8 @@ async function supabaseRest(path, { method = "GET", query = "", body = null, pre
       detail = await response.text();
     }
     const error = new Error(`${response.status} ${detail}`.trim());
-    if (path === "shared_library_states") return supabaseProxyRest(path, { method, query, body });
+    error.status = response.status;
+    if (path === "shared_library_states" && method === "GET" && response.status !== 402) return supabaseProxyRest(path, { method, query, body });
     throw error;
   }
   if (response.status === 204) return null;
@@ -2044,6 +2144,10 @@ async function getCloudState() {
 
 async function saveCloudNow({ silent = false } = {}) {
   if (!state.syncCode || syncingCloud) return;
+  if (isCloudPaused()) {
+    if (!silent) setCloudStatus(cloudPauseMessage());
+    return;
+  }
   syncingCloud = true;
   if (!silent) setCloudStatus("正在上传云端……");
   try {
@@ -2080,6 +2184,12 @@ async function saveCloudNow({ silent = false } = {}) {
         return;
       }
     }
+    if (isCloudPaymentError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 30);
+      setCloudStatus(`云端保存失败：${reason}`);
+      return;
+    }
     setCloudStatus(`云端保存失败：${cloudRestErrorText(error)}`);
   } finally {
     syncingCloud = false;
@@ -2087,7 +2197,7 @@ async function saveCloudNow({ silent = false } = {}) {
 }
 
 function queueCloudSave() {
-  if (!state.syncCode || syncingCloud || SAFE_MODE) return;
+  if (!state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 6500);
 }
@@ -2101,7 +2211,7 @@ function stopCloudRealtime() {
 }
 
 async function pullCloudInBackground({ initial = false } = {}) {
-  if (!supabase || !state.syncCode || syncingCloud || SAFE_MODE) return;
+  if (!supabase || !state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
   if (activeWork()) return;
   if (document.visibilityState && document.visibilityState !== "visible") return;
   syncingCloud = true;
@@ -2126,6 +2236,12 @@ async function pullCloudInBackground({ initial = false } = {}) {
     if (beforeCount !== state.works.length && state.syncCode) queueCloudSave();
   } catch (error) {
     syncingCloud = false;
+    if (isCloudPaymentError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 30);
+      setCloudStatus(`自动同步暂停：${reason}`);
+      return;
+    }
     setCloudStatus(initial ? "云端会在后台继续重试，不影响本机阅读。" : `自动同步失败：${cloudRestErrorText(error)}`);
   }
 }
@@ -2133,6 +2249,10 @@ async function pullCloudInBackground({ initial = false } = {}) {
 function startCloudRealtime() {
   stopCloudRealtime();
   if (!supabase || !state.syncCode || SAFE_MODE) return;
+  if (isCloudPaused()) {
+    setCloudStatus(cloudPauseMessage());
+    return;
+  }
   cloudPullTimer = setTimeout(() => pullCloudInBackground({ initial: true }), 12000);
   cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 90000);
   setCloudStatus("同步码已连接。页面会先打开，云端稍后在后台自动同步。");
@@ -2140,8 +2260,23 @@ function startCloudRealtime() {
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
   if (!state.syncCode) return;
+  if (isCloudPaused()) {
+    setCloudStatus(cloudPauseMessage());
+    return;
+  }
   setCloudStatus("正在读取云端书架……");
-  const cloudState = await getCloudState();
+  let cloudState;
+  try {
+    cloudState = await getCloudState();
+  } catch (error) {
+    if (isCloudPaymentError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 30);
+      setCloudStatus(`云端读取失败：${reason}`);
+      return;
+    }
+    throw error;
+  }
   if (!cloudState) {
     await saveCloudNow();
     return;
@@ -3244,9 +3379,14 @@ async function boot() {
   } catch {}
   renderAll();
   setCloudStatus(shell?.works?.length ? "已先显示轻量书架，正在恢复正文内容。" : "正在自动恢复本机书架；云端只是同步备份，不会挡住本机阅读。");
-  setTimeout(() => loadLocalLibrary({ auto: true, shell }).catch((error) => {
+  setTimeout(() => {
+    localLibraryPromise = loadLocalLibrary({ auto: true, shell }).finally(() => {
+      localLibraryPromise = null;
+    });
+    localLibraryPromise.catch((error) => {
     setCloudStatus(`本机书架自动恢复失败：${error.message}。可以稍后点「恢复本机书架」。`);
-  }), 250);
+    });
+  }, 250);
   window.setTimeout(() => {
     if (supabase) {
       refreshCloudSession({ initial: false });
@@ -3417,6 +3557,7 @@ $("#cloudStartButton").addEventListener("click", async () => {
     setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
     return;
   }
+  resumeCloudSync();
   const code = cleanSyncCode($("#cloudCode").value.trim()) || makeSyncCode();
   state.syncCode = code;
   $("#cloudCode").value = code;
@@ -3434,7 +3575,7 @@ $("#cloudStartButton").addEventListener("click", async () => {
     await saveCloudNow({ silent: true });
     setCloudStatus("同步码已连接。手机电脑填同一个码就会同步。");
   } catch (error) {
-    state.syncCode = "";
+    await saveState();
     renderCloudPanel();
     setCloudStatus(`同步开启失败：${cloudRestErrorText(error)}`);
   }
@@ -3513,6 +3654,7 @@ $("#cloudLoginButton").addEventListener("click", async () => {
 
 $("#cloudLogoutButton").addEventListener("click", async () => {
   stopCloudRealtime();
+  resumeCloudSync();
   state.syncCode = "";
   $("#cloudCode").value = "";
   await saveState();
@@ -3520,7 +3662,10 @@ $("#cloudLogoutButton").addEventListener("click", async () => {
   setCloudStatus("已断开同步码。本机内容还在。");
 });
 
-$("#cloudUploadButton").addEventListener("click", () => saveCloudNow());
+$("#cloudUploadButton").addEventListener("click", () => {
+  resumeCloudSync();
+  saveCloudNow();
+});
 
 $("#cloudQuickSyncButton").addEventListener("click", async () => {
   if (!state.syncCode) {
@@ -3528,6 +3673,7 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
     $("#cloudAccountDetails").open = true;
     return;
   }
+  resumeCloudSync();
   try {
     setCloudStatus("正在同步……");
     try {
@@ -3546,6 +3692,7 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
 
 $("#cloudDownloadButton").addEventListener("click", async () => {
   if (!confirm("用云端书架合并到本机？本机已有作品不会被直接清空。")) return;
+  resumeCloudSync();
   try {
     await loadCloudIntoLocal({ merge: true });
   } catch (error) {
@@ -3584,25 +3731,14 @@ $("#folderList").addEventListener("contextmenu", (event) => {
   openFolderManageDialog(button.dataset.folder);
 });
 
-$("#workList").addEventListener("click", (event) => {
+$("#workList").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-work]");
   if (!button) return;
   if (suppressShelfClick) {
     suppressShelfClick = false;
     return;
   }
-  const nextWork = state.works.find((item) => item.id === button.dataset.work);
-  if (nextWork && !nextWork.contentHtml && !localLibraryLoaded) {
-    setCloudStatus("正文还在恢复中，稍等一下就能打开。");
-    return;
-  }
-  state.selectedWorkId = button.dataset.work;
-  const work = activeWork();
-  promoteWorkToRecent(work);
-  pendingJump = work ? readingToWholeRatio(work) : 0;
-  if (work) saveReadingProgress(work).catch(() => {});
-  requestReadingFullscreen();
-  renderAll();
+  await openWorkFromShelf(button.dataset.work);
 });
 
 $("#workList").addEventListener("pointerdown", (event) => {
