@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "pocket-reading-vault-v136-batch-cloud-20260622";
+﻿const CACHE_NAME = "pocket-reading-vault-v137-mobile-cloud-retry-20260622";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,4 +33,5 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
 

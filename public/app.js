@@ -6,10 +6,13 @@ const DEFAULT_CLOUD_PROXY_BASE = IMPORT_API_BASE;
 const SUPABASE_URL = "https://bhliywysdezcykoyyozw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
-const CLOUD_WORK_BATCH_SIZE = 4;
+const CLOUD_DESKTOP_WORK_BATCH_SIZE = 2;
+const CLOUD_MOBILE_WORK_BATCH_SIZE = 1;
+const CLOUD_REQUEST_RETRIES = 2;
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const CLIENT_ID = (() => {
   try {
     const existing = localStorage.getItem("pocket-reading-vault-client-id");
@@ -1882,6 +1885,16 @@ function isCloudStateTimeout(error) {
   return /statement timeout|canceling statement|timeout|504|云端备用通道连接 Supabase 超时/i.test(error?.message || "");
 }
 
+function cloudWorkBatchSize() {
+  return window.matchMedia?.("(max-width: 879px)")?.matches
+    ? CLOUD_MOBILE_WORK_BATCH_SIZE
+    : CLOUD_DESKTOP_WORK_BATCH_SIZE;
+}
+
+function isRetryableCloudError(error) {
+  return /timeout|failed to fetch|network|load failed|502|503|504|连接已经关闭|响应超时/i.test(error?.message || "");
+}
+
 function syncCodeFromPostgrestQuery(query = "") {
   const match = query.match(/[?&]sync_code=eq\.([^&]+)/);
   return match ? decodeURIComponent(match[1]) : "";
@@ -1929,44 +1942,51 @@ async function supabaseProxyRest(path, { method = "GET", query = "", body = null
   }
 }
 
-async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 12000 } = {}) {
+async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 12000, retries = CLOUD_REQUEST_RETRIES } = {}) {
   const base = getCustomCloudEndpoint();
   if (!base) throw new Error("Cloudflare Worker 地址还没填写。");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(`${base}${path}`, {
-      method,
-      signal: controller.signal,
-      headers: {
-        accept: "application/json",
-        ...(body ? { "content-type": "application/json" } : {})
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
-    const text = await response.text();
-    let data = null;
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      throw new Error("Cloudflare Worker 返回的不是新版 JSON。请重新部署 worker.js。");
+      const response = await fetch(`${base}${path}`, {
+        method,
+        signal: controller.signal,
+        headers: {
+          accept: "application/json",
+          ...(body ? { "content-type": "application/json" } : {})
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const text = await response.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error("Cloudflare Worker 返回的不是新版 JSON。请重新部署 worker.js。");
+      }
+      if (!response.ok) {
+        const error = new Error(data?.error || `Cloudflare Worker ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        const timeoutError = new Error("Cloudflare Worker 这次响应超时。");
+        timeoutError.status = 504;
+        lastError = timeoutError;
+      } else {
+        lastError = error;
+      }
+      if (attempt >= retries || !isRetryableCloudError(lastError)) throw lastError;
+      await sleep(700 + attempt * 1300);
+    } finally {
+      clearTimeout(timeout);
     }
-    if (!response.ok) {
-      const error = new Error(data?.error || `Cloudflare Worker ${response.status}`);
-      error.status = response.status;
-      throw error;
-    }
-    return data;
-  } catch (error) {
-    if (error.name === "AbortError") {
-      const timeoutError = new Error("Cloudflare Worker 这次响应超时。");
-      timeoutError.status = 504;
-      throw timeoutError;
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+  throw lastError || new Error("Cloudflare Worker 请求失败。");
 }
 
 async function supabaseRest(path, { method = "GET", query = "", body = null, prefer = "" } = {}) {
@@ -2301,6 +2321,41 @@ function cloudManifestWork(work = {}) {
   return copy;
 }
 
+function cloudUploadSignature(work = {}) {
+  return [
+    work.id || "",
+    work.updatedAt || "",
+    work.reading?.updatedAt || "",
+    (work.contentHtml || "").length,
+    (work.summaryHtml || "").length,
+    (work.highlights || []).length,
+    (work.bookmarks || []).length,
+    (work.tags || []).join("|"),
+    work.folderId || "",
+    (work.folderIds || []).join("|")
+  ].join("::");
+}
+
+function cloudUploadSignatureKey() {
+  return `vellum-cloud-upload-signatures:${state.syncCode || "none"}`;
+}
+
+function loadCloudUploadSignatures() {
+  try {
+    return JSON.parse(localStorage.getItem(cloudUploadSignatureKey()) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveCloudUploadSignatures(value) {
+  try {
+    localStorage.setItem(cloudUploadSignatureKey(), JSON.stringify(value || {}));
+  } catch {
+    // If storage is full, the next upload simply re-checks more works.
+  }
+}
+
 function createCloudLibraryState(value) {
   const payload = cloneLibraryState(value);
   payload.works = (payload.works || []).map(cloudSafeWork);
@@ -2358,13 +2413,14 @@ async function getCloudState() {
     const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
     const fullWorks = new Map(refs.map((work) => [work.id, work]));
     const ids = refs.map((work) => work.id).filter(Boolean);
-    const totalBatches = Math.max(1, Math.ceil(ids.length / CLOUD_WORK_BATCH_SIZE));
-    for (let index = 0; index < ids.length; index += CLOUD_WORK_BATCH_SIZE) {
-      const batchIds = ids.slice(index, index + CLOUD_WORK_BATCH_SIZE);
-      const batchNumber = Math.floor(index / CLOUD_WORK_BATCH_SIZE) + 1;
-      if (ids.length > CLOUD_WORK_BATCH_SIZE) setCloudStatus(`正在读取云端：第 ${batchNumber}/${totalBatches} 批……`);
+    const batchSize = cloudWorkBatchSize();
+    const totalBatches = Math.max(1, Math.ceil(ids.length / batchSize));
+    for (let index = 0; index < ids.length; index += batchSize) {
+      const batchIds = ids.slice(index, index + batchSize);
+      const batchNumber = Math.floor(index / batchSize) + 1;
+      if (ids.length > batchSize) setCloudStatus(`正在读取云端：第 ${batchNumber}/${totalBatches} 批……`);
       const batch = await cloudWorkerJson(`/api/v2/works?syncCode=${encodeURIComponent(state.syncCode)}&ids=${batchIds.map(encodeURIComponent).join(",")}`, {
-        timeoutMs: 12000
+        timeoutMs: 22000
       });
       for (const work of batch?.works || []) {
         if (work?.id) fullWorks.set(work.id, normalizeWork({ ...(fullWorks.get(work.id) || {}), ...work }));
@@ -2381,21 +2437,28 @@ async function getCloudState() {
 
 async function saveCloudLibraryV2(payload, { silent = false } = {}) {
   const works = Array.isArray(payload.works) ? payload.works : [];
-  const totalBatches = Math.max(1, Math.ceil(works.length / CLOUD_WORK_BATCH_SIZE));
+  const batchSize = cloudWorkBatchSize();
+  const signatures = loadCloudUploadSignatures();
+  const pendingWorks = works.filter((work) => signatures[work.id] !== cloudUploadSignature(work));
+  const totalBatches = Math.max(1, Math.ceil(pendingWorks.length / batchSize));
 
-  for (let index = 0; index < works.length; index += CLOUD_WORK_BATCH_SIZE) {
-    const batch = works.slice(index, index + CLOUD_WORK_BATCH_SIZE);
-    const batchNumber = Math.floor(index / CLOUD_WORK_BATCH_SIZE) + 1;
-    if (!silent) setCloudStatus(`正在上传云端：第 ${batchNumber}/${totalBatches} 批……`);
+  for (let index = 0; index < pendingWorks.length; index += batchSize) {
+    const batch = pendingWorks.slice(index, index + batchSize);
+    const batchNumber = Math.floor(index / batchSize) + 1;
+    if (!silent) setCloudStatus(`正在上传云端：第 ${batchNumber}/${totalBatches} 批（剩 ${pendingWorks.length - index} 篇）……`);
     await cloudWorkerJson("/api/v2/works", {
       method: "POST",
-      timeoutMs: 18000,
+      timeoutMs: 45000,
       body: {
         syncCode: state.syncCode,
         works: batch,
         writer: CLIENT_ID
       }
     });
+    for (const work of batch) {
+      if (work?.id) signatures[work.id] = cloudUploadSignature(work);
+    }
+    saveCloudUploadSignatures(signatures);
   }
 
   if (!silent) setCloudStatus("正在写入云端目录……");
