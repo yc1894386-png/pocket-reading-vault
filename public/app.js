@@ -6,6 +6,7 @@ const DEFAULT_CLOUD_PROXY_BASE = IMPORT_API_BASE;
 const SUPABASE_URL = "https://bhliywysdezcykoyyozw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
+const CLOUD_WORK_BATCH_SIZE = 4;
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -2286,6 +2287,20 @@ function cloudSafeWork(work = {}) {
   return copy;
 }
 
+function cloudManifestWork(work = {}) {
+  const copy = structuredClone(work || {});
+  copy.contentHtml = "";
+  copy.summaryHtml = "";
+  copy.bookmarks = [];
+  copy.highlights = [];
+  copy.hasCloudShard = true;
+  delete copy.imageCache;
+  delete copy.images;
+  delete copy.cachedImages;
+  delete copy.localImages;
+  return copy;
+}
+
 function createCloudLibraryState(value) {
   const payload = cloneLibraryState(value);
   payload.works = (payload.works || []).map(cloudSafeWork);
@@ -2330,10 +2345,33 @@ function mergeLibraryState(localState, cloudState) {
 async function getCloudState() {
   if (!state.syncCode) return null;
   if (hasCustomCloudEndpoint()) {
-    const data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 25000
+    let data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
+      timeoutMs: 12000
     });
-    return data?.state ? cloneLibraryState(data.state) : null;
+    if (!data?.state) {
+      data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
+        timeoutMs: 25000
+      });
+      return data?.state ? cloneLibraryState(data.state) : null;
+    }
+    const cloudState = cloneLibraryState(data.state);
+    const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
+    const fullWorks = new Map(refs.map((work) => [work.id, work]));
+    const ids = refs.map((work) => work.id).filter(Boolean);
+    const totalBatches = Math.max(1, Math.ceil(ids.length / CLOUD_WORK_BATCH_SIZE));
+    for (let index = 0; index < ids.length; index += CLOUD_WORK_BATCH_SIZE) {
+      const batchIds = ids.slice(index, index + CLOUD_WORK_BATCH_SIZE);
+      const batchNumber = Math.floor(index / CLOUD_WORK_BATCH_SIZE) + 1;
+      if (ids.length > CLOUD_WORK_BATCH_SIZE) setCloudStatus(`正在读取云端：第 ${batchNumber}/${totalBatches} 批……`);
+      const batch = await cloudWorkerJson(`/api/v2/works?syncCode=${encodeURIComponent(state.syncCode)}&ids=${batchIds.map(encodeURIComponent).join(",")}`, {
+        timeoutMs: 12000
+      });
+      for (const work of batch?.works || []) {
+        if (work?.id) fullWorks.set(work.id, normalizeWork({ ...(fullWorks.get(work.id) || {}), ...work }));
+      }
+    }
+    cloudState.works = [...fullWorks.values()];
+    return cloudState;
   }
   const query = `?select=state,updated_at&sync_code=eq.${encodeURIComponent(state.syncCode)}&limit=1`;
   const rows = await supabaseRest("shared_library_states", { query });
@@ -2341,13 +2379,36 @@ async function getCloudState() {
   return row?.state ? await deserializeCloudState(row.state) : null;
 }
 
-async function saveCloudLibraryV2(payload) {
-  return await cloudWorkerJson("/api/v2/cloud", {
+async function saveCloudLibraryV2(payload, { silent = false } = {}) {
+  const works = Array.isArray(payload.works) ? payload.works : [];
+  const totalBatches = Math.max(1, Math.ceil(works.length / CLOUD_WORK_BATCH_SIZE));
+
+  for (let index = 0; index < works.length; index += CLOUD_WORK_BATCH_SIZE) {
+    const batch = works.slice(index, index + CLOUD_WORK_BATCH_SIZE);
+    const batchNumber = Math.floor(index / CLOUD_WORK_BATCH_SIZE) + 1;
+    if (!silent) setCloudStatus(`正在上传云端：第 ${batchNumber}/${totalBatches} 批……`);
+    await cloudWorkerJson("/api/v2/works", {
+      method: "POST",
+      timeoutMs: 18000,
+      body: {
+        syncCode: state.syncCode,
+        works: batch,
+        writer: CLIENT_ID
+      }
+    });
+  }
+
+  if (!silent) setCloudStatus("正在写入云端目录……");
+  const manifestPayload = {
+    ...payload,
+    works: works.map(cloudManifestWork)
+  };
+  return await cloudWorkerJson("/api/v2/manifest", {
     method: "POST",
-    timeoutMs: 45000,
+    timeoutMs: 12000,
     body: {
       syncCode: state.syncCode,
-      state: payload
+      state: manifestPayload
     }
   });
 }
@@ -2421,7 +2482,7 @@ async function saveCloudNow({ silent = false } = {}) {
     payload._lastWriterAt = new Date().toISOString();
     const cloudState = hasCustomCloudEndpoint() ? payload : await serializeCloudState(payload);
     const uploadResult = hasCustomCloudEndpoint()
-      ? await saveCloudLibraryV2(cloudState)
+      ? await saveCloudLibraryV2(cloudState, { silent })
       : await supabaseRest("shared_library_states", {
         method: "POST",
         query: "?on_conflict=sync_code",
