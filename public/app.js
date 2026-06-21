@@ -117,6 +117,9 @@ let syncingCloud = false;
 let cloudRealtimeChannel = null;
 let cloudRealtimeTimer = null;
 let cloudPullTimer = null;
+let cloudProgressTimer = null;
+let pendingCloudProgressIds = new Set();
+let syncingCloudProgress = false;
 let supabase;
 let cloudPausedUntil = Number(localStorage.getItem("vellum-cloud-paused-until") || 0);
 let cloudPausedReason = localStorage.getItem("vellum-cloud-paused-reason") || "";
@@ -257,7 +260,7 @@ async function saveReadingProgress(work) {
   readingProgressLoaded = true;
   await dbSet("reading-progress", readingProgressCache);
   await saveShellState();
-  queueCloudSave();
+  if (!queueCloudProgressSave(work)) queueCloudSave();
 }
 
 async function saveState() {
@@ -1751,6 +1754,14 @@ function getCloudProxyBase() {
   return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "") || DEFAULT_CLOUD_PROXY_BASE;
 }
 
+function getCustomCloudEndpoint() {
+  return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "");
+}
+
+function hasCustomCloudEndpoint() {
+  return Boolean(getCustomCloudEndpoint());
+}
+
 function setCloudEndpoint(value = "") {
   const normalized = normalizeCloudEndpoint(value);
   if (normalized) {
@@ -1908,6 +1919,46 @@ async function supabaseProxyRest(path, { method = "GET", query = "", body = null
   } catch (error) {
     if (error.name === "AbortError") {
       const timeoutError = new Error("备用同步通道启动太慢，已跳过这次请求。");
+      timeoutError.status = 504;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 12000 } = {}) {
+  const base = getCustomCloudEndpoint();
+  if (!base) throw new Error("Cloudflare Worker 地址还没填写。");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method,
+      signal: controller.signal,
+      headers: {
+        accept: "application/json",
+        ...(body ? { "content-type": "application/json" } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await response.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      throw new Error("Cloudflare Worker 返回的不是新版 JSON。请重新部署 worker.js。");
+    }
+    if (!response.ok) {
+      const error = new Error(data?.error || `Cloudflare Worker ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error("Cloudflare Worker 这次响应超时。");
       timeoutError.status = 504;
       throw timeoutError;
     }
@@ -2238,7 +2289,7 @@ function cloudSafeWork(work = {}) {
 function createCloudLibraryState(value) {
   const payload = cloneLibraryState(value);
   payload.works = (payload.works || []).map(cloudSafeWork);
-  payload._vellumCloudMode = "text-and-image-links-v1";
+  payload._vellumCloudMode = hasCustomCloudEndpoint() ? "kv-progress-r2-works-v1" : "text-and-image-links-v1";
   payload._vellumCloudNote = "Images are stored as links by default; local browser cache keeps loaded images.";
   return payload;
 }
@@ -2278,10 +2329,81 @@ function mergeLibraryState(localState, cloudState) {
 
 async function getCloudState() {
   if (!state.syncCode) return null;
+  if (hasCustomCloudEndpoint()) {
+    const data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
+      timeoutMs: 25000
+    });
+    return data?.state ? cloneLibraryState(data.state) : null;
+  }
   const query = `?select=state,updated_at&sync_code=eq.${encodeURIComponent(state.syncCode)}&limit=1`;
   const rows = await supabaseRest("shared_library_states", { query });
   const row = Array.isArray(rows) ? rows[0] : rows;
   return row?.state ? await deserializeCloudState(row.state) : null;
+}
+
+async function saveCloudLibraryV2(payload) {
+  return await cloudWorkerJson("/api/v2/cloud", {
+    method: "POST",
+    timeoutMs: 45000,
+    body: {
+      syncCode: state.syncCode,
+      state: payload
+    }
+  });
+}
+
+function cloudProgressEntry(work) {
+  return {
+    reading: readingEntryForWork(work),
+    sortOrder: Number(work?.sortOrder || 0) || undefined,
+    folderId: work?.folderId || "unfiled",
+    folderIds: workFolderIds(work),
+    updatedAt: work?.updatedAt || work?.reading?.updatedAt || new Date().toISOString()
+  };
+}
+
+async function saveCloudProgressNow({ silent = true } = {}) {
+  if (!state.syncCode || !hasCustomCloudEndpoint() || syncingCloudProgress || syncingCloud || SAFE_MODE) return;
+  const ids = [...pendingCloudProgressIds];
+  if (!ids.length) return;
+  pendingCloudProgressIds.clear();
+  syncingCloudProgress = true;
+  try {
+    const works = {};
+    for (const id of ids) {
+      const work = state.works.find((item) => item.id === id);
+      if (work) works[id] = cloudProgressEntry(work);
+    }
+    if (!Object.keys(works).length) return;
+    await cloudWorkerJson("/api/v2/progress", {
+      method: "POST",
+      timeoutMs: 8000,
+      body: {
+        syncCode: state.syncCode,
+        works,
+        writer: CLIENT_ID
+      }
+    });
+    clearCloudPendingSave();
+    if (!silent) setCloudStatus(`阅读进度已同步 · ${new Date().toLocaleTimeString()}`);
+  } catch (error) {
+    ids.forEach((id) => pendingCloudProgressIds.add(id));
+    markCloudPendingSave();
+    if (isCloudOfflineError(error)) {
+      pauseCloudSync(cloudRestErrorText(error), 5);
+    }
+    if (!silent) setCloudStatus(`进度同步失败：${cloudRestErrorText(error)}`);
+  } finally {
+    syncingCloudProgress = false;
+  }
+}
+
+function queueCloudProgressSave(work) {
+  if (!work?.id || !state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return false;
+  pendingCloudProgressIds.add(work.id);
+  clearTimeout(cloudProgressTimer);
+  cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 1800);
+  return true;
 }
 
 async function saveCloudNow({ silent = false } = {}) {
@@ -2297,19 +2419,21 @@ async function saveCloudNow({ silent = false } = {}) {
     const payload = createCloudLibraryState(state);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
-    const cloudState = await serializeCloudState(payload);
-    const uploadResult = await supabaseRest("shared_library_states", {
-      method: "POST",
-      query: "?on_conflict=sync_code",
-      prefer: "resolution=merge-duplicates,return=minimal",
-      body: {
-        sync_code: state.syncCode,
-        state: cloudState,
-        updated_at: new Date().toISOString()
-      }
-    });
+    const cloudState = hasCustomCloudEndpoint() ? payload : await serializeCloudState(payload);
+    const uploadResult = hasCustomCloudEndpoint()
+      ? await saveCloudLibraryV2(cloudState)
+      : await supabaseRest("shared_library_states", {
+        method: "POST",
+        query: "?on_conflict=sync_code",
+        prefer: "resolution=merge-duplicates,return=minimal",
+        body: {
+          sync_code: state.syncCode,
+          state: cloudState,
+          updated_at: new Date().toISOString()
+        }
+      });
     const compressed = cloudState?._vellumCompressed || uploadResult?.compressed || uploadResult?.sharded;
-    const mode = uploadResult?.sharded ? `，分篇 ${uploadResult.works || payload.works.length} 篇` : (compressed ? "，已压缩" : "");
+    const mode = uploadResult?.sharded ? `，R2 分篇 ${uploadResult.works || payload.works.length} 篇` : (compressed ? "，已压缩" : "");
     clearCloudPendingSave();
     if (!silent) setCloudStatus(`云端已保存：${payload.works.length} 篇${mode} · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
@@ -2363,8 +2487,10 @@ function queueCloudSave() {
 function stopCloudRealtime() {
   clearInterval(cloudRealtimeTimer);
   clearTimeout(cloudPullTimer);
+  clearTimeout(cloudProgressTimer);
   cloudRealtimeTimer = null;
   cloudPullTimer = null;
+  cloudProgressTimer = null;
   cloudRealtimeChannel = null;
 }
 
@@ -3763,7 +3889,7 @@ $("#cloudGenerateButton").addEventListener("click", () => {
 $("#cloudEndpoint")?.addEventListener("change", (event) => {
   const normalized = setCloudEndpoint(event.target.value);
   event.target.value = normalized;
-  setCloudStatus(normalized ? "Cloudflare Worker 地址已保存。连接同步码后会用新的 R2 云端。" : "已清空 Cloudflare Worker 地址，会暂时使用旧备用通道。");
+  setCloudStatus(normalized ? "Cloudflare Worker 地址已保存。绑定 R2 后，进度走 KV、正文走 R2。" : "已清空 Cloudflare Worker 地址，会暂时使用旧备用通道。");
   renderCloudPanel();
 });
 
