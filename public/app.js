@@ -2,7 +2,7 @@
 const DB_VERSION = 1;
 const STORE = "state";
 const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
-const CLOUD_PROXY_BASE = IMPORT_API_BASE;
+const DEFAULT_CLOUD_PROXY_BASE = IMPORT_API_BASE;
 const SUPABASE_URL = "https://bhliywysdezcykoyyozw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
@@ -1733,6 +1733,35 @@ function setCloudStatus(message) {
   if (node) node.textContent = message;
 }
 
+function normalizeCloudEndpoint(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    if (!/^https?:$/i.test(url.protocol)) return "";
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+function getCloudProxyBase() {
+  return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "") || DEFAULT_CLOUD_PROXY_BASE;
+}
+
+function setCloudEndpoint(value = "") {
+  const normalized = normalizeCloudEndpoint(value);
+  if (normalized) {
+    localStorage.setItem("vellum-cloud-worker-url", normalized);
+  } else {
+    localStorage.removeItem("vellum-cloud-worker-url");
+  }
+  resumeCloudSync();
+  return normalized;
+}
+
 function isCloudPaymentError(error) {
   return /(^|\D)402(\D|$)|payment required|quota|billing|额度|计费/i.test(error?.message || "");
 }
@@ -1843,7 +1872,8 @@ async function supabaseProxyRest(path, { method = "GET", query = "", body = null
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 9000);
   try {
-    const response = await fetch(`${CLOUD_PROXY_BASE}/api/cloud${method === "GET" ? `?syncCode=${encodeURIComponent(syncCode)}` : ""}`, {
+    const base = getCloudProxyBase();
+    const response = await fetch(`${base}/api/cloud${method === "GET" ? `?syncCode=${encodeURIComponent(syncCode)}` : ""}`, {
       method,
       signal: controller.signal,
       headers: {
@@ -1951,6 +1981,10 @@ function renderCloudPanel() {
     $("#cloudUser").textContent = "云端暂不可用";
     setCloudStatus("云端模块没加载成功，但本机导入和阅读可以继续用。");
     return;
+  }
+  const endpointInput = $("#cloudEndpoint");
+  if (endpointInput) {
+    endpointInput.value = normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "");
   }
   $("#cloudCode").readOnly = connected;
   $("#cloudCode").value = state.syncCode || $("#cloudCode").value || "";
@@ -3653,6 +3687,13 @@ $("#cloudStartButton").addEventListener("click", async () => {
 $("#cloudGenerateButton").addEventListener("click", () => {
   $("#cloudCode").value = makeSyncCode();
   setCloudStatus("已生成同步码。点「连接同步码」即可开启。");
+});
+
+$("#cloudEndpoint")?.addEventListener("change", (event) => {
+  const normalized = setCloudEndpoint(event.target.value);
+  event.target.value = normalized;
+  setCloudStatus(normalized ? "Cloudflare 同步地址已保存。现在可以连接同步码。" : "已清空 Cloudflare 同步地址，会暂时使用旧备用通道。");
+  renderCloudPanel();
 });
 
 $("#cloudPasswordLoginButton").addEventListener("click", async () => {

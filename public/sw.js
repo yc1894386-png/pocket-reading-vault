@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-reading-vault-v131-cloud-offline-queue";
+const CACHE_NAME = "pocket-reading-vault-v132-cloudflare-sync";
 const ASSETS = [
   "./",
   "./index.html",
