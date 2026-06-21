@@ -2362,20 +2362,19 @@ function cloudManifestWork(work = {}) {
 function cloudUploadSignature(work = {}) {
   return [
     work.id || "",
-    work.updatedAt || "",
-    work.reading?.updatedAt || "",
+    work.title || "",
+    work.author || "",
+    work.sourceUrl || "",
+    JSON.stringify(work.metadata || {}),
     (work.contentHtml || "").length,
     (work.summaryHtml || "").length,
-    (work.highlights || []).length,
-    (work.bookmarks || []).length,
-    (work.tags || []).join("|"),
-    work.folderId || "",
-    (work.folderIds || []).join("|")
+    JSON.stringify((work.highlights || []).map((item) => [item.id, item.text, item.color, item.note, item.updatedAt || item.createdAt])),
+    JSON.stringify((work.bookmarks || []).map((item) => [item.id, item.title, item.note, item.updatedAt || item.createdAt]))
   ].join("::");
 }
 
 function cloudUploadSignatureKey() {
-  return `vellum-cloud-upload-signatures:${state.syncCode || "none"}`;
+  return `vellum-cloud-body-signatures:v2:${state.syncCode || "none"}`;
 }
 
 function loadCloudUploadSignatures() {
@@ -2400,6 +2399,17 @@ function createCloudLibraryState(value) {
   payload._vellumCloudMode = hasCustomCloudEndpoint() ? "kv-progress-r2-works-v1" : "text-and-image-links-v1";
   payload._vellumCloudNote = "Images are stored as links by default; local browser cache keeps loaded images.";
   return payload;
+}
+
+async function mergeWithRemoteManifest(payload) {
+  if (!hasCustomCloudEndpoint() || !state.syncCode) return payload;
+  try {
+    const remoteState = await getCloudflareManifestState();
+    if (!remoteState) return payload;
+    return mergeLibraryState(remoteState, payload);
+  } catch {
+    return payload;
+  }
 }
 
 function mergeLibraryState(localState, cloudState) {
@@ -2541,7 +2551,18 @@ async function saveCloudLibraryV2(payload, { silent = false } = {}) {
   const works = Array.isArray(payload.works) ? payload.works : [];
   const batchSize = cloudWorkBatchSize();
   const signatures = loadCloudUploadSignatures();
-  const pendingWorks = works.filter((work) => signatures[work.id] !== cloudUploadSignature(work));
+  let remoteState = null;
+  try {
+    remoteState = await getCloudflareManifestState();
+  } catch {}
+  const remoteWorks = new Map((remoteState?.works || []).map((work) => [work.id, work]));
+  const pendingWorks = works.filter((work) => {
+    if (!work?.id) return false;
+    const remoteWork = remoteWorks.get(work.id);
+    const missingFromCloud = !remoteWork || !remoteWork.hasCloudShard;
+    const bodyChanged = signatures[work.id] ? signatures[work.id] !== cloudUploadSignature(work) : false;
+    return missingFromCloud || bodyChanged;
+  });
   const totalBatches = Math.max(1, Math.ceil(pendingWorks.length / batchSize));
 
   for (let index = 0; index < pendingWorks.length; index += batchSize) {
@@ -2564,9 +2585,10 @@ async function saveCloudLibraryV2(payload, { silent = false } = {}) {
   }
 
   if (!silent) setCloudStatus("正在写入云端目录……");
+  const mergedPayload = remoteState ? mergeLibraryState(remoteState, payload) : payload;
   const manifestPayload = {
-    ...payload,
-    works: works.map(cloudManifestWork)
+    ...mergedPayload,
+    works: (mergedPayload.works || []).map(cloudManifestWork)
   };
   return await cloudWorkerJson("/api/v2/manifest", {
     method: "POST",
@@ -2627,7 +2649,10 @@ async function saveCloudProgressNow({ silent = true } = {}) {
 async function saveCloudLightNow({ silent = true } = {}) {
   if (!state.syncCode || !hasCustomCloudEndpoint() || syncingCloud || SAFE_MODE) return;
   try {
-    const payload = createCloudLibraryState(state);
+    let payload = createCloudLibraryState(state);
+    payload._lastWriter = CLIENT_ID;
+    payload._lastWriterAt = new Date().toISOString();
+    payload = await mergeWithRemoteManifest(payload);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
     const manifestPayload = {
@@ -2741,7 +2766,7 @@ async function saveCloudNow({ silent = false } = {}) {
   }
 }
 
-function queueCloudSave() {
+function queueCloudSave(delay = 6500) {
   if (!state.syncCode || SAFE_MODE) return;
   markCloudPendingSave();
   if (syncingCloud) return;
@@ -2751,7 +2776,7 @@ function queueCloudSave() {
     return;
   }
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 6500);
+  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), delay);
 }
 
 function stopCloudRealtime() {
@@ -2794,7 +2819,11 @@ async function pullCloudInBackground({ initial = false } = {}) {
     renderAll();
     setCloudStatus(`已后台同步：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
     if (hasCustomCloudEndpoint()) {
-      scheduleCloudBackfill(5000);
+      if (state.works.length > cloudCount) {
+        setCloudStatus(`本机比云端多 ${state.works.length - cloudCount} 篇，正在自动补上传……`);
+        queueCloudSave(900);
+      }
+      scheduleCloudBackfill(1500);
     } else if (beforeCount !== state.works.length && state.syncCode) {
       queueCloudSave();
     }
@@ -2830,8 +2859,8 @@ function startCloudRealtime() {
       else await saveCloudNow({ silent: true });
     }
     await pullCloudInBackground({ initial: true });
-  }, hasCustomCloudEndpoint() ? 30000 : 12000);
-  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 90000);
+  }, hasCustomCloudEndpoint() ? 3500 : 12000);
+  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 30000 : 90000);
   setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
 }
 
@@ -2908,7 +2937,12 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
 
   const localCount = state.works.length;
   const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
-  const ids = refs.map((work) => work.id).filter(Boolean);
+  const localWorksBeforeMerge = new Map((state.works || []).map((work) => [work.id, work]));
+  const ids = refs.map((work) => work.id).filter((id) => {
+    if (!id) return false;
+    const localWork = localWorksBeforeMerge.get(id);
+    return !localWork || isCloudStubWork(localWork);
+  });
   const cloudCount = refs.length;
   state = merge ? mergeLibraryState(state, cloudState) : cloneLibraryState(cloudState);
   await dbSet("library", state);
@@ -2919,6 +2953,10 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
   const signatures = loadCloudUploadSignatures();
   let loaded = 0;
   let failed = 0;
+  if (!ids.length) {
+    setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇，没有缺正文。`);
+    return;
+  }
   for (let index = 0; index < ids.length; index += batchSize) {
     const batchIds = ids.slice(index, index + batchSize);
     const batchNumber = Math.floor(index / batchSize) + 1;
@@ -2980,7 +3018,10 @@ async function addWork(work) {
   state.works = existing ? state.works.map((item) => item.id === existing.id ? next : item) : [next, ...state.works];
   state.selectedWorkId = next.id;
   await saveState();
-  if (hasCustomCloudEndpoint()) queueCloudSave();
+  if (hasCustomCloudEndpoint()) {
+    setCloudStatus("已保存到本机，正在把新增文章同步到云端……");
+    queueCloudSave(900);
+  }
   renderAll();
 }
 
@@ -4352,9 +4393,9 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
   try {
     setCloudStatus("正在同步……");
     if (hasCustomCloudEndpoint()) {
-      await saveCloudLightNow({ silent: false });
       await pullCloudInBackground({ initial: true });
       scheduleCloudBackfill(1500);
+      if (cloudPendingSave || pendingCloudProgressIds.size) await saveCloudLightNow({ silent: false });
     } else {
       try {
         await loadCloudIntoLocal({ merge: true });

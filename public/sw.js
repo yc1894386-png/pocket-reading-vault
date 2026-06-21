@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "pocket-reading-vault-v140-folder-delete-lock-20260622";
+﻿const CACHE_NAME = "pocket-reading-vault-v141-fast-delta-cloud-sync-20260622";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,6 +33,7 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
 
 
 
