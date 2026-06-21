@@ -1827,6 +1827,15 @@ function scheduleCloudRetryAfterPause() {
 
 function cloudRestErrorText(error) {
   const message = error?.message || "未知错误";
+  if (/KV_VALUE_TOO_LARGE/i.test(message)) {
+    return "文字云端包已经超过 KV 单条限制。请先确认没有内嵌图片被同步；如果文章特别多，再启用 R2。";
+  }
+  if (/KV_BINDING_MISSING/i.test(message)) {
+    return "Cloudflare Worker 还没绑定 KV。需要在 Bindings 里添加 VELLUM_SYNC。";
+  }
+  if (/BAD_SYNC_CODE/i.test(message)) {
+    return "同步码格式不对。请重新生成或复制完整同步码。";
+  }
   if (/(^|\D)402(\D|$)|payment required/i.test(message)) {
     return "云端项目现在返回 402（额度/计费被拒绝）。本机书架没有丢，我会先暂停自动同步，避免网页被云端拖卡。需要到 Supabase 看项目是否暂停、欠费或额度用完。";
   }
@@ -2172,6 +2181,68 @@ async function deserializeCloudState(rawState) {
   return cloneLibraryState(JSON.parse(text));
 }
 
+function cloudSafeImageUrl(value = "", baseUrl = "") {
+  const original = originalImageUrlFromProxy(value) || value;
+  if (!original || /^(data:|blob:)/i.test(original)) return "";
+  return proxiedImageUrl(original, baseUrl);
+}
+
+function sanitizeHtmlForCloud(html = "", baseUrl = "") {
+  if (!html || !/<img\b/i.test(html)) return html || "";
+  const root = document.createElement("div");
+  root.innerHTML = html;
+  root.querySelectorAll("img").forEach((img) => {
+    const candidates = [
+      img.getAttribute("data-original-src"),
+      img.getAttribute("src"),
+      img.getAttribute("data-src"),
+      img.getAttribute("data-original"),
+      img.getAttribute("data-lazy-src"),
+      img.getAttribute("data-full-src"),
+      img.getAttribute("data-image-src"),
+      img.getAttribute("data-url")
+    ].filter(Boolean);
+    const srcset = img.getAttribute("srcset") || img.getAttribute("data-srcset") || "";
+    if (srcset) candidates.push(srcset.split(",")[0].trim().split(/\s+/)[0]);
+
+    const safe = candidates.map((candidate) => cloudSafeImageUrl(candidate, baseUrl)).find(Boolean);
+    img.removeAttribute("srcset");
+    img.removeAttribute("data-srcset");
+    img.removeAttribute("data-lazy-srcset");
+    img.removeAttribute("data-cfsrcset");
+    if (safe) {
+      img.setAttribute("src", safe);
+      img.setAttribute("data-original-src", originalImageUrlFromProxy(safe) || safe);
+    } else {
+      img.removeAttribute("src");
+      img.setAttribute("data-vellum-image-omitted", "true");
+      img.setAttribute("alt", img.getAttribute("alt") || "图片未同步到云端");
+    }
+    img.setAttribute("loading", "lazy");
+    img.setAttribute("decoding", "async");
+  });
+  return root.innerHTML;
+}
+
+function cloudSafeWork(work = {}) {
+  const copy = normalizeWork(structuredClone(work));
+  copy.contentHtml = sanitizeHtmlForCloud(copy.contentHtml || "", copy.sourceUrl || "");
+  copy.summaryHtml = sanitizeHtmlForCloud(copy.summaryHtml || "", copy.sourceUrl || "");
+  delete copy.imageCache;
+  delete copy.images;
+  delete copy.cachedImages;
+  delete copy.localImages;
+  return copy;
+}
+
+function createCloudLibraryState(value) {
+  const payload = cloneLibraryState(value);
+  payload.works = (payload.works || []).map(cloudSafeWork);
+  payload._vellumCloudMode = "text-and-image-links-v1";
+  payload._vellumCloudNote = "Images are stored as links by default; local browser cache keeps loaded images.";
+  return payload;
+}
+
 function mergeLibraryState(localState, cloudState) {
   const merged = cloneLibraryState(localState);
   const folderMap = new Map((merged.folders || []).map((folder) => [folder.id, folder]));
@@ -2223,7 +2294,7 @@ async function saveCloudNow({ silent = false } = {}) {
   syncingCloud = true;
   if (!silent) setCloudStatus("正在上传云端……");
   try {
-    const payload = cloneLibraryState(state);
+    const payload = createCloudLibraryState(state);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
     const cloudState = await serializeCloudState(payload);
