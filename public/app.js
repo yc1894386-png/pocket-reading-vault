@@ -98,6 +98,7 @@ let lastReaderActionAt = 0;
 let lastTouchSelectionAt = 0;
 let pageTurnAnimation = 0;
 let cloudTimer;
+let cloudLightTimer;
 let pendingJump = null;
 let pendingChapterJump = null;
 let pendingHighlightJumpId = null;
@@ -122,6 +123,8 @@ let cloudRealtimeChannel = null;
 let cloudRealtimeTimer = null;
 let cloudPullTimer = null;
 let cloudProgressTimer = null;
+let cloudBackfillTimer = null;
+let cloudBackfillRunning = false;
 let pendingCloudProgressIds = new Set();
 let syncingCloudProgress = false;
 let supabase;
@@ -271,7 +274,11 @@ async function saveState() {
   state.updatedAt = new Date().toISOString();
   await dbSet("library", state);
   await saveShellState();
-  queueCloudSave();
+  if (hasCustomCloudEndpoint()) {
+    queueCloudLightSave();
+  } else {
+    queueCloudSave();
+  }
 }
 
 function escapeHtml(value = "") {
@@ -1659,6 +1666,19 @@ function cancelWorkPress() {
 async function openWorkFromShelf(id) {
   let work = state.works.find((item) => item.id === id);
   if (!work) return;
+  if (isCloudStubWork(work) && hasCustomCloudEndpoint() && state.syncCode) {
+    setCloudStatus("正在优先下载这篇正文……");
+    try {
+      const works = await getCloudflareWorkBatch([id]);
+      if (works[0]) {
+        state = mergeLibraryState(state, { works });
+        await dbSet("library", state);
+        work = state.works.find((item) => item.id === id);
+      }
+    } catch (error) {
+      setCloudStatus(`这篇正文暂时没下载成功：${cloudRestErrorText(error)}`);
+    }
+  }
   if (!work.contentHtml && !localLibraryLoaded) {
     setCloudStatus("正在恢复正文，马上打开这篇。");
     try {
@@ -1834,7 +1854,10 @@ function scheduleCloudRetryAfterPause() {
       scheduleCloudRetryAfterPause();
       return;
     }
-    if (cloudPendingSave) await saveCloudNow({ silent: true });
+    if (cloudPendingSave) {
+      if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
+      else await saveCloudNow({ silent: true });
+    }
     await pullCloudInBackground({ initial: true });
     startCloudRealtime();
   }, delay);
@@ -1889,6 +1912,15 @@ function cloudWorkBatchSize() {
   return window.matchMedia?.("(max-width: 879px)")?.matches
     ? CLOUD_MOBILE_WORK_BATCH_SIZE
     : CLOUD_DESKTOP_WORK_BATCH_SIZE;
+}
+
+function isCloudStubWork(work = {}) {
+  return Boolean(work?.id && work.hasCloudShard && !(work.contentHtml || "").trim());
+}
+
+function cloudMissingWorkIds(limit = 0) {
+  const ids = (state.works || []).filter(isCloudStubWork).map((work) => work.id).filter(Boolean);
+  return limit > 0 ? ids.slice(0, limit) : ids;
 }
 
 function isRetryableCloudError(error) {
@@ -2428,6 +2460,42 @@ async function getCloudflareWorkBatch(batchIds) {
   return (batch?.works || []).map(normalizeWork);
 }
 
+async function backfillCloudWorks({ immediate = false } = {}) {
+  if (!hasCustomCloudEndpoint() || !state.syncCode || cloudBackfillRunning || SAFE_MODE || isCloudPaused()) return;
+  if (document.visibilityState && document.visibilityState !== "visible") return;
+  const ids = cloudMissingWorkIds(cloudWorkBatchSize());
+  if (!ids.length) return;
+  cloudBackfillRunning = true;
+  try {
+    if (immediate) setCloudStatus(`正在后台补全文：剩 ${cloudMissingWorkIds().length} 篇……`);
+    const works = await getCloudflareWorkBatch(ids);
+    if (works.length) {
+      const signatures = loadCloudUploadSignatures();
+      state = mergeLibraryState(state, { works });
+      for (const work of works) {
+        if (work?.id) signatures[work.id] = cloudUploadSignature(cloudSafeWork(work));
+      }
+      saveCloudUploadSignatures(signatures);
+      await dbSet("library", state);
+      renderAll();
+    }
+    const remaining = cloudMissingWorkIds().length;
+    setCloudStatus(remaining ? `后台补全文中：还剩 ${remaining} 篇。` : "云端正文已自动补齐。");
+    if (remaining) scheduleCloudBackfill(2500);
+  } catch (error) {
+    setCloudStatus(`后台补全文稍后重试：${cloudRestErrorText(error)}`);
+    scheduleCloudBackfill(12000);
+  } finally {
+    cloudBackfillRunning = false;
+  }
+}
+
+function scheduleCloudBackfill(delay = 4000) {
+  if (!hasCustomCloudEndpoint() || !state.syncCode || SAFE_MODE) return;
+  clearTimeout(cloudBackfillTimer);
+  cloudBackfillTimer = setTimeout(() => backfillCloudWorks(), delay);
+}
+
 async function getCloudflareState() {
   const cloudState = await getCloudflareManifestState();
   if (!cloudState) return null;
@@ -2536,6 +2604,49 @@ async function saveCloudProgressNow({ silent = true } = {}) {
   }
 }
 
+async function saveCloudLightNow({ silent = true } = {}) {
+  if (!state.syncCode || !hasCustomCloudEndpoint() || syncingCloud || SAFE_MODE) return;
+  try {
+    const payload = createCloudLibraryState(state);
+    payload._lastWriter = CLIENT_ID;
+    payload._lastWriterAt = new Date().toISOString();
+    const manifestPayload = {
+      ...payload,
+      works: (payload.works || []).map(cloudManifestWork)
+    };
+    await cloudWorkerJson("/api/v2/manifest", {
+      method: "POST",
+      timeoutMs: 16000,
+      body: {
+        syncCode: state.syncCode,
+        state: manifestPayload
+      }
+    });
+    await cloudWorkerJson("/api/v2/progress", {
+      method: "POST",
+      timeoutMs: 10000,
+      body: {
+        syncCode: state.syncCode,
+        works: Object.fromEntries((state.works || []).filter((work) => work?.id).map((work) => [work.id, cloudProgressEntry(work)])),
+        writer: CLIENT_ID
+      }
+    });
+    clearCloudPendingSave();
+    if (!silent) setCloudStatus(`轻同步完成：分组、排序和进度已保存 · ${new Date().toLocaleTimeString()}`);
+  } catch (error) {
+    markCloudPendingSave();
+    if (isCloudOfflineError(error)) pauseCloudSync(cloudRestErrorText(error), 5);
+    if (!silent) setCloudStatus(`轻同步失败：${cloudRestErrorText(error)}`);
+  }
+}
+
+function queueCloudLightSave() {
+  if (!state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return;
+  markCloudPendingSave();
+  clearTimeout(cloudLightTimer);
+  cloudLightTimer = setTimeout(() => saveCloudLightNow({ silent: true }), 1800);
+}
+
 function queueCloudProgressSave(work) {
   if (!work?.id || !state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return false;
   pendingCloudProgressIds.add(work.id);
@@ -2614,6 +2725,7 @@ function queueCloudSave() {
   if (!state.syncCode || SAFE_MODE) return;
   markCloudPendingSave();
   if (syncingCloud) return;
+  clearTimeout(cloudLightTimer);
   if (isCloudPaused()) {
     scheduleCloudRetryAfterPause();
     return;
@@ -2626,19 +2738,25 @@ function stopCloudRealtime() {
   clearInterval(cloudRealtimeTimer);
   clearTimeout(cloudPullTimer);
   clearTimeout(cloudProgressTimer);
+  clearTimeout(cloudLightTimer);
+  clearTimeout(cloudBackfillTimer);
   cloudRealtimeTimer = null;
   cloudPullTimer = null;
   cloudProgressTimer = null;
+  cloudLightTimer = null;
+  cloudBackfillTimer = null;
   cloudRealtimeChannel = null;
 }
 
 async function pullCloudInBackground({ initial = false } = {}) {
-  if (!supabase || !state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
+  if ((!supabase && !hasCustomCloudEndpoint()) || !state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
   if (activeWork()) return;
   if (document.visibilityState && document.visibilityState !== "visible") return;
   syncingCloud = true;
   try {
-    const remoteState = await getCloudState();
+    const remoteState = hasCustomCloudEndpoint()
+      ? await getCloudflareManifestState()
+      : await getCloudState();
     if (!remoteState) {
       syncingCloud = false;
       if (!initial) setCloudStatus("云端暂时没有书架，这台设备的改动会自动上传。");
@@ -2655,7 +2773,11 @@ async function pullCloudInBackground({ initial = false } = {}) {
     syncingCloud = false;
     renderAll();
     setCloudStatus(`已后台同步：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
-    if (beforeCount !== state.works.length && state.syncCode) queueCloudSave();
+    if (hasCustomCloudEndpoint()) {
+      scheduleCloudBackfill(5000);
+    } else if (beforeCount !== state.works.length && state.syncCode) {
+      queueCloudSave();
+    }
   } catch (error) {
     syncingCloud = false;
     if (isCloudPaymentError(error)) {
@@ -2676,16 +2798,19 @@ async function pullCloudInBackground({ initial = false } = {}) {
 
 function startCloudRealtime() {
   stopCloudRealtime();
-  if (!supabase || !state.syncCode || SAFE_MODE) return;
+  if ((!supabase && !hasCustomCloudEndpoint()) || !state.syncCode || SAFE_MODE) return;
   if (isCloudPaused()) {
     setCloudStatus(cloudPauseMessage());
     scheduleCloudRetryAfterPause();
     return;
   }
   cloudPullTimer = setTimeout(async () => {
-    if (cloudPendingSave) await saveCloudNow({ silent: true });
+    if (cloudPendingSave) {
+      if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
+      else await saveCloudNow({ silent: true });
+    }
     await pullCloudInBackground({ initial: true });
-  }, 12000);
+  }, hasCustomCloudEndpoint() ? 30000 : 12000);
   cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 90000);
   setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
 }
@@ -2835,6 +2960,7 @@ async function addWork(work) {
   state.works = existing ? state.works.map((item) => item.id === existing.id ? next : item) : [next, ...state.works];
   state.selectedWorkId = next.id;
   await saveState();
+  if (hasCustomCloudEndpoint()) queueCloudSave();
   renderAll();
 }
 
@@ -4064,7 +4190,7 @@ function cleanSyncCode(value = "") {
 }
 
 $("#cloudStartButton").addEventListener("click", async () => {
-  if (!supabase) {
+  if (!supabase && !hasCustomCloudEndpoint()) {
     setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
     return;
   }
@@ -4076,14 +4202,22 @@ $("#cloudStartButton").addEventListener("click", async () => {
     await saveState();
     renderCloudPanel();
     startCloudRealtime();
-    try {
-      await loadCloudIntoLocal({ merge: true });
-    } catch (error) {
-      if (!state.works.length || !isCloudStateTimeout(error)) throw error;
-      setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
-      await saveCloudNow({ silent: false });
+    if (hasCustomCloudEndpoint()) {
+      await pullCloudInBackground({ initial: true });
+      scheduleCloudBackfill(3500);
+    } else {
+      try {
+        await loadCloudIntoLocal({ merge: true });
+      } catch (error) {
+        if (!state.works.length || !isCloudStateTimeout(error)) throw error;
+        setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
+        await saveCloudNow({ silent: false });
+      }
     }
-    if (!hasCustomCloudEndpoint() || cloudPendingSave) await saveCloudNow({ silent: true });
+    if (cloudPendingSave) {
+      if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
+      else await saveCloudNow({ silent: true });
+    }
     setCloudStatus("同步码已连接。手机电脑填同一个码就会同步。");
   } catch (error) {
     await saveState();
@@ -4194,14 +4328,20 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
   resumeCloudSync();
   try {
     setCloudStatus("正在同步……");
-    try {
-      await loadCloudIntoLocal({ merge: true });
-    } catch (error) {
-      if (!state.works.length || !isCloudStateTimeout(error)) throw error;
-      setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
-      await saveCloudNow({ silent: false });
+    if (hasCustomCloudEndpoint()) {
+      await saveCloudLightNow({ silent: false });
+      await pullCloudInBackground({ initial: true });
+      scheduleCloudBackfill(1500);
+    } else {
+      try {
+        await loadCloudIntoLocal({ merge: true });
+      } catch (error) {
+        if (!state.works.length || !isCloudStateTimeout(error)) throw error;
+        setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
+        await saveCloudNow({ silent: false });
+      }
+      if (cloudPendingSave) await saveCloudNow({ silent: true });
     }
-    if (!hasCustomCloudEndpoint() || cloudPendingSave) await saveCloudNow({ silent: true });
     setCloudStatus(`同步完成：现在本机有 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
     setCloudStatus(`同步失败：${cloudRestErrorText(error)}`);

@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "pocket-reading-vault-v138-cloud-download-resume-20260622";
+﻿const CACHE_NAME = "pocket-reading-vault-v139-light-sync-background-fill-20260622";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,6 +33,7 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
 
 
 
