@@ -45,6 +45,7 @@ const defaultState = {
     { id: "all", name: "全部" },
     { id: "unfiled", name: "未分类" }
   ],
+  deletedFolderIds: [],
   works: []
 };
 
@@ -209,6 +210,7 @@ async function saveShellState() {
     progressAccent: state.progressAccent || defaultState.progressAccent,
     selectedFolder: state.selectedFolder || "all",
     folders: state.folders || defaultState.folders,
+    deletedFolderIds: state.deletedFolderIds || [],
     works: (state.works || []).map(shellWork),
     updatedAt: new Date().toISOString()
   });
@@ -1541,12 +1543,9 @@ function renderBatchGroupDialog() {
 }
 
 async function openBatchGroupDialog() {
-  ensureFolderNames(["CA", "想看", "看完"]);
   batchSelectedWorkIds = new Set();
   batchSelectedFolderIds = new Set();
   $("#batchSearchInput").value = $("#searchInput").value.trim();
-  await saveState();
-  renderAll();
   renderBatchGroupDialog();
   $("#batchGroupDialog").showModal();
 }
@@ -1731,15 +1730,21 @@ async function importLibraryFile(file) {
   if (!nextState || !Array.isArray(nextState.works)) {
     throw new Error("这个文件不像书架备份。");
   }
+  state.deletedFolderIds = [...new Set([...(state.deletedFolderIds || []), ...(nextState.deletedFolderIds || [])])].filter((id) => id && id !== "all" && id !== "unfiled");
   const existingFolders = new Map(state.folders.map((folder) => [folder.id, folder]));
   for (const folder of nextState.folders || []) {
-    if (!existingFolders.has(folder.id)) state.folders.push(folder);
+    if (!state.deletedFolderIds.includes(folder.id) && !existingFolders.has(folder.id)) state.folders.push(folder);
   }
   const existingWorks = new Map(state.works.map((work) => [work.id, work]));
   for (const work of nextState.works.map(normalizeWork)) {
     existingWorks.set(work.id, { ...existingWorks.get(work.id), ...work });
   }
-  state.works = [...existingWorks.values()].map(normalizeWork);
+  state.works = [...existingWorks.values()].map((work) => {
+    const normalized = normalizeWork(work);
+    normalized.folderIds = workFolderIds(normalized).filter((id) => !state.deletedFolderIds.includes(id));
+    if (state.deletedFolderIds.includes(normalized.folderId)) normalized.folderId = normalized.folderIds[0] || "unfiled";
+    return normalized;
+  });
   state.readerFontSize = nextState.readerFontSize || state.readerFontSize;
   state.readerFontFamily = nextState.readerFontFamily || state.readerFontFamily;
   state.readerLineHeight = nextState.readerLineHeight || state.readerLineHeight;
@@ -2121,6 +2126,7 @@ function cloneLibraryState(value) {
     ...defaultState,
     ...value,
     folders: value?.folders || defaultState.folders,
+    deletedFolderIds: [...new Set(value?.deletedFolderIds || [])].filter((id) => id && id !== "all" && id !== "unfiled"),
     works: (value?.works || []).map(normalizeWork)
   });
 }
@@ -2398,11 +2404,18 @@ function createCloudLibraryState(value) {
 
 function mergeLibraryState(localState, cloudState) {
   const merged = cloneLibraryState(localState);
+  const deletedFolderIds = new Set([
+    ...(localState.deletedFolderIds || []),
+    ...(cloudState.deletedFolderIds || [])
+  ].filter((id) => id && id !== "all" && id !== "unfiled"));
   const folderMap = new Map((merged.folders || []).map((folder) => [folder.id, folder]));
-  for (const folder of cloudState.folders || []) folderMap.set(folder.id, folder);
-  merged.folders = [...folderMap.values()];
+  for (const folder of cloudState.folders || []) {
+    if (!deletedFolderIds.has(folder.id)) folderMap.set(folder.id, folder);
+  }
+  merged.folders = [...folderMap.values()].filter((folder) => !deletedFolderIds.has(folder.id));
   if (!merged.folders.some((folder) => folder.id === "all")) merged.folders.unshift(defaultState.folders[0]);
   if (!merged.folders.some((folder) => folder.id === "unfiled")) merged.folders.push(defaultState.folders[1]);
+  merged.deletedFolderIds = [...deletedFolderIds];
 
   const workMap = new Map((merged.works || []).map((work) => [work.id, normalizeWork(work)]));
   for (const cloudWork of cloudState.works || []) {
@@ -2413,7 +2426,14 @@ function mergeLibraryState(localState, cloudState) {
     }
     workMap.set(cloudWork.id, mergeWorkRecords(existing, cloudWork));
   }
-  merged.works = [...workMap.values()];
+  merged.works = [...workMap.values()].map((work) => {
+    const normalized = normalizeWork(work);
+    normalized.folderIds = workFolderIds(normalized).filter((id) => !deletedFolderIds.has(id));
+    if (deletedFolderIds.has(normalized.folderId)) {
+      normalized.folderId = normalized.folderIds[0] || "unfiled";
+    }
+    return normalized;
+  });
   merged.readerFontSize = localState.readerFontSize || cloudState.readerFontSize || defaultState.readerFontSize;
   merged.readerFontFamily = localState.readerFontFamily || cloudState.readerFontFamily || defaultState.readerFontFamily;
   merged.readerLineHeight = localState.readerLineHeight || cloudState.readerLineHeight || defaultState.readerLineHeight;
@@ -4008,6 +4028,7 @@ async function boot() {
     if (shell?.theme) state.theme = shell.theme;
     if (shell?.progressAccent) state.progressAccent = shell.progressAccent;
     if (Array.isArray(shell?.folders)) state.folders = shell.folders;
+    if (Array.isArray(shell?.deletedFolderIds)) state.deletedFolderIds = shell.deletedFolderIds;
     if (Array.isArray(shell?.works) && shell.works.length) {
       state.works = shell.works.map((work) => normalizeWork(work, { light: true }));
       state.selectedFolder = shell.selectedFolder || "all";
@@ -4047,6 +4068,7 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
     return;
   }
   state = { ...defaultState, ...saved };
+  state.deletedFolderIds = [...new Set(state.deletedFolderIds || [])].filter((id) => id && id !== "all" && id !== "unfiled");
   if (!state.syncCode && remembered.syncCode) state.syncCode = remembered.syncCode;
   state.theme ||= remembered.theme;
   state.progressAccent ||= remembered.progressAccent;
@@ -4072,6 +4094,7 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
   state.progressAccent = normalizeHexColor(state.progressAccent || defaultState.progressAccent);
   if (state.progressAccent === "#007AFF") state.progressAccent = defaultState.progressAccent;
   normalizePendingImports();
+  state.folders = (state.folders || defaultState.folders).filter((folder) => !state.deletedFolderIds.includes(folder.id));
   if (!state.folders.some((folder) => folder.id === "all")) state.folders.unshift(defaultState.folders[0]);
   if (!state.folders.some((folder) => folder.id === "unfiled")) state.folders.push(defaultState.folders[1]);
   if (state.selectedFolder === "unfiled") state.selectedFolder = "all";
@@ -4596,8 +4619,9 @@ $("#manageDeleteWorkButton").addEventListener("click", async () => {
 
 $("#manageDeleteFolderButton").addEventListener("click", async () => {
   const folder = state.folders.find((item) => item.id === managedFolderId);
-  if (!folder || folder.id === "all") return;
+  if (!folder || folder.id === "all" || folder.id === "unfiled") return;
   if (!confirm(`删除文件夹「${folder.name}」？里面的作品不会删除，只是不再放在这个文件夹里。`)) return;
+  state.deletedFolderIds = [...new Set([...(state.deletedFolderIds || []), folder.id])];
   state.works.forEach((work) => {
     if ((work.folderId || "unfiled") === folder.id) work.folderId = "unfiled";
     work.folderIds = workFolderIds(work).filter((id) => id !== folder.id);
