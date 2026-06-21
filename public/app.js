@@ -2400,39 +2400,53 @@ function mergeLibraryState(localState, cloudState) {
 async function getCloudState() {
   if (!state.syncCode) return null;
   if (hasCustomCloudEndpoint()) {
-    let data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 12000
-    });
-    if (!data?.state) {
-      data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
-        timeoutMs: 25000
-      });
-      return data?.state ? cloneLibraryState(data.state) : null;
-    }
-    const cloudState = cloneLibraryState(data.state);
-    const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
-    const fullWorks = new Map(refs.map((work) => [work.id, work]));
-    const ids = refs.map((work) => work.id).filter(Boolean);
-    const batchSize = cloudWorkBatchSize();
-    const totalBatches = Math.max(1, Math.ceil(ids.length / batchSize));
-    for (let index = 0; index < ids.length; index += batchSize) {
-      const batchIds = ids.slice(index, index + batchSize);
-      const batchNumber = Math.floor(index / batchSize) + 1;
-      if (ids.length > batchSize) setCloudStatus(`正在读取云端：第 ${batchNumber}/${totalBatches} 批……`);
-      const batch = await cloudWorkerJson(`/api/v2/works?syncCode=${encodeURIComponent(state.syncCode)}&ids=${batchIds.map(encodeURIComponent).join(",")}`, {
-        timeoutMs: 22000
-      });
-      for (const work of batch?.works || []) {
-        if (work?.id) fullWorks.set(work.id, normalizeWork({ ...(fullWorks.get(work.id) || {}), ...work }));
-      }
-    }
-    cloudState.works = [...fullWorks.values()];
-    return cloudState;
+    return await getCloudflareState();
   }
   const query = `?select=state,updated_at&sync_code=eq.${encodeURIComponent(state.syncCode)}&limit=1`;
   const rows = await supabaseRest("shared_library_states", { query });
   const row = Array.isArray(rows) ? rows[0] : rows;
   return row?.state ? await deserializeCloudState(row.state) : null;
+}
+
+async function getCloudflareManifestState() {
+  let data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
+    timeoutMs: 16000
+  });
+  if (!data?.state) {
+    data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
+      timeoutMs: 30000
+    });
+  }
+  return data?.state ? cloneLibraryState(data.state) : null;
+}
+
+async function getCloudflareWorkBatch(batchIds) {
+  if (!batchIds.length) return [];
+  const batch = await cloudWorkerJson(`/api/v2/works?syncCode=${encodeURIComponent(state.syncCode)}&ids=${batchIds.map(encodeURIComponent).join(",")}`, {
+    timeoutMs: 60000
+  });
+  return (batch?.works || []).map(normalizeWork);
+}
+
+async function getCloudflareState() {
+  const cloudState = await getCloudflareManifestState();
+  if (!cloudState) return null;
+  const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
+  const fullWorks = new Map(refs.map((work) => [work.id, work]));
+  const ids = refs.map((work) => work.id).filter(Boolean);
+  const batchSize = cloudWorkBatchSize();
+  const totalBatches = Math.max(1, Math.ceil(ids.length / batchSize));
+  for (let index = 0; index < ids.length; index += batchSize) {
+    const batchIds = ids.slice(index, index + batchSize);
+    const batchNumber = Math.floor(index / batchSize) + 1;
+    if (ids.length > batchSize) setCloudStatus(`正在读取云端：第 ${batchNumber}/${totalBatches} 批……`);
+    const works = await getCloudflareWorkBatch(batchIds);
+    for (const work of works) {
+      if (work?.id) fullWorks.set(work.id, normalizeWork({ ...(fullWorks.get(work.id) || {}), ...work }));
+    }
+  }
+  cloudState.works = [...fullWorks.values()];
+  return cloudState;
 }
 
 async function saveCloudLibraryV2(payload, { silent = false } = {}) {
@@ -2682,6 +2696,10 @@ async function loadCloudIntoLocal({ merge = true } = {}) {
     setCloudStatus(cloudPauseMessage());
     return;
   }
+  if (hasCustomCloudEndpoint()) {
+    await loadCloudflareIntoLocalIncremental({ merge });
+    return;
+  }
   setCloudStatus("正在读取云端书架……");
   let cloudState;
   try {
@@ -2716,6 +2734,75 @@ async function loadCloudIntoLocal({ merge = true } = {}) {
     ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。`
     : `已下载云端书架：${state.works.length} 篇。`);
   if (merge) await saveCloudNow({ silent: true });
+}
+
+async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
+  setCloudStatus("正在读取云端目录……");
+  let cloudState;
+  try {
+    cloudState = await getCloudflareManifestState();
+  } catch (error) {
+    if (isCloudPaymentError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 30);
+      setCloudStatus(`云端读取失败：${reason}`);
+      return;
+    }
+    if (isCloudOfflineError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 8);
+      setCloudStatus(`云端读取失败：${reason}`);
+      return;
+    }
+    throw error;
+  }
+  if (!cloudState) {
+    setCloudStatus("云端还没有书架。请先在书库完整的设备点「只上传」。");
+    return;
+  }
+
+  const localCount = state.works.length;
+  const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
+  const ids = refs.map((work) => work.id).filter(Boolean);
+  const cloudCount = refs.length;
+  state = merge ? mergeLibraryState(state, cloudState) : cloneLibraryState(cloudState);
+  await dbSet("library", state);
+  renderAll();
+
+  const batchSize = cloudWorkBatchSize();
+  const totalBatches = Math.max(1, Math.ceil(ids.length / batchSize));
+  const signatures = loadCloudUploadSignatures();
+  let loaded = 0;
+  let failed = 0;
+  for (let index = 0; index < ids.length; index += batchSize) {
+    const batchIds = ids.slice(index, index + batchSize);
+    const batchNumber = Math.floor(index / batchSize) + 1;
+    setCloudStatus(`正在下载正文：第 ${batchNumber}/${totalBatches} 批……`);
+    try {
+      const works = await getCloudflareWorkBatch(batchIds);
+      loaded += works.length;
+      if (works.length) {
+        state = mergeLibraryState(state, { ...cloudState, works });
+        for (const work of works) {
+          if (work?.id) signatures[work.id] = cloudUploadSignature(cloudSafeWork(work));
+        }
+        saveCloudUploadSignatures(signatures);
+        await dbSet("library", state);
+        renderAll();
+      }
+    } catch (error) {
+      failed += batchIds.length;
+      setCloudStatus(`第 ${batchNumber}/${totalBatches} 批暂时没下完，继续下载后面的……`);
+    }
+  }
+
+  setCloudStatus(
+    failed
+      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇稍后可再点「只下载」补齐。`
+      : (merge
+        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。`
+        : `已下载云端书架：${state.works.length} 篇。`)
+  );
 }
 
 async function refreshCloudSession({ initial = false } = {}) {
@@ -3996,7 +4083,7 @@ $("#cloudStartButton").addEventListener("click", async () => {
       setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
       await saveCloudNow({ silent: false });
     }
-    await saveCloudNow({ silent: true });
+    if (!hasCustomCloudEndpoint() || cloudPendingSave) await saveCloudNow({ silent: true });
     setCloudStatus("同步码已连接。手机电脑填同一个码就会同步。");
   } catch (error) {
     await saveState();
@@ -4114,7 +4201,7 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
       setCloudStatus("云端旧数据读取超时，正在先上传本机压缩书架……");
       await saveCloudNow({ silent: false });
     }
-    await saveCloudNow({ silent: true });
+    if (!hasCustomCloudEndpoint() || cloudPendingSave) await saveCloudNow({ silent: true });
     setCloudStatus(`同步完成：现在本机有 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
     setCloudStatus(`同步失败：${cloudRestErrorText(error)}`);
