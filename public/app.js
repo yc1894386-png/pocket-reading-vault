@@ -120,6 +120,7 @@ let cloudPullTimer = null;
 let supabase;
 let cloudPausedUntil = Number(localStorage.getItem("vellum-cloud-paused-until") || 0);
 let cloudPausedReason = localStorage.getItem("vellum-cloud-paused-reason") || "";
+let cloudPendingSave = localStorage.getItem("vellum-cloud-pending-save") === "1";
 let activeHighlightId = null;
 let activeSelectionText = "";
 let activeSelectionRange = null;
@@ -1736,6 +1737,10 @@ function isCloudPaymentError(error) {
   return /(^|\D)402(\D|$)|payment required|quota|billing|额度|计费/i.test(error?.message || "");
 }
 
+function isCloudOfflineError(error) {
+  return /ENOTFOUND|fetch failed|failed to fetch|network|load failed|502|503|504|云端直连超时|备用同步通道启动太慢|备用同步通道.*失败|连接已经关闭/i.test(error?.message || "");
+}
+
 function cloudPauseMessage() {
   return cloudPausedReason || "云端现在拒绝请求，本机书架先照常使用。";
 }
@@ -1765,10 +1770,42 @@ function resumeCloudSync() {
   localStorage.removeItem("vellum-cloud-paused-reason");
 }
 
+function markCloudPendingSave() {
+  if (!state.syncCode) return;
+  cloudPendingSave = true;
+  localStorage.setItem("vellum-cloud-pending-save", "1");
+}
+
+function clearCloudPendingSave() {
+  cloudPendingSave = false;
+  localStorage.removeItem("vellum-cloud-pending-save");
+}
+
+function scheduleCloudRetryAfterPause() {
+  clearTimeout(cloudPullTimer);
+  if (!state.syncCode || !cloudPausedUntil) return;
+  const delay = Math.min(Math.max(cloudPausedUntil - Date.now() + 1200, 5000), 30 * 60 * 1000);
+  cloudPullTimer = setTimeout(async () => {
+    if (isCloudPaused()) {
+      scheduleCloudRetryAfterPause();
+      return;
+    }
+    if (cloudPendingSave) await saveCloudNow({ silent: true });
+    await pullCloudInBackground({ initial: true });
+    startCloudRealtime();
+  }, delay);
+}
+
 function cloudRestErrorText(error) {
   const message = error?.message || "未知错误";
   if (/(^|\D)402(\D|$)|payment required/i.test(message)) {
     return "云端项目现在返回 402（额度/计费被拒绝）。本机书架没有丢，我会先暂停自动同步，避免网页被云端拖卡。需要到 Supabase 看项目是否暂停、欠费或额度用完。";
+  }
+  if (/ENOTFOUND|Non-existent domain/i.test(message)) {
+    return "云端地址现在查不到，像是 Supabase 项目被暂停、删除或域名失效。本机书架会继续保存，云端恢复后再补同步。";
+  }
+  if (/502|503|fetch failed|failed to fetch|network|load failed|连接已经关闭/i.test(message)) {
+    return "现在连不上云端服务。本机书架会先保存，云端恢复后再自动补同步。";
   }
   if (/backup cloud channel|备用通道/i.test(message)) {
     return "备用同步通道也失败了。请稍后再试，或检查 Render 是否已经部署新版。";
@@ -2145,6 +2182,7 @@ async function getCloudState() {
 async function saveCloudNow({ silent = false } = {}) {
   if (!state.syncCode || syncingCloud) return;
   if (isCloudPaused()) {
+    markCloudPendingSave();
     if (!silent) setCloudStatus(cloudPauseMessage());
     return;
   }
@@ -2167,6 +2205,7 @@ async function saveCloudNow({ silent = false } = {}) {
     });
     const compressed = cloudState?._vellumCompressed || uploadResult?.compressed || uploadResult?.sharded;
     const mode = uploadResult?.sharded ? `，分篇 ${uploadResult.works || payload.works.length} 篇` : (compressed ? "，已压缩" : "");
+    clearCloudPendingSave();
     if (!silent) setCloudStatus(`云端已保存：${payload.works.length} 篇${mode} · ${new Date().toLocaleTimeString()}`);
   } catch (error) {
     if (!silent && state.works.length && isCloudStateTimeout(error)) {
@@ -2186,8 +2225,16 @@ async function saveCloudNow({ silent = false } = {}) {
     }
     if (isCloudPaymentError(error)) {
       const reason = cloudRestErrorText(error);
+      markCloudPendingSave();
       pauseCloudSync(reason, 30);
       setCloudStatus(`云端保存失败：${reason}`);
+      return;
+    }
+    if (isCloudOfflineError(error)) {
+      const reason = cloudRestErrorText(error);
+      markCloudPendingSave();
+      pauseCloudSync(reason, 8);
+      setCloudStatus(silent ? reason : `云端保存失败：${reason}`);
       return;
     }
     setCloudStatus(`云端保存失败：${cloudRestErrorText(error)}`);
@@ -2197,7 +2244,13 @@ async function saveCloudNow({ silent = false } = {}) {
 }
 
 function queueCloudSave() {
-  if (!state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
+  if (!state.syncCode || SAFE_MODE) return;
+  markCloudPendingSave();
+  if (syncingCloud) return;
+  if (isCloudPaused()) {
+    scheduleCloudRetryAfterPause();
+    return;
+  }
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), 6500);
 }
@@ -2242,6 +2295,12 @@ async function pullCloudInBackground({ initial = false } = {}) {
       setCloudStatus(`自动同步暂停：${reason}`);
       return;
     }
+    if (isCloudOfflineError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 8);
+      setCloudStatus(initial ? reason : `自动同步暂停：${reason}`);
+      return;
+    }
     setCloudStatus(initial ? "云端会在后台继续重试，不影响本机阅读。" : `自动同步失败：${cloudRestErrorText(error)}`);
   }
 }
@@ -2251,11 +2310,15 @@ function startCloudRealtime() {
   if (!supabase || !state.syncCode || SAFE_MODE) return;
   if (isCloudPaused()) {
     setCloudStatus(cloudPauseMessage());
+    scheduleCloudRetryAfterPause();
     return;
   }
-  cloudPullTimer = setTimeout(() => pullCloudInBackground({ initial: true }), 12000);
+  cloudPullTimer = setTimeout(async () => {
+    if (cloudPendingSave) await saveCloudNow({ silent: true });
+    await pullCloudInBackground({ initial: true });
+  }, 12000);
   cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), 90000);
-  setCloudStatus("同步码已连接。页面会先打开，云端稍后在后台自动同步。");
+  setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
@@ -2272,6 +2335,12 @@ async function loadCloudIntoLocal({ merge = true } = {}) {
     if (isCloudPaymentError(error)) {
       const reason = cloudRestErrorText(error);
       pauseCloudSync(reason, 30);
+      setCloudStatus(`云端读取失败：${reason}`);
+      return;
+    }
+    if (isCloudOfflineError(error)) {
+      const reason = cloudRestErrorText(error);
+      pauseCloudSync(reason, 8);
       setCloudStatus(`云端读取失败：${reason}`);
       return;
     }
