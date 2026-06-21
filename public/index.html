@@ -8,7 +8,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./vellum-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="./vellum-logo.png" />
-    <link rel="stylesheet" href="./styles.css?v=132-cloudflare-sync-20260621" />
+    <link rel="stylesheet" href="./styles.css?v=133-cloudflare-r2-sync-20260621" />
   </head>
   <body>
     <div class="app-shell">
@@ -66,7 +66,7 @@
               <p class="status" id="cloudStatus">填同一个同步码，手机和电脑就是同一个云端书架。</p>
               <details class="cloud-account-details" id="cloudAccountDetails">
                 <summary>同步码</summary>
-                <input id="cloudEndpoint" type="url" placeholder="Cloudflare 同步地址，例：https://vellum-sync.xxx.workers.dev" autocomplete="off" />
+                <input id="cloudEndpoint" type="url" placeholder="Cloudflare Worker 地址，例：https://vellum-sync.xxx.workers.dev" autocomplete="off" />
                 <input id="cloudCode" type="text" placeholder="输入同步码，或点生成" autocomplete="off" />
                 <input class="hidden" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
                 <input class="hidden" id="cloudPassword" type="password" placeholder="密码，至少 6 位" autocomplete="current-password" />
@@ -500,6 +500,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=132-cloudflare-sync-20260621" type="module"></script>
+    <script src="./app.js?v=133-cloudflare-r2-sync-20260621" type="module"></script>
   </body>
 </html>

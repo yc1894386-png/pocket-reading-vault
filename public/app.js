@@ -1843,10 +1843,10 @@ function cloudRestErrorText(error) {
     return "连不上云端。新版会自动走备用同步通道；如果仍失败，请确认 Render 已部署新版。";
   }
   if (/statement timeout|canceling statement|timeout/i.test(message)) {
-    return "云端旧书架太大，读取或写入超时。请在有完整书库的设备点「只上传」，先把云端压缩成新版。";
+    return "云端旧书架太大，读取或写入超时。建议换成 Cloudflare R2 同步后端；本机书架会继续保存。";
   }
   if (/504|云端备用通道连接 Supabase 超时/i.test(message)) {
-    return "云端旧书架太大，备用通道读取超时。请在有完整书库的设备点「只上传」，先把云端压缩成新版。";
+    return "云端旧书架太大，备用通道读取超时。建议换成 Cloudflare R2 同步后端；本机书架会继续保存。";
   }
   if (/shared_library_states|schema cache|relation|404/i.test(message)) {
     return "云端同步表还没建好。需要在 Supabase 运行同步码 SQL。";
@@ -3692,7 +3692,7 @@ $("#cloudGenerateButton").addEventListener("click", () => {
 $("#cloudEndpoint")?.addEventListener("change", (event) => {
   const normalized = setCloudEndpoint(event.target.value);
   event.target.value = normalized;
-  setCloudStatus(normalized ? "Cloudflare 同步地址已保存。现在可以连接同步码。" : "已清空 Cloudflare 同步地址，会暂时使用旧备用通道。");
+  setCloudStatus(normalized ? "Cloudflare Worker 地址已保存。连接同步码后会用新的 R2 云端。" : "已清空 Cloudflare Worker 地址，会暂时使用旧备用通道。");
   renderCloudPanel();
 });
 
