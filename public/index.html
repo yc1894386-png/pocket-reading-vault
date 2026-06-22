@@ -8,7 +8,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./vellum-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="./vellum-logo.png" />
-    <link rel="stylesheet" href="./styles.css?v=142-cloudflare-only-tags-20260622" />
+    <link rel="stylesheet" href="./styles.css?v=143-clean-cloud-panel-20260622" />
   </head>
   <body>
     <div class="app-shell">
@@ -58,32 +58,37 @@
           </section>
 
           <section class="sync-tools cloud-section">
-            <div class="section-title">
-              <h2>私人同步</h2>
-            </div>
             <div class="cloud-box">
-              <p class="helper-text" id="cloudUser">未连接同步码</p>
+              <div class="cloud-card-head">
+                <div>
+                  <h2>云端同步</h2>
+                  <p id="cloudUser">未连接同步码</p>
+                </div>
+                <button class="cloud-close-button" type="button" id="cloudPanelCloseButton" aria-label="关闭云端同步">×</button>
+              </div>
+              <input id="cloudEndpoint" class="hidden" type="url" autocomplete="off" />
+              <label class="cloud-code-label" for="cloudCode">同步码</label>
+              <input id="cloudCode" type="text" placeholder="输入同步码，或点生成" autocomplete="off" />
+              <div class="cloud-history" id="cloudHistoryList" aria-label="历史同步码"></div>
+              <div class="cloud-actions" id="cloudConnectActions">
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">连接</button>
+                <button class="ghost-button" type="button" id="cloudGenerateButton">生成</button>
+              </div>
+              <div class="backup-actions cloud-sync-actions" id="cloudSyncActions">
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>同步</button>
+                <button class="ghost-button" type="button" id="cloudUploadButton" disabled>上传</button>
+                <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>下载</button>
+                <button class="ghost-button" type="button" id="cloudLogoutButton">断开</button>
+              </div>
               <p class="status" id="cloudStatus">填同一个同步码，手机和电脑就是同一个云端书架。</p>
-              <details class="cloud-account-details" id="cloudAccountDetails">
-                <summary>同步码</summary>
-                <input id="cloudEndpoint" type="url" placeholder="Cloudflare Worker 地址，例：https://vellum-sync.xxx.workers.dev" autocomplete="off" />
-                <input id="cloudCode" type="text" placeholder="输入同步码，或点生成" autocomplete="off" />
+              <details class="cloud-account-details hidden" id="cloudAccountDetails">
+                <summary>高级</summary>
                 <input class="hidden" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
                 <input class="hidden" id="cloudPassword" type="password" placeholder="密码，至少 6 位" autocomplete="current-password" />
-                <div class="cloud-actions">
-                  <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">连接同步码</button>
-                  <button class="ghost-button" type="button" id="cloudGenerateButton">生成同步码</button>
-                  <button class="ghost-button primary-cloud-action hidden" type="button" id="cloudPasswordLoginButton">密码登录</button>
-                  <button class="ghost-button hidden" type="button" id="cloudSignupButton">新建账号</button>
-                  <button class="ghost-button primary-cloud-action hidden" type="button" id="cloudSetPasswordButton">设置密码</button>
-                  <button class="ghost-button subtle-cloud-action hidden" type="button" id="cloudLoginButton">邮件登录（备用）</button>
-                  <button class="ghost-button hidden" type="button" id="cloudLogoutButton">断开同步码</button>
-                </div>
-                <div class="backup-actions">
-                  <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>立即同步</button>
-                  <button class="ghost-button" type="button" id="cloudUploadButton" disabled>只上传</button>
-                  <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>只下载</button>
-                </div>
+                <button class="hidden" type="button" id="cloudPasswordLoginButton">密码登录</button>
+                <button class="hidden" type="button" id="cloudSignupButton">新建账号</button>
+                <button class="hidden" type="button" id="cloudSetPasswordButton">设置密码</button>
+                <button class="hidden" type="button" id="cloudLoginButton">邮件登录（备用）</button>
               </details>
             </div>
           </section>

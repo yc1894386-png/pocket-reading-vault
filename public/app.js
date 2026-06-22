@@ -2055,16 +2055,19 @@ function renderCloudPanel() {
   $("#cloudCode").value = state.syncCode || $("#cloudCode").value || "";
   $("#cloudStartButton").classList.toggle("hidden", connected);
   $("#cloudGenerateButton").classList.toggle("hidden", connected);
+  $("#cloudConnectActions")?.classList.toggle("hidden", connected);
   $("#cloudLoginButton").classList.add("hidden");
   $("#cloudPasswordLoginButton").classList.add("hidden");
   $("#cloudSignupButton").classList.add("hidden");
   $("#cloudSetPasswordButton").classList.add("hidden");
   $("#cloudLogoutButton").classList.toggle("hidden", !connected);
+  $("#cloudSyncActions")?.classList.toggle("hidden", !connected);
   $("#cloudQuickSyncButton").disabled = !connected;
   $("#cloudUploadButton").disabled = !connected;
   $("#cloudDownloadButton").disabled = !connected;
   $("#cloudUser").textContent = connected ? `同步码：${state.syncCode}` : "未连接同步码";
   $("#cloudAccountDetails").open = !connected;
+  renderSyncCodeHistory();
   if (SAFE_MODE) setCloudStatus("安全模式：已暂停自动云端同步。可以先导出书架或手动同步。");
 }
 
@@ -4124,6 +4127,11 @@ $("#cloudPanelButton").addEventListener("click", () => {
   renderAll();
 });
 
+$("#cloudPanelCloseButton")?.addEventListener("click", () => {
+  cloudPanelOpen = false;
+  renderAll();
+});
+
 document.addEventListener("pointerdown", (event) => {
   if (!importDrawerOpen && !cloudPanelOpen) return;
   const target = event.target;
@@ -4200,6 +4208,30 @@ function cleanSyncCode(value = "") {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(.{4})(?=.)/g, "$1-").slice(0, 14);
 }
 
+function syncCodeHistory() {
+  try {
+    const values = JSON.parse(localStorage.getItem("vellum-sync-code-history") || "[]");
+    return Array.isArray(values) ? values.map(cleanSyncCode).filter(Boolean).slice(0, 6) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberSyncCode(code) {
+  const clean = cleanSyncCode(code);
+  if (!clean) return;
+  const next = [clean, ...syncCodeHistory().filter((item) => item !== clean)].slice(0, 6);
+  localStorage.setItem("vellum-sync-code-history", JSON.stringify(next));
+}
+
+function renderSyncCodeHistory() {
+  const list = $("#cloudHistoryList");
+  if (!list) return;
+  const current = cleanSyncCode($("#cloudCode")?.value || state.syncCode || "");
+  const codes = syncCodeHistory().filter((code) => code !== current);
+  list.innerHTML = codes.map((code) => `<button type="button" data-sync-code="${escapeHtml(code)}">${escapeHtml(code)}</button>`).join("");
+}
+
 $("#cloudStartButton").addEventListener("click", async () => {
   if (!supabase && !hasCustomCloudEndpoint()) {
     setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
@@ -4209,6 +4241,7 @@ $("#cloudStartButton").addEventListener("click", async () => {
   const code = cleanSyncCode($("#cloudCode").value.trim()) || makeSyncCode();
   state.syncCode = code;
   $("#cloudCode").value = code;
+  rememberSyncCode(code);
   try {
     await saveState();
     renderCloudPanel();
@@ -4238,8 +4271,19 @@ $("#cloudStartButton").addEventListener("click", async () => {
 });
 
 $("#cloudGenerateButton").addEventListener("click", () => {
-  $("#cloudCode").value = makeSyncCode();
+  const code = makeSyncCode();
+  $("#cloudCode").value = code;
+  rememberSyncCode(code);
+  renderSyncCodeHistory();
   setCloudStatus("已生成同步码。点「连接同步码」即可开启。");
+});
+
+$("#cloudHistoryList")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-sync-code]");
+  if (!button) return;
+  $("#cloudCode").value = cleanSyncCode(button.dataset.syncCode || "");
+  renderSyncCodeHistory();
+  setCloudStatus("已填入历史同步码，点「连接」即可。");
 });
 
 $("#cloudEndpoint")?.addEventListener("change", (event) => {

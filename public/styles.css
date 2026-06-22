@@ -329,18 +329,82 @@ body.cloud-open .cloud-section {
 
 .cloud-box {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--paper) 94%, transparent);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.12);
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--paper) 96%, transparent);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(20px);
 }
 
 .cloud-box input {
   width: 100%;
   box-sizing: border-box;
+}
+
+.cloud-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cloud-card-head h2,
+.cloud-card-head p {
+  margin: 0;
+}
+
+.cloud-card-head h2 {
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+
+.cloud-card-head p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.cloud-close-button {
+  min-width: 38px;
+  min-height: 38px;
+  width: 38px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel-strong);
+  color: var(--text);
+  box-shadow: none;
+  font-size: 1rem;
+}
+
+.cloud-code-label {
+  margin: 4px 0 -4px;
+}
+
+.cloud-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 0;
+}
+
+.cloud-history:empty {
+  display: none;
+}
+
+.cloud-history button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .cloud-account-details {
@@ -376,13 +440,27 @@ body.cloud-open .cloud-section {
 
 .cloud-actions {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
 
 .cloud-actions .hidden {
   display: none;
+}
+
+.cloud-sync-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.cloud-sync-actions .hidden {
+  display: none;
+}
+
+.cloud-sync-actions button,
+.cloud-actions button {
+  min-width: 0;
+  padding: 0 10px;
 }
 
 .primary-cloud-action {
