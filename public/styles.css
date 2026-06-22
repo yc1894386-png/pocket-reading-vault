@@ -7836,7 +7836,29 @@ body:not(.reading) .selection-toolbar {
 
 
 .work-card .mini-tag-row {
-  display: none !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-top: 4px !important;
+  min-height: 0 !important;
+}
+
+.work-card .mini-tag-row span {
+  display: inline-flex !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  min-height: 22px !important;
+  padding: 2px 7px !important;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--panel) 72%, var(--soft)) !important;
+  color: var(--muted) !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  line-height: 1.35 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .folder-tag-row {

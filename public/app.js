@@ -2,9 +2,8 @@
 const DB_VERSION = 1;
 const STORE = "state";
 const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
-const DEFAULT_CLOUD_PROXY_BASE = IMPORT_API_BASE;
-const SUPABASE_URL = "https://bhliywysdezcykoyyozw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
+const DEFAULT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev";
+const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
 const CLOUD_DESKTOP_WORK_BATCH_SIZE = 2;
 const CLOUD_MOBILE_WORK_BATCH_SIZE = 1;
@@ -1780,11 +1779,11 @@ function normalizeCloudEndpoint(value = "") {
 }
 
 function getCloudProxyBase() {
-  return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "") || DEFAULT_CLOUD_PROXY_BASE;
+  return getCustomCloudEndpoint();
 }
 
 function getCustomCloudEndpoint() {
-  return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "");
+  return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "") || DEFAULT_CLOUDFLARE_WORKER_BASE;
 }
 
 function hasCustomCloudEndpoint() {
@@ -2027,59 +2026,7 @@ async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 
 }
 
 async function supabaseRest(path, { method = "GET", query = "", body = null, prefer = "" } = {}) {
-  if (path === "shared_library_states" && method === "POST") {
-    try {
-      return await supabaseProxyRest(path, { method, query, body });
-    } catch (proxyError) {
-      if (isCloudPaymentError(proxyError)) throw proxyError;
-    }
-  }
-  const url = `${SUPABASE_URL}/rest/v1/${path}${query}`;
-  const headers = {
-    apikey: SUPABASE_KEY,
-    authorization: `Bearer ${SUPABASE_KEY}`,
-    accept: "application/json"
-  };
-  if (body !== null) headers["content-type"] = "application/json";
-  if (prefer) headers.prefer = prefer;
-  let response;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    response = await fetch(url, {
-      method,
-      headers,
-      signal: controller.signal,
-      body: body === null ? undefined : JSON.stringify(body)
-    });
-  } catch (error) {
-    if (error.name === "AbortError") {
-      const timeoutError = new Error("云端直连超时。");
-      timeoutError.status = 504;
-      if (path === "shared_library_states" && method === "GET") return supabaseProxyRest(path, { method, query, body });
-      throw timeoutError;
-    }
-    if (path === "shared_library_states" && method === "GET") return supabaseProxyRest(path, { method, query, body });
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-  if (!response.ok) {
-    let detail = "";
-    try {
-      const json = await response.json();
-      detail = json.message || json.details || JSON.stringify(json);
-    } catch {
-      detail = await response.text();
-    }
-    const error = new Error(`${response.status} ${detail}`.trim());
-    error.status = response.status;
-    if (path === "shared_library_states" && method === "GET" && response.status !== 402) return supabaseProxyRest(path, { method, query, body });
-    throw error;
-  }
-  if (response.status === 204) return null;
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  throw new Error("旧 Supabase 云端已停用。现在只使用 Cloudflare 同步码，不会再连接旧云端。");
 }
 
 function renderCloudPanel() {
@@ -2102,7 +2049,7 @@ function renderCloudPanel() {
   }
   const endpointInput = $("#cloudEndpoint");
   if (endpointInput) {
-    endpointInput.value = normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "");
+    endpointInput.value = getCustomCloudEndpoint();
   }
   $("#cloudCode").readOnly = connected;
   $("#cloudCode").value = state.syncCode || $("#cloudCode").value || "";
@@ -4045,7 +3992,7 @@ async function downloadPreviewImage() {
 }
 
 async function boot() {
-  supabase = { mode: "rest" };
+  supabase = { mode: "cloudflare-only" };
   state = structuredClone(defaultState);
   localLibraryLoaded = false;
   normalizePendingImports();
@@ -4297,75 +4244,25 @@ $("#cloudGenerateButton").addEventListener("click", () => {
 
 $("#cloudEndpoint")?.addEventListener("change", (event) => {
   const normalized = setCloudEndpoint(event.target.value);
-  event.target.value = normalized;
-  setCloudStatus(normalized ? "Cloudflare Worker 地址已保存。绑定 R2 后，进度走 KV、正文走 R2。" : "已清空 Cloudflare Worker 地址，会暂时使用旧备用通道。");
+  event.target.value = getCustomCloudEndpoint();
+  setCloudStatus(normalized ? "Cloudflare Worker 地址已保存。进度走 KV，正文走 R2。" : "已恢复默认 Cloudflare Worker 地址。旧 Supabase 云端不会再参与同步。");
   renderCloudPanel();
 });
 
 $("#cloudPasswordLoginButton").addEventListener("click", async () => {
-  if (!supabase) {
-    setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
-    return;
-  }
-  const credentials = cloudCredentials();
-  if (!credentials) return;
-  setCloudStatus("正在密码登录……");
-  const { data, error } = await supabase.auth.signInWithPassword(credentials);
-  if (error) {
-    setCloudStatus(`密码登录失败：${cloudErrorText(error)}`);
-    return;
-  }
-  await finishCloudSignIn(data.session, "已密码登录，实时同步已开启。");
+  setCloudStatus("旧账号登录已停用。现在只用同步码 + Cloudflare 云端。");
 });
 
 $("#cloudSignupButton").addEventListener("click", async () => {
-  if (!supabase) {
-    setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
-    return;
-  }
-  const credentials = cloudCredentials();
-  if (!credentials) return;
-  setCloudStatus("正在注册密码账号……");
-  const { data, error } = await supabase.auth.signUp(credentials);
-  if (error) {
-    setCloudStatus(`注册失败：${cloudErrorText(error)}`);
-    return;
-  }
-  if (data.session) {
-    await finishCloudSignIn(data.session, "已注册并登录，实时同步已开启。");
-  } else {
-      setCloudStatus("注册邮件已发送。确认后回到这里点「密码登录」。如果邮件页面打不开，先回这个网页再试登录。");
-  }
+  setCloudStatus("旧账号注册已停用。现在只用同步码 + Cloudflare 云端。");
 });
 
 $("#cloudSetPasswordButton").addEventListener("click", async () => {
-  if (!supabase || !cloudSession?.user) return;
-  const password = $("#cloudPassword").value;
-  if (!password || password.length < 6) {
-    setCloudStatus("输入至少 6 位的新密码。");
-    return;
-  }
-  setCloudStatus("正在设置密码……");
-  const { error } = await supabase.auth.updateUser({ password });
-  setCloudStatus(error ? `设置失败：${error.message}` : "密码已设置，以后可以直接密码登录。");
+  setCloudStatus("旧账号密码功能已停用。现在只用同步码 + Cloudflare 云端。");
 });
 
 $("#cloudLoginButton").addEventListener("click", async () => {
-  if (!supabase) {
-    setCloudStatus("云端模块暂时没加载成功，先用本机导入和阅读。");
-    return;
-  }
-  const email = $("#cloudEmail").value.trim();
-  if (!email) {
-    setCloudStatus("先输入邮箱。");
-    return;
-  }
-  setCloudStatus("正在发送登录邮件……");
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: location.href.split("#")[0] }
-  });
-  setCloudStatus(error ? `发送失败：${error.message}` : "登录邮件已发送。这个方式会打开邮箱里的浏览器；更推荐直接用密码登录。");
+  setCloudStatus("旧邮件登录已停用。现在只用同步码 + Cloudflare 云端。");
 });
 
 $("#cloudLogoutButton").addEventListener("click", async () => {
