@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "pocket-reading-vault-v142-cloudflare-only-tags-20260622";
+const CACHE_NAME = "vellum-v147-cache-fix-20260624";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,10 +33,3 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
-
-
-
-
-
-
-
