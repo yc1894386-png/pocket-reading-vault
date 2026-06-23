@@ -110,6 +110,29 @@ function ddHtmlByLabel(html, labels) {
   return "";
 }
 
+function htmlByHeading(html, labels = []) {
+  const patterns = labels.map((label) => label instanceof RegExp ? label : new RegExp(label, "i"));
+  const headingPattern = /<(h2|h3|h4|dt|strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  for (const match of html.matchAll(headingPattern)) {
+    const label = textOnly(match[2]).replace(/:$/, "").trim();
+    if (!patterns.some((pattern) => pattern.test(label))) continue;
+    const after = html.slice(match.index + match[0].length);
+    const next = after.match(/^\s*(<(blockquote|div|section|p)\b[\s\S]*?<\/\2>)/i);
+    if (next?.[1] && textLengthFromHtml(next[1]) > 0) return next[1];
+  }
+  return "";
+}
+
+function extractNotesHtml(html = "") {
+  const direct = firstMatch(html, /<div[^>]+class=["'][^"']*notes[^"']*["'][^>]*>[\s\S]*?<blockquote[^>]+class=["'][^"']*userstuff[^"']*["'][^>]*>([\s\S]*?)<\/blockquote>[\s\S]*?<\/div>/i)
+    || firstMatch(html, /<div[^>]+class=["'][^"']*notes[^"']*["'][^>]*>[\s\S]*?<blockquote[^>]*>([\s\S]*?)<\/blockquote>[\s\S]*?<\/div>/i)
+    || firstMatch(html, /<section[^>]+class=["'][^"']*notes[^"']*["'][^>]*>[\s\S]*?<blockquote[^>]*>([\s\S]*?)<\/blockquote>[\s\S]*?<\/section>/i)
+    || firstMatch(html, /<[^>]+id=["']notes["'][^>]*>[\s\S]*?<blockquote[^>]*>([\s\S]*?)<\/blockquote>[\s\S]*?<\/[^>]+>/i);
+  if (textLengthFromHtml(direct)) return direct;
+  const byHeading = htmlByHeading(html, [/^notes?$/i, /^作者的话$/, /^作话$/, /^备注$/]);
+  return textLengthFromHtml(byHeading) ? byHeading : "";
+}
+
 function tagsFromHtml(value = "") {
   const linked = allMatches(value, /<a[^>]*>([\s\S]*?)<\/a>/gi);
   if (linked.length) return linked;
@@ -439,6 +462,7 @@ function lightweightWork(work = {}, shardKey = "") {
   const {
     contentHtml,
     summaryHtml,
+    notesHtml,
     highlights,
     bookmarks,
     ...rest
@@ -447,6 +471,7 @@ function lightweightWork(work = {}, shardKey = "") {
     ...rest,
     contentHtml: "",
     summaryHtml: "",
+    notesHtml: "",
     highlights: [],
     bookmarks: [],
     shardKey,
@@ -1083,6 +1108,7 @@ function parseSourceWork(html, sourceUrl) {
     || titleParts.author;
   const summary = firstMatch(html, /<blockquote[^>]+class=["'][^"']*userstuff[^"']*summary[^"']*["'][^>]*>([\s\S]*?)<\/blockquote>/i)
     || firstMatch(html, /<div[^>]+class=["'][^"']*summary[^"']*["'][^>]*>[\s\S]*?<blockquote[^>]*>([\s\S]*?)<\/blockquote>/i);
+  const notesHtml = extractNotesHtml(html);
   const rating = textOnly(firstMatch(html, /<dd[^>]+class=["'][^"']*rating[^"']*tags[^"']*["'][^>]*>([\s\S]*?)<\/dd>/i) || ddHtmlByLabel(html, ["rating", "分级"]));
   const categories = tagsFromHtml(firstMatch(html, /<dd[^>]+class=["'][^"']*category[^"']*tags[^"']*["'][^>]*>([\s\S]*?)<\/dd>/i) || ddHtmlByLabel(html, ["category", "分类"]));
   const fandoms = tagsFromHtml(firstMatch(html, /<dd[^>]+class=["'][^"']*fandom[^"']*tags[^"']*["'][^>]*>([\s\S]*?)<\/dd>/i) || ddHtmlByLabel(html, ["fandoms?", "原作"]));
@@ -1107,6 +1133,7 @@ function parseSourceWork(html, sourceUrl) {
     sourceUrl,
     importedAt: new Date().toISOString(),
     summaryHtml: summary,
+    notesHtml,
     contentHtml,
     metadata: {
       rating,

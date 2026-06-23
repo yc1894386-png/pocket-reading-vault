@@ -504,6 +504,7 @@ function normalizeWork(work, options = {}) {
   work.folderIds = [...new Set((work.folderIds || []).filter((id) => id && id !== "all" && id !== "unfiled"))];
   work.customTags ||= [];
   work.note ||= "";
+  work.notesHtml ||= "";
   work.metadata ||= {};
   if ((!work.author || work.author === "未知作者") && /\s+-\s+/.test(work.title || "")) {
     const parts = work.title.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
@@ -673,13 +674,24 @@ function chapterStartRatio(index, chapters = []) {
   return Math.max(0, Math.min(1, index / total));
 }
 
-function renderContinuousChapters(chapters) {
-  return chapters.map((chapter, index) => `
+function renderMobileSourceNotes(work) {
+  const notes = work?.notesHtml || "";
+  if (!notes) return "";
+  return `
+    <section class="reader-source-notes reader-mobile-preface">
+      <h2>作者的话 / NOTES</h2>
+      <div>${notes}</div>
+    </section>
+  `;
+}
+
+function renderContinuousChapters(chapters, work = activeWork()) {
+  return `${renderMobileSourceNotes(work)}${chapters.map((chapter, index) => `
     <section class="reader-chapter" data-reader-chapter="${index}">
       <h2>${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</h2>
       ${chapter.html || ""}
     </section>
-  `).join("");
+  `).join("")}`;
 }
 
 function languageKindForText(text = "") {
@@ -981,9 +993,10 @@ function renderReader() {
   $("#workAuthor").textContent = work.author || "作者待补";
   $("#noteInput").value = work.note || "";
   $("#summaryBlock").innerHTML = work.summaryHtml ? `<label>简介</label><div>${work.summaryHtml}</div>` : "";
+  $("#sourceNotesBlock").innerHTML = work.notesHtml ? `<label>作者的话 / NOTES</label><div>${work.notesHtml}</div>` : "";
   updateReaderChapterLabels(work, chapters);
 
-  $("#workContent").innerHTML = renderContinuousChapters(chapters);
+  $("#workContent").innerHTML = renderContinuousChapters(chapters, work);
   decorateBilingualContent($("#workContent"));
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
@@ -1084,6 +1097,7 @@ function renderReaderInfoPanel(work) {
   const metaHtml = renderMetadata(work);
   const customTags = (work.customTags || []).filter(Boolean);
   const summary = work.summaryHtml || "";
+  const notes = work.notesHtml || "";
   $("#readerInfoPanel").innerHTML = `
     <section class="reader-info-hero">
       <h3>${escapeHtml(work.title || "作品信息")}</h3>
@@ -1099,6 +1113,10 @@ function renderReaderInfoPanel(work) {
     <section class="reader-info-summary">
       <b>简介</b>
       ${summary ? `<div>${summary}</div>` : `<p class="status">这篇暂时没有导入到简介。</p>`}
+    </section>
+    <section class="reader-info-summary reader-info-notes">
+      <b>作者的话 / NOTES</b>
+      ${notes ? `<div>${notes}</div>` : `<p class="status">这篇暂时没有导入到原站 Notes。</p>`}
     </section>
   `;
 }
@@ -2300,6 +2318,9 @@ function mergeWorkRecords(localWork, cloudWork) {
     summaryHtml: textFromHtml(richer.summaryHtml || "").length >= textFromHtml(newer.summaryHtml || older.summaryHtml || "").length
       ? richer.summaryHtml
       : (newer.summaryHtml || older.summaryHtml || ""),
+    notesHtml: textFromHtml(richer.notesHtml || "").length >= textFromHtml(newer.notesHtml || older.notesHtml || "").length
+      ? richer.notesHtml
+      : (newer.notesHtml || older.notesHtml || ""),
     metadata: mergeMetadata(local.metadata, cloud.metadata, newer.metadata, richer.metadata),
     folderId: newer.folderId || older.folderId || "unfiled",
     folderIds: uniqueValues([...(local.folderIds || []), ...(cloud.folderIds || [])]).filter((id) => id !== "all" && id !== "unfiled"),
@@ -2423,6 +2444,7 @@ function cloudSafeWork(work = {}) {
   const copy = normalizeWork(structuredClone(work));
   copy.contentHtml = sanitizeHtmlForCloud(copy.contentHtml || "", copy.sourceUrl || "");
   copy.summaryHtml = sanitizeHtmlForCloud(copy.summaryHtml || "", copy.sourceUrl || "");
+  copy.notesHtml = sanitizeHtmlForCloud(copy.notesHtml || "", copy.sourceUrl || "");
   delete copy.imageCache;
   delete copy.images;
   delete copy.cachedImages;
@@ -2434,6 +2456,7 @@ function cloudManifestWork(work = {}) {
   const copy = structuredClone(work || {});
   copy.contentHtml = "";
   copy.summaryHtml = "";
+  copy.notesHtml = "";
   copy.bookmarks = [];
   copy.highlights = [];
   copy.hasCloudShard = true;
@@ -3261,6 +3284,29 @@ function parseWorkHtml(html, sourceUrl = "") {
     const labelNode = labels.length ? ddByLabel(labels) : null;
     return cleanText(labelNode?.textContent || "");
   };
+  const htmlFromSelectors = (...selectors) => {
+    for (const selector of selectors) {
+      const node = doc.querySelector(selector);
+      if (!node) continue;
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll("script, style, form").forEach((item) => item.remove());
+      if (cleanText(clone.textContent || "")) return clone.innerHTML || clone.outerHTML;
+    }
+    return "";
+  };
+  const htmlByHeading = (patterns) => {
+    for (const heading of doc.querySelectorAll("h2, h3, h4, dt, strong, b")) {
+      const label = cleanText(heading.textContent || "").replace(/:$/, "");
+      if (!patterns.some((pattern) => pattern.test(label))) continue;
+      let node = heading.nextElementSibling;
+      while (node && /^(script|style)$/i.test(node.tagName || "")) node = node.nextElementSibling;
+      if (!node) continue;
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll("script, style, form").forEach((item) => item.remove());
+      if (cleanText(clone.textContent || "")) return clone.innerHTML || clone.outerHTML;
+    }
+    return "";
+  };
   let chapters = doc.querySelector("#chapters, .chapters, #workskin, main");
   if (!chapters) {
     chapters = [...doc.querySelectorAll(".userstuff")]
@@ -3286,6 +3332,15 @@ function parseWorkHtml(html, sourceUrl = "") {
     title = parts.join(" - ");
   }
   const summaryHtml = doc.querySelector("blockquote.userstuff.summary, .summary blockquote, section.summary, #summary")?.innerHTML || "";
+  const notesHtml = htmlFromSelectors(
+    ".preface .notes blockquote.userstuff",
+    ".preface .notes blockquote",
+    "div.notes blockquote.userstuff",
+    "div.notes blockquote",
+    "section.notes blockquote",
+    "#notes blockquote",
+    "#notes"
+  ) || htmlByHeading([/^notes?$/i, /^作者的话$/, /^作话$/, /^备注$/]);
   const plainWords = cleanText(chapters.textContent || "").replace(/\s/g, "").length;
   const chaptersCount = chapters.querySelectorAll(".chapter, [id^='chapter-']").length || 1;
   return {
@@ -3293,6 +3348,7 @@ function parseWorkHtml(html, sourceUrl = "") {
     author: author || "作者待补",
     sourceUrl,
     summaryHtml,
+    notesHtml,
     contentHtml: chapters.outerHTML,
     metadata: {
       rating: metaText(["dd.rating.tags", "dd[class*='rating']"], [/^rating$/i, /^分级$/]),
@@ -3321,6 +3377,7 @@ function normalizeImportedWorkPayload(payload) {
     author: payload.author || "作者待补",
     sourceUrl: payload.sourceUrl || "",
     summaryHtml: payload.summaryHtml || "",
+    notesHtml: payload.notesHtml || "",
     contentHtml: contentRoot.innerHTML,
     metadata: {
       rating: payload.metadata?.rating || "",
@@ -3385,6 +3442,29 @@ function createCollectorBookmarklet() {
       if (direct) return direct;
       return clean(ddByLabel(labels)?.textContent || "");
     };
+    const htmlFromSelectors = (...selectors) => {
+      for (const selector of selectors) {
+        const node = q(selector);
+        if (!node) continue;
+        const clone = node.cloneNode(true);
+        qa("script, style, form", clone).forEach((item) => item.remove());
+        if (clean(clone.textContent || "")) return clone.innerHTML || clone.outerHTML;
+      }
+      return "";
+    };
+    const htmlByHeading = (patterns) => {
+      for (const heading of qa("h2, h3, h4, dt, strong, b")) {
+        const label = clean(heading.textContent || "").replace(/:$/, "");
+        if (!patterns.some((pattern) => pattern.test(label))) continue;
+        let node = heading.nextElementSibling;
+        while (node && /^(script|style)$/i.test(node.tagName || "")) node = node.nextElementSibling;
+        if (!node) continue;
+        const clone = node.cloneNode(true);
+        qa("script, style, form", clone).forEach((item) => item.remove());
+        if (clean(clone.textContent || "")) return clone.innerHTML || clone.outerHTML;
+      }
+      return "";
+    };
     let chapters = q("#chapters, .chapters, #workskin, main") || qa(".userstuff").sort((a, b) => clean(b.textContent).length - clean(a.textContent).length)[0];
     if (!chapters) return alert("没有找到正文，请确认在作品全文页。");
     chapters = chapters.cloneNode(true);
@@ -3431,6 +3511,8 @@ function createCollectorBookmarklet() {
       author: author.replace(/^by\\s+/i, "") || "作者待补",
       sourceUrl: location.href,
       summaryHtml: q("blockquote.userstuff.summary, .summary blockquote, section.summary, #summary")?.innerHTML || "",
+      notesHtml: htmlFromSelectors(".preface .notes blockquote.userstuff", ".preface .notes blockquote", "div.notes blockquote.userstuff", "div.notes blockquote", "section.notes blockquote", "#notes blockquote", "#notes")
+        || htmlByHeading([/^notes?$/i, /^作者的话$/, /^作话$/, /^备注$/]),
       contentHtml: chapters.outerHTML,
       metadata: {
         rating: metaText(["dd.rating.tags", "dd[class*='rating']"], [/^rating$/i, /^分级$/]),

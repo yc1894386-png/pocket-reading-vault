@@ -971,6 +971,41 @@ body.cloud-open .cloud-section {
   display: none;
 }
 
+.reader-source-notes {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 1.4em;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--soft) 86%, transparent);
+  color: var(--reader-ink);
+  break-inside: avoid;
+}
+
+.reader-source-notes h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86em;
+  letter-spacing: 0.08em;
+}
+
+.reader-source-notes div {
+  display: grid;
+  gap: 0.65em;
+  color: var(--reader-ink);
+  font-size: 0.92em;
+  line-height: 1.65;
+}
+
+.reader-source-notes p {
+  margin: 0;
+}
+
+.reader-mobile-preface {
+  display: none;
+}
+
 .metadata-row {
   display: grid;
   gap: 7px;
@@ -3276,6 +3311,10 @@ body.reading #readingBar {
     padding: 4px 10px;
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  .reader-mobile-preface {
+    display: grid;
   }
 
   .apple-settings .background-grid::-webkit-scrollbar {
