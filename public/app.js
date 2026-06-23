@@ -34,6 +34,7 @@ const defaultState = {
   readerBrightness: 100,
   readerEyeCare: false,
   readerTurnMode: "tap",
+  readerLanguageMode: "both",
   readerBg: "white",
   progressAccent: "#E0F4F1",
   selectedFolder: "all",
@@ -680,6 +681,95 @@ function renderContinuousChapters(chapters) {
   `).join("");
 }
 
+function languageKindForText(text = "") {
+  const hasZh = /[\u3400-\u9fff]/.test(text);
+  const hasEn = /[A-Za-z]/.test(text);
+  if (hasZh && hasEn) return "mixed";
+  if (hasZh) return "zh";
+  if (hasEn) return "en";
+  return "";
+}
+
+function splitTextByLanguage(text = "") {
+  const chars = Array.from(text);
+  const segments = [];
+  let lang = "";
+  let buffer = "";
+  const charLang = (char) => /[\u3400-\u9fff]/.test(char) ? "zh" : (/[A-Za-z]/.test(char) ? "en" : "");
+  for (const char of chars) {
+    const nextLang = charLang(char);
+    if (!nextLang) {
+      buffer += char;
+      continue;
+    }
+    if (!lang) lang = nextLang;
+    if (nextLang !== lang && buffer.trim()) {
+      segments.push({ lang, text: buffer });
+      buffer = char;
+      lang = nextLang;
+    } else {
+      buffer += char;
+      lang = lang || nextLang;
+    }
+  }
+  if (buffer) segments.push({ lang: lang || "zh", text: buffer });
+  return segments;
+}
+
+function decorateBilingualContent(root) {
+  if (!root) return;
+  const blockSelector = "p, li, blockquote, dd, dt, figcaption";
+  root.querySelectorAll(blockSelector).forEach((node) => {
+    const kind = languageKindForText(node.textContent || "");
+    if (!kind) return;
+    node.classList.add(`reader-block-${kind}`);
+    if (kind === "en") node.setAttribute("lang", "en");
+  });
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest("script, style, button, textarea, input, h1, h2, h3, h4, h5, h6, .reader-lang-en, .reader-lang-zh")) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return languageKindForText(node.nodeValue || "") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+    }
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((node) => {
+    const fragment = document.createDocumentFragment();
+    splitTextByLanguage(node.nodeValue || "").forEach((segment) => {
+      const span = document.createElement("span");
+      span.className = `reader-lang-${segment.lang}`;
+      if (segment.lang === "en") span.lang = "en";
+      span.textContent = segment.text;
+      fragment.appendChild(span);
+    });
+    node.replaceWith(fragment);
+  });
+}
+
+function readerLanguageMode() {
+  return ["both", "zh", "en"].includes(state.readerLanguageMode) ? state.readerLanguageMode : "both";
+}
+
+function readerLanguageLabel(mode = readerLanguageMode()) {
+  return mode === "zh" ? "中文" : mode === "en" ? "英文" : "双语";
+}
+
+function renderLanguageControls() {
+  const label = readerLanguageLabel();
+  const short = label === "双语" ? "中英" : label;
+  const top = $("#languageToggleButton");
+  if (top) top.textContent = label;
+  const consoleButton = $("#consoleLanguageButton");
+  if (consoleButton) {
+    consoleButton.querySelector("span").textContent = label;
+    consoleButton.querySelector("b").textContent = short;
+  }
+}
+
 function filteredWorks() {
   const query = $("#searchInput").value.trim().toLowerCase();
   return state.works
@@ -873,6 +963,7 @@ function renderReader() {
   updateReaderChapterLabels(work, chapters);
 
   $("#workContent").innerHTML = renderContinuousChapters(chapters);
+  decorateBilingualContent($("#workContent"));
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
   $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
@@ -1265,6 +1356,8 @@ function renderAll() {
   document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare && (state.readerBg || "white") === "medium"));
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${normalizedTurnMode()}`);
+  document.documentElement.classList.remove("reader-language-both", "reader-language-zh", "reader-language-en");
+  document.documentElement.classList.add(`reader-language-${readerLanguageMode()}`);
   document.body.classList.toggle("import-open", importDrawerOpen);
   document.body.classList.toggle("cloud-open", cloudPanelOpen);
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
@@ -1284,6 +1377,7 @@ function renderAll() {
   renderSettingsLabels();
   renderFontChoices();
   renderBackgroundChoices();
+  renderLanguageControls();
 }
 
 function readerFontFamilyValue() {
@@ -4732,6 +4826,22 @@ $("#consoleSearchButton").addEventListener("click", () => {
   window.find?.(query);
 });
 $("#consoleBackgroundButton").addEventListener("click", () => $("#backgroundDialog").showModal());
+
+async function cycleReaderLanguageMode() {
+  await persistProgress();
+  const modes = ["both", "zh", "en"];
+  const next = modes[(modes.indexOf(readerLanguageMode()) + 1) % modes.length];
+  state.readerLanguageMode = next;
+  pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
+  await saveState();
+  renderAll();
+}
+
+$("#languageToggleButton")?.addEventListener("click", cycleReaderLanguageMode);
+$("#consoleLanguageButton")?.addEventListener("click", () => {
+  setControlsOpen(false);
+  cycleReaderLanguageMode();
+});
 
 $("#consolePrevChapter").addEventListener("click", () => changeChapter(-1));
 $("#consoleNextChapter").addEventListener("click", () => changeChapter(1));

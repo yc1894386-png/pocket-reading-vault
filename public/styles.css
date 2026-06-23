@@ -1000,6 +1000,45 @@ body.cloud-open .cloud-section {
   overflow-wrap: break-word;
 }
 
+.work-content .reader-block-en {
+  font-family: Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif;
+  text-align: left;
+  text-justify: auto;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  letter-spacing: 0.01em;
+  word-spacing: 0.08em;
+}
+
+.work-content .reader-lang-en {
+  font-family: Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  word-spacing: 0.08em;
+}
+
+.work-content .reader-lang-zh {
+  font-family: var(--reader-font-family);
+}
+
+.reader-language-zh .reader-block-en,
+.reader-language-zh .reader-lang-en,
+.reader-language-en .reader-block-zh,
+.reader-language-en .reader-lang-zh {
+  display: none !important;
+}
+
+.reader-language-en .work-content {
+  text-align: left;
+  text-justify: auto;
+}
+
+#languageToggleButton {
+  min-width: 64px;
+}
+
 .work-content img {
   display: block;
   max-width: 100%;
