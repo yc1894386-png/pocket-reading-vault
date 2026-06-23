@@ -8,7 +8,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./vellum-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="./vellum-logo.png" />
-    <link rel="stylesheet" href="./styles.css?v=144-bilingual-reader-20260624" />
+    <link rel="stylesheet" href="./styles.css?v=145-bilingual-settings-20260624" />
   </head>
   <body>
     <div class="app-shell">
@@ -139,7 +139,7 @@
               <div>
                 <button class="ghost-button square-button" id="fontDecrease" title="缩小字号" aria-label="缩小字号">A-</button>
                 <button class="ghost-button square-button" id="fontIncrease" title="放大字号" aria-label="放大字号">A+</button>
-                <button class="ghost-button" id="languageToggleButton" type="button">双语</button>
+                <button class="ghost-button hidden" id="languageToggleButton" type="button">双语</button>
                 <button class="ghost-button" id="highlightButton">高亮</button>
                 <button class="ghost-button" id="editMetaButton">整理</button>
                 <button class="danger-button" id="deleteWorkButton">删除</button>
@@ -198,7 +198,6 @@
         <div class="console-action-row">
           <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>高亮</span><b id="consoleBookmarkCount">0</b></button>
           <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>⌕</b></button>
-          <button class="console-icon-button" id="consoleLanguageButton" type="button"><span>双语</span><b>中英</b></button>
           <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>设置</span><b>Aa</b></button>
           <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>♡</b></button>
           <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>背景</span><b>◐</b></button>
@@ -255,6 +254,24 @@
                 <button type="button" data-font-family="system"><b>Aa</b><span>黑体</span></button>
                 <button type="button" data-font-family="kaiti"><b>Aa</b><span>楷体</span></button>
                 <button type="button" data-font-family="wenkai"><b>Aa</b><span>文楷</span></button>
+              </div>
+            </details>
+          </div>
+
+          <div class="rs-v59-row rs-v59-language-row">
+            <div class="rs-v59-card rs-v59-language-mode" id="settingsLanguageMode">
+              <button type="button" data-language-mode="both">双语</button>
+              <button type="button" data-language-mode="zh">中文</button>
+              <button type="button" data-language-mode="en">英文</button>
+            </div>
+            <details class="rs-v59-card rs-v59-font-details rs-v59-english-font-details">
+              <summary>英文字体 ›</summary>
+              <div class="rs-v59-font-menu" id="englishFontChoiceGrid">
+                <button type="button" data-english-font-family="georgia"><b>Aa</b><span>Georgia</span></button>
+                <button type="button" data-english-font-family="iowan"><b>Aa</b><span>Iowan</span></button>
+                <button type="button" data-english-font-family="baskerville"><b>Aa</b><span>Baskerville</span></button>
+                <button type="button" data-english-font-family="times"><b>Aa</b><span>Times</span></button>
+                <button type="button" data-english-font-family="system"><b>Aa</b><span>System</span></button>
               </div>
             </details>
           </div>

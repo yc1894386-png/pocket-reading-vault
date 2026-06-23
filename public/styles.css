@@ -1001,7 +1001,7 @@ body.cloud-open .cloud-section {
 }
 
 .work-content .reader-block-en {
-  font-family: Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif;
+  font-family: var(--reader-english-font-family, Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif);
   text-align: left;
   text-justify: auto;
   word-break: normal;
@@ -1012,11 +1012,28 @@ body.cloud-open .cloud-section {
 }
 
 .work-content .reader-lang-en {
-  font-family: Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif;
+  font-family: var(--reader-english-font-family, Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif);
   word-break: normal;
   overflow-wrap: anywhere;
   hyphens: auto;
   word-spacing: 0.08em;
+}
+
+.work-content .reader-block-bilingual {
+  display: grid;
+  gap: 0.85em;
+}
+
+.work-content .reader-lang-line {
+  display: block;
+}
+
+.work-content .reader-block-bilingual .reader-lang-en {
+  line-height: calc(var(--reader-line-height) * 0.95);
+}
+
+.work-content .reader-block-bilingual .reader-lang-zh {
+  line-height: var(--reader-line-height);
 }
 
 .work-content .reader-lang-zh {
@@ -1036,7 +1053,7 @@ body.cloud-open .cloud-section {
 }
 
 #languageToggleButton {
-  min-width: 64px;
+  display: none !important;
 }
 
 .work-content img {
@@ -6242,6 +6259,31 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   padding: 0 !important;
 }
 
+#readerSettingsDialog .rs-v59-language-mode {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  padding: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-language-mode button {
+  display: grid !important;
+  place-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(102, 102, 102, 0.45) !important;
+  box-shadow: none !important;
+  font: 700 16px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+}
+
+#readerSettingsDialog .rs-v59-language-mode button.active {
+  color: #222222 !important;
+  font-weight: 850 !important;
+}
+
 #readerSettingsDialog .rs-v59-font-stepper > div {
   display: grid !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
@@ -6315,6 +6357,36 @@ body:has(#readerSettingsDialog[open]) .reader-page-count {
   background: #f2f2f2 !important;
   color: #666666 !important;
   font-weight: 700 !important;
+}
+
+#readerSettingsDialog .rs-v59-english-font-details .rs-v59-font-menu {
+  left: auto !important;
+  right: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-english-font-details [data-english-font-family="georgia"] {
+  font-family: Georgia, "Times New Roman", serif !important;
+}
+
+#readerSettingsDialog .rs-v59-english-font-details [data-english-font-family="iowan"] {
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif !important;
+}
+
+#readerSettingsDialog .rs-v59-english-font-details [data-english-font-family="baskerville"] {
+  font-family: Baskerville, "Libre Baskerville", Georgia, serif !important;
+}
+
+#readerSettingsDialog .rs-v59-english-font-details [data-english-font-family="times"] {
+  font-family: "Times New Roman", Times, serif !important;
+}
+
+#readerSettingsDialog .rs-v59-english-font-details [data-english-font-family="system"] {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, sans-serif !important;
+}
+
+#readerSettingsDialog .rs-v59-font-menu button.active {
+  background: #e5e5e5 !important;
+  color: #111111 !important;
 }
 
 #readerSettingsDialog .rs-v59-bg-dots {

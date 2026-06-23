@@ -28,6 +28,7 @@ const defaultState = {
   theme: "light",
   readerFontSize: 18,
   readerFontFamily: "original",
+  readerEnglishFontFamily: "georgia",
   readerLineHeight: 1.8,
   readerSideMargin: 20,
   readerVerticalMargin: 42,
@@ -690,6 +691,18 @@ function languageKindForText(text = "") {
   return "";
 }
 
+function languageStats(text = "") {
+  const zh = (text.match(/[\u3400-\u9fff]/g) || []).length;
+  const enLetters = (text.match(/[A-Za-z]/g) || []).length;
+  const enWords = (text.match(/[A-Za-z][A-Za-z’'\-]*/g) || []).length;
+  return { zh, enLetters, enWords };
+}
+
+function shouldSplitAsBilingualBlock(text = "") {
+  const stats = languageStats(text);
+  return stats.zh >= 6 && (stats.enLetters >= 18 || stats.enWords >= 4);
+}
+
 function splitTextByLanguage(text = "") {
   const chars = Array.from(text);
   const segments = [];
@@ -723,6 +736,9 @@ function decorateBilingualContent(root) {
     const kind = languageKindForText(node.textContent || "");
     if (!kind) return;
     node.classList.add(`reader-block-${kind}`);
+    if (kind === "mixed" && shouldSplitAsBilingualBlock(node.textContent || "")) {
+      node.classList.add("reader-block-bilingual");
+    }
     if (kind === "en") node.setAttribute("lang", "en");
   });
 
@@ -739,9 +755,11 @@ function decorateBilingualContent(root) {
   while (walker.nextNode()) nodes.push(walker.currentNode);
   nodes.forEach((node) => {
     const fragment = document.createDocumentFragment();
+    const block = node.parentElement?.closest?.(blockSelector);
+    const asLine = Boolean(block?.classList?.contains("reader-block-bilingual"));
     splitTextByLanguage(node.nodeValue || "").forEach((segment) => {
       const span = document.createElement("span");
-      span.className = `reader-lang-${segment.lang}`;
+      span.className = `${asLine ? "reader-lang-line " : ""}reader-lang-${segment.lang}`;
       if (segment.lang === "en") span.lang = "en";
       span.textContent = segment.text;
       fragment.appendChild(span);
@@ -766,8 +784,11 @@ function renderLanguageControls() {
   const consoleButton = $("#consoleLanguageButton");
   if (consoleButton) {
     consoleButton.querySelector("span").textContent = label;
-    consoleButton.querySelector("b").textContent = short;
+      consoleButton.querySelector("b").textContent = short;
   }
+  document.querySelectorAll("[data-language-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.languageMode === readerLanguageMode());
+  });
 }
 
 function filteredWorks() {
@@ -966,6 +987,7 @@ function renderReader() {
   decorateBilingualContent($("#workContent"));
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
+  $("#workContent").style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
   $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
   $("#workContent").style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
   $("#workContent").style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
@@ -1362,6 +1384,7 @@ function renderAll() {
   document.body.classList.toggle("cloud-open", cloudPanelOpen);
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   document.documentElement.style.setProperty("--reader-font-family", readerFontFamilyValue());
+  document.documentElement.style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
   document.documentElement.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
   document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
   document.documentElement.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
@@ -1376,6 +1399,7 @@ function renderAll() {
   renderMetaOptions();
   renderSettingsLabels();
   renderFontChoices();
+  renderEnglishFontChoices();
   renderBackgroundChoices();
   renderLanguageControls();
 }
@@ -1389,6 +1413,17 @@ function readerFontFamilyValue() {
     wenkai: `"LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", sans-serif`
   };
   return map[state.readerFontFamily || "original"] || map.original;
+}
+
+function readerEnglishFontFamilyValue() {
+  const map = {
+    georgia: `Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif`,
+    iowan: `"Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif`,
+    baskerville: `Baskerville, "Libre Baskerville", "Times New Roman", Georgia, serif`,
+    times: `"Times New Roman", Times, Georgia, serif`,
+    system: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, sans-serif`
+  };
+  return map[state.readerEnglishFontFamily || "georgia"] || map.georgia;
 }
 
 function normalizedTurnMode(mode = state.readerTurnMode) {
@@ -1426,6 +1461,12 @@ function renderBackgroundChoices() {
 function renderFontChoices() {
   document.querySelectorAll("[data-font-family]").forEach((button) => {
     button.classList.toggle("active", button.dataset.fontFamily === (state.readerFontFamily || "original"));
+  });
+}
+
+function renderEnglishFontChoices() {
+  document.querySelectorAll("[data-english-font-family]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.englishFontFamily === (state.readerEnglishFontFamily || "georgia"));
   });
 }
 
@@ -4843,6 +4884,16 @@ $("#consoleLanguageButton")?.addEventListener("click", () => {
   cycleReaderLanguageMode();
 });
 
+document.querySelectorAll("[data-language-mode]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    await persistProgress();
+    state.readerLanguageMode = button.dataset.languageMode || "both";
+    pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
+    await saveState();
+    renderAll();
+  });
+});
+
 $("#consolePrevChapter").addEventListener("click", () => changeChapter(-1));
 $("#consoleNextChapter").addEventListener("click", () => changeChapter(1));
 
@@ -4905,6 +4956,14 @@ document.querySelectorAll("[data-stepper]").forEach((button) => {
 document.querySelectorAll("[data-font-family]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.readerFontFamily = button.dataset.fontFamily || "serif";
+    await saveState();
+    renderAll();
+  });
+});
+
+document.querySelectorAll("[data-english-font-family]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    state.readerEnglishFontFamily = button.dataset.englishFontFamily || "georgia";
     await saveState();
     renderAll();
   });
