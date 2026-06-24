@@ -8586,3 +8586,437 @@ body:not(.reading) .selection-toolbar {
     font-size: 0.88rem !important;
   }
 }
+
+/* v148: reader stability, bilingual typography, portrait lock, and reader-only eye care */
+:root.reader-bg-white {
+  --reader-bg: #ffffff !important;
+  --reader-ink: #202020 !important;
+}
+
+:root.reader-bg-light {
+  --reader-bg: #f8f9fa !important;
+  --reader-ink: #222222 !important;
+}
+
+:root.reader-bg-medium {
+  --reader-bg: #eef5e8 !important;
+  --reader-ink: #232821 !important;
+}
+
+:root.reader-bg-black {
+  --reader-bg: #000000 !important;
+  --reader-ink: #e8e8e8 !important;
+}
+
+:root.eye-care {
+  --reader-bg: #eef5e8 !important;
+  --reader-ink: #232821 !important;
+}
+
+.reader-panel {
+  background: var(--reader-bg) !important;
+  color: var(--reader-ink) !important;
+}
+
+.reader,
+.work-content {
+  background: var(--reader-bg) !important;
+  color: var(--reader-ink) !important;
+}
+
+.work-content {
+  font-family: var(--reader-font-family) !important;
+  font-kerning: normal !important;
+  font-variant-east-asian: normal !important;
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+  text-rendering: optimizeLegibility !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+.work-content .reader-block-en,
+.work-content [lang="en"] {
+  font-family: var(--reader-english-font-family, Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif) !important;
+  line-height: calc(var(--reader-line-height) * 0.94) !important;
+  text-align: left !important;
+  text-justify: auto !important;
+  letter-spacing: 0.002em !important;
+  word-spacing: 0.045em !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  hyphens: auto !important;
+}
+
+.work-content .reader-block-zh,
+.work-content .reader-block-mixed {
+  font-family: var(--reader-font-family) !important;
+  line-height: var(--reader-line-height) !important;
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+}
+
+.work-content .reader-block-bilingual {
+  display: block !important;
+  gap: 0 !important;
+}
+
+.work-content .reader-split-block {
+  margin-top: 0 !important;
+  margin-bottom: 0.95em !important;
+}
+
+.work-content .reader-split-block + .reader-split-block.reader-block-en {
+  margin-top: 0.1em !important;
+}
+
+.work-content .reader-split-block.reader-block-en {
+  color: color-mix(in srgb, var(--reader-ink) 88%, transparent) !important;
+  font-size: 0.98em !important;
+}
+
+.work-content .reader-split-block.reader-block-zh {
+  color: var(--reader-ink) !important;
+}
+
+.reader-language-zh .reader-block-en,
+.reader-language-en .reader-block-zh {
+  display: none !important;
+}
+
+.reader-language-en .work-content {
+  text-align: left !important;
+  text-justify: auto !important;
+}
+
+.reader-language-en .reader-block-mixed,
+.reader-language-zh .reader-block-mixed {
+  display: block !important;
+}
+
+body.reading::after {
+  pointer-events: none !important;
+}
+
+#readerSettingsDialog[open] {
+  inset: auto 0 0 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  max-height: min(42dvh, 390px) !important;
+  overflow: visible !important;
+}
+
+#readerSettingsDialog .reader-settings-v59 {
+  width: min(100vw, 560px) !important;
+  max-height: min(42dvh, 390px) !important;
+  overflow: visible !important;
+  padding: 10px 18px calc(8px + env(safe-area-inset-bottom)) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(18px) saturate(1.05) !important;
+}
+
+#readerSettingsDialog .rs-v59-grid {
+  gap: 9px !important;
+}
+
+#readerSettingsDialog .rs-v59-row {
+  grid-template-columns: minmax(0, 1.75fr) minmax(112px, 0.88fr) !important;
+  gap: 10px !important;
+}
+
+#readerSettingsDialog .rs-v59-card,
+#readerSettingsDialog .rs-v59-bg-dots {
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: 12px !important;
+  background: #f2f2f2 !important;
+  color: #666666 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots {
+  background: transparent !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button {
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+}
+
+#readerSettingsDialog .rs-v59-language-mode button,
+#readerSettingsDialog .rs-v59-turn button {
+  font-size: 14px !important;
+}
+
+#readerSettingsDialog .rs-v59-font-stepper button,
+#readerSettingsDialog .rs-v59-font-stepper output,
+#readerSettingsDialog .rs-v59-font-stepper span {
+  font-size: 15px !important;
+}
+
+#readerSettingsDialog .rs-v59-font-stepper output {
+  font-size: 19px !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel {
+  max-height: 136px !important;
+  overflow: auto !important;
+  scrollbar-width: none !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel::-webkit-scrollbar {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-font-menu {
+  max-height: 220px !important;
+  overflow: auto !important;
+}
+
+@media (max-width: 879px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  body.reading .reader-panel {
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+    background: var(--reader-bg) !important;
+  }
+
+  body.reading .reader {
+    padding: 0 !important;
+    background: var(--reader-bg) !important;
+  }
+
+  body.reading .reader-actions,
+  body.reading .work-header,
+  body.reading .chapter-strip,
+  body.reading .metadata-block,
+  body.reading .notes-block,
+  body.reading .summary-block,
+  body.reading .chapter-heading {
+    display: none !important;
+  }
+
+  .work-content {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: var(--reader-vertical-margin) var(--reader-side-margin) calc(var(--reader-vertical-margin) + 24px) !important;
+    font-size: var(--reader-font-size) !important;
+    line-height: var(--reader-line-height) !important;
+    overflow-y: hidden !important;
+    overflow-x: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  :root.turn-scroll .work-content {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  :root.turn-tap .work-content,
+  :root.turn-swipe .work-content {
+    column-width: calc(100vw - (var(--reader-side-margin) * 2)) !important;
+    column-gap: calc(var(--reader-side-margin) * 2) !important;
+    scroll-snap-type: x mandatory !important;
+  }
+
+  .reader-chapter {
+    break-inside: auto !important;
+  }
+
+  .reader-chapter > h2 {
+    margin-top: 0 !important;
+  }
+
+  @media (orientation: landscape) {
+    body .app-shell,
+    body .reading-bar,
+    body .reader-console,
+    body .reader-page-count,
+    body dialog:not(.image-preview-dialog) {
+      display: none !important;
+    }
+
+    body .portrait-lock {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 99999 !important;
+      display: grid !important;
+      place-content: center !important;
+      gap: 8px !important;
+      padding: 24px !important;
+      background: #ffffff !important;
+      color: #222222 !important;
+      text-align: center !important;
+    }
+  }
+}
+
+@media (min-width: 880px) {
+  .reader-panel {
+    background: var(--panel) !important;
+  }
+
+  .reader .work-content {
+    padding: 28px 30px 80px !important;
+    border-radius: 24px !important;
+    background: var(--reader-bg) !important;
+  }
+}
+
+/* v150: sync-safe reader polish, neutral shelf, and centered setting steppers */
+:root.eye-care {
+  --paper: #ffffff !important;
+  --panel: #ffffff !important;
+  --soft: #f6f6f6 !important;
+}
+
+:root.eye-care.reader-bg-medium {
+  --reader-bg: #eef5e8 !important;
+  --reader-ink: #20251f !important;
+}
+
+.reader-panel {
+  background: var(--panel) !important;
+  color: var(--ink) !important;
+}
+
+body.reading .reader-panel,
+body.reading .reader,
+body.reading .work-content {
+  background: var(--reader-bg) !important;
+  color: var(--reader-ink) !important;
+}
+
+.folder-card {
+  flex: 0 0 auto !important;
+  min-width: fit-content !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 18px !important;
+  border-radius: 999px !important;
+  background: #f5f5f5 !important;
+  color: #666666 !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  font-weight: 650 !important;
+  transform: none !important;
+}
+
+.folder-card span,
+.folder-card small {
+  font-size: 16px !important;
+  line-height: 1 !important;
+  font-weight: 650 !important;
+  color: inherit !important;
+  white-space: nowrap !important;
+}
+
+.folder-card.active {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.folder-card:active {
+  transform: none !important;
+}
+
+.work-content .reader-block-en,
+.work-content [lang="en"] {
+  font-family: var(--reader-english-font-family, "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif) !important;
+  text-align: left !important;
+  text-justify: auto !important;
+  line-height: calc(var(--reader-line-height) * 0.96) !important;
+  letter-spacing: 0 !important;
+  word-spacing: 0.035em !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: auto !important;
+}
+
+.work-content .reader-split-block.reader-block-en {
+  margin: 0.12em 0 1.05em !important;
+  color: color-mix(in srgb, var(--reader-ink) 90%, transparent) !important;
+  font-size: 0.97em !important;
+}
+
+.work-content .reader-split-block.reader-block-zh {
+  margin: 0 0 0.7em !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel[hidden] {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel > div {
+  display: grid !important;
+  grid-template-columns: 52px 42px minmax(54px, 1fr) 42px !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel span,
+#readerSettingsDialog .rs-v59-spacing-panel output,
+#readerSettingsDialog .rs-v59-spacing-panel button {
+  display: grid !important;
+  place-items: center !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  overflow: hidden !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel button {
+  font-size: 24px !important;
+  font-weight: 500 !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel output {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 879px) and (orientation: landscape) {
+  body.mobile-landscape .app-shell,
+  body.mobile-landscape .reading-bar,
+  body.mobile-landscape .reader-console,
+  body.mobile-landscape .reader-page-count,
+  body.mobile-landscape dialog:not(.image-preview-dialog) {
+    display: none !important;
+  }
+
+  body.mobile-landscape .portrait-lock {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 999999 !important;
+    display: grid !important;
+    place-content: center !important;
+    gap: 8px !important;
+    padding: 24px !important;
+    background: #ffffff !important;
+    color: #222222 !important;
+    text-align: center !important;
+  }
+}

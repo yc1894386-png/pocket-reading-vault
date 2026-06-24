@@ -5,9 +5,10 @@ const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
 const DEFAULT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev";
 const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
-const CLOUD_DESKTOP_WORK_BATCH_SIZE = 2;
-const CLOUD_MOBILE_WORK_BATCH_SIZE = 1;
+const CLOUD_DESKTOP_WORK_BATCH_SIZE = 3;
+const CLOUD_MOBILE_WORK_BATCH_SIZE = 2;
 const CLOUD_REQUEST_RETRIES = 2;
+const CLOUD_INITIAL_WORK_BATCH_LIMIT = 4;
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -27,8 +28,8 @@ const CLIENT_ID = (() => {
 const defaultState = {
   theme: "light",
   readerFontSize: 18,
-  readerFontFamily: "original",
-  readerEnglishFontFamily: "georgia",
+  readerFontFamily: "system",
+  readerEnglishFontFamily: "iowan",
   readerLineHeight: 1.8,
   readerSideMargin: 20,
   readerVerticalMargin: 42,
@@ -92,7 +93,9 @@ let selectionTimer;
 let pendingImportTimer;
 let snapTimer;
 let persistTimer;
+let settingsSaveTimer;
 let pageCache = { key: "", step: 1, max: 0, total: 1, current: 1 };
+let readerHtmlCache = { key: "", html: "" };
 let scrollRaf = 0;
 let touchStart = null;
 let suppressNextClick = false;
@@ -146,6 +149,14 @@ let readingProgressLoaded = false;
 
 function lockPortraitMode() {
   screen.orientation?.lock?.("portrait").catch(() => {});
+}
+
+function isMobileLandscape() {
+  return window.matchMedia?.("(max-width: 879px) and (orientation: landscape)")?.matches;
+}
+
+function updatePortraitLockState() {
+  document.body.classList.toggle("mobile-landscape", Boolean(isMobileLandscape()));
 }
 
 function openDb() {
@@ -282,6 +293,13 @@ async function saveState() {
   } else {
     queueCloudSave();
   }
+}
+
+function queueSettingsSave(delay = 650) {
+  clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(() => {
+    saveState().catch((error) => setCloudStatus(`设置保存稍后重试：${error.message}`));
+  }, delay);
 }
 
 function escapeHtml(value = "") {
@@ -712,7 +730,7 @@ function languageStats(text = "") {
 
 function shouldSplitAsBilingualBlock(text = "") {
   const stats = languageStats(text);
-  return stats.zh >= 6 && (stats.enLetters >= 18 || stats.enWords >= 4);
+  return stats.zh >= 10 && stats.enLetters >= 60 && stats.enWords >= 10;
 }
 
 function splitTextByLanguage(text = "") {
@@ -741,8 +759,77 @@ function splitTextByLanguage(text = "") {
   return segments;
 }
 
+function sentenceChunks(text = "") {
+  return (String(text).match(/[^。！？!?]+[。！？!?]?/g) || [text]).map((item) => item.trim()).filter(Boolean);
+}
+
+function splitMixedTextForReading(text = "") {
+  const chunks = sentenceChunks(text);
+  const segments = [];
+  for (const chunk of chunks) {
+    const kind = languageKindForText(chunk);
+    if (kind === "mixed") {
+      splitTextByLanguage(chunk).forEach((segment) => {
+        if (segment.text.trim()) segments.push(segment);
+      });
+    } else if (kind) {
+      segments.push({ lang: kind, text: chunk });
+    }
+  }
+  const meaningful = segments.map((segment) => ({
+    ...segment,
+    text: segment.text.replace(/\s+/g, " ").trim()
+  })).filter((segment) => {
+    const stats = languageStats(segment.text);
+    if (segment.lang === "en") return stats.enLetters >= 45 || stats.enWords >= 7;
+    if (segment.lang === "zh") return stats.zh >= 8;
+    return false;
+  });
+  const hasBoth = meaningful.some((segment) => segment.lang === "zh") && meaningful.some((segment) => segment.lang === "en");
+  if (!hasBoth) return [];
+  const merged = [];
+  for (const segment of meaningful) {
+    const text = segment.text.trim();
+    if (!text) continue;
+    const last = merged[merged.length - 1];
+    if (last && last.lang === segment.lang && (last.text.length < 90 || text.length < 40)) {
+      last.text = `${last.text} ${text}`;
+    } else {
+      merged.push({ lang: segment.lang, text });
+    }
+  }
+  return merged;
+}
+
+function splitBilingualParagraphs(root) {
+  if (!root) return;
+  const blocks = [...root.querySelectorAll("p, li")];
+  for (const node of blocks) {
+    if (node.closest(".reader-source-notes") || node.querySelector("img, table, pre, code, blockquote")) continue;
+    const text = (node.textContent || "").trim();
+    if (text.length < 48 || !shouldSplitAsBilingualBlock(text)) continue;
+    const segments = splitMixedTextForReading(text).filter((segment) => {
+      const stats = languageStats(segment.text);
+      return segment.lang === "zh" ? stats.zh >= 8 : stats.enLetters >= 45;
+    });
+    if (segments.length < 2) continue;
+    const hasBoth = segments.some((segment) => segment.lang === "zh") && segments.some((segment) => segment.lang === "en");
+    if (!hasBoth) continue;
+    const fragment = document.createDocumentFragment();
+    for (const segment of segments) {
+      const item = document.createElement(node.tagName.toLowerCase());
+      item.className = `${node.className || ""} reader-block-${segment.lang} reader-split-block`.trim();
+      if (segment.lang === "en") item.lang = "en";
+      item.textContent = segment.text;
+      fragment.appendChild(item);
+    }
+    node.replaceWith(fragment);
+  }
+}
+
 function decorateBilingualContent(root) {
   if (!root) return;
+  splitBilingualParagraphs(root);
   const blockSelector = "p, li, blockquote, dd, dt, figcaption";
   root.querySelectorAll(blockSelector).forEach((node) => {
     const kind = languageKindForText(node.textContent || "");
@@ -753,31 +840,26 @@ function decorateBilingualContent(root) {
     }
     if (kind === "en") node.setAttribute("lang", "en");
   });
+}
 
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if (!parent || parent.closest("script, style, button, textarea, input, h1, h2, h3, h4, h5, h6, .reader-lang-en, .reader-lang-zh")) {
-        return NodeFilter.FILTER_REJECT;
-      }
-      return languageKindForText(node.nodeValue || "") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-    }
-  });
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  nodes.forEach((node) => {
-    const fragment = document.createDocumentFragment();
-    const block = node.parentElement?.closest?.(blockSelector);
-    const asLine = Boolean(block?.classList?.contains("reader-block-bilingual"));
-    splitTextByLanguage(node.nodeValue || "").forEach((segment) => {
-      const span = document.createElement("span");
-      span.className = `${asLine ? "reader-lang-line " : ""}reader-lang-${segment.lang}`;
-      if (segment.lang === "en") span.lang = "en";
-      span.textContent = segment.text;
-      fragment.appendChild(span);
-    });
-    node.replaceWith(fragment);
-  });
+function readerHtmlCacheKey(work, chapters = []) {
+  return [
+    work?.id || "",
+    work?.updatedAt || "",
+    work?.notesHtml?.length || 0,
+    chapters.length,
+    chapters.map((chapter) => `${chapter.title || ""}:${(chapter.html || "").length}`).join(";")
+  ].join("|");
+}
+
+function renderReaderContentHtml(work, chapters) {
+  const key = readerHtmlCacheKey(work, chapters);
+  if (readerHtmlCache.key === key) return readerHtmlCache.html;
+  const root = document.createElement("div");
+  root.innerHTML = renderContinuousChapters(chapters, work);
+  decorateBilingualContent(root);
+  readerHtmlCache = { key, html: root.innerHTML };
+  return readerHtmlCache.html;
 }
 
 function readerLanguageMode() {
@@ -801,6 +883,55 @@ function renderLanguageControls() {
   document.querySelectorAll("[data-language-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.languageMode === readerLanguageMode());
   });
+}
+
+function applyReaderVisualSettings({ keepPosition = true } = {}) {
+  const ratio = keepPosition && activeWork() ? chapterScrollRatio() : null;
+  document.documentElement.classList.remove(
+    "reader-bg-white",
+    "reader-bg-light",
+    "reader-bg-medium",
+    "reader-bg-darkgray",
+    "reader-bg-black",
+    "reader-bg-paper",
+    "reader-bg-green",
+    "reader-bg-gray",
+    "reader-bg-dark"
+  );
+  document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
+  document.documentElement.classList.remove("reader-language-both", "reader-language-zh", "reader-language-en");
+  document.documentElement.classList.add(`reader-language-${readerLanguageMode()}`);
+  document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
+  document.documentElement.classList.add(`turn-${normalizedTurnMode()}`);
+  document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
+  document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
+  document.documentElement.style.setProperty("--reader-font-family", readerFontFamilyValue());
+  document.documentElement.style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
+  document.documentElement.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
+  document.documentElement.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+  document.documentElement.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
+  document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
+  const content = $("#workContent");
+  if (content) {
+    content.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
+    content.style.setProperty("--reader-font-family", readerFontFamilyValue());
+    content.style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
+    content.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
+    content.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+    content.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
+  }
+  renderSettingsLabels();
+  renderFontChoices();
+  renderEnglishFontChoices();
+  renderBackgroundChoices();
+  renderLanguageControls();
+  resetPageCache();
+  if (ratio !== null && !isMobileLandscape()) {
+    requestAnimationFrame(() => {
+      scrollToChapterRatio(ratio);
+      updateProgressBar();
+    });
+  }
 }
 
 function filteredWorks() {
@@ -996,8 +1127,7 @@ function renderReader() {
   $("#sourceNotesBlock").innerHTML = work.notesHtml ? `<label>作者的话 / NOTES</label><div>${work.notesHtml}</div>` : "";
   updateReaderChapterLabels(work, chapters);
 
-  $("#workContent").innerHTML = renderContinuousChapters(chapters, work);
-  decorateBilingualContent($("#workContent"));
+  $("#workContent").innerHTML = renderReaderContentHtml(work, chapters);
   $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
   $("#workContent").style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
@@ -1393,7 +1523,7 @@ function renderAll() {
     "reader-bg-dark"
   );
   document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
-  document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare && (state.readerBg || "white") === "medium"));
+  document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${normalizedTurnMode()}`);
   document.documentElement.classList.remove("reader-language-both", "reader-language-zh", "reader-language-en");
@@ -1441,7 +1571,7 @@ function readerEnglishFontFamilyValue() {
     times: `"Times New Roman", Times, Georgia, serif`,
     system: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, sans-serif`
   };
-  return map[state.readerEnglishFontFamily || "georgia"] || map.georgia;
+  return map[state.readerEnglishFontFamily || "iowan"] || map.iowan;
 }
 
 function normalizedTurnMode(mode = state.readerTurnMode) {
@@ -1484,7 +1614,7 @@ function renderFontChoices() {
 
 function renderEnglishFontChoices() {
   document.querySelectorAll("[data-english-font-family]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.englishFontFamily === (state.readerEnglishFontFamily || "georgia"));
+    button.classList.toggle("active", button.dataset.englishFontFamily === (state.readerEnglishFontFamily || "iowan"));
   });
 }
 
@@ -2457,9 +2587,7 @@ function cloudManifestWork(work = {}) {
   copy.contentHtml = "";
   copy.summaryHtml = "";
   copy.notesHtml = "";
-  copy.bookmarks = [];
-  copy.highlights = [];
-  copy.hasCloudShard = true;
+  copy.hasCloudShard = Boolean((work.contentHtml || "").trim());
   delete copy.imageCache;
   delete copy.images;
   delete copy.cachedImages;
@@ -2615,7 +2743,8 @@ async function backfillCloudWorks({ immediate = false } = {}) {
       }
       saveCloudUploadSignatures(signatures);
       await dbSet("library", state);
-      renderAll();
+      renderWorks();
+      renderCloudPanel();
     }
     const remaining = cloudMissingWorkIds().length;
     setCloudStatus(remaining ? `后台补全文中：还剩 ${remaining} 篇。` : "云端正文已自动补齐。");
@@ -2967,9 +3096,24 @@ function startCloudRealtime() {
       else await saveCloudNow({ silent: true });
     }
     await pullCloudInBackground({ initial: true });
-  }, hasCustomCloudEndpoint() ? 3500 : 12000);
-  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 30000 : 90000);
+  }, hasCustomCloudEndpoint() ? 8000 : 14000);
+  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 25000 : 90000);
   setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
+}
+
+function scheduleCloudWakeSync(delay = 1200) {
+  if ((!supabase && !hasCustomCloudEndpoint()) || !state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
+  clearTimeout(cloudPullTimer);
+  cloudPullTimer = setTimeout(async () => {
+    if (document.visibilityState && document.visibilityState !== "visible") return;
+    if (cloudPendingSave || pendingCloudProgressIds.size || cloudLightTimer) {
+      try {
+        if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
+        else await saveCloudNow({ silent: true });
+      } catch {}
+    }
+    await pullCloudInBackground({ initial: false });
+  }, delay);
 }
 
 async function loadCloudIntoLocal({ merge = true } = {}) {
@@ -3057,7 +3201,9 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
   renderAll();
 
   const batchSize = cloudWorkBatchSize();
-  const totalBatches = Math.max(1, Math.ceil(ids.length / batchSize));
+  const idsToLoadNow = ids.slice(0, CLOUD_INITIAL_WORK_BATCH_LIMIT);
+  const remainingForBackground = ids.length - idsToLoadNow.length;
+  const totalBatches = Math.max(1, Math.ceil(idsToLoadNow.length / batchSize));
   const signatures = loadCloudUploadSignatures();
   let loaded = 0;
   let failed = 0;
@@ -3065,10 +3211,11 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
     setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇，没有缺正文。`);
     return;
   }
-  for (let index = 0; index < ids.length; index += batchSize) {
-    const batchIds = ids.slice(index, index + batchSize);
+  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。正文会后台补齐。`);
+  for (let index = 0; index < idsToLoadNow.length; index += batchSize) {
+    const batchIds = idsToLoadNow.slice(index, index + batchSize);
     const batchNumber = Math.floor(index / batchSize) + 1;
-    setCloudStatus(`正在下载正文：第 ${batchNumber}/${totalBatches} 批……`);
+    setCloudStatus(`正在优先下载正文：第 ${batchNumber}/${totalBatches} 批……`);
     try {
       const works = await getCloudflareWorkBatch(batchIds);
       loaded += works.length;
@@ -3079,20 +3226,22 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
         }
         saveCloudUploadSignatures(signatures);
         await dbSet("library", state);
-        renderAll();
+        renderWorks();
+        renderCloudPanel();
       }
     } catch (error) {
       failed += batchIds.length;
-      setCloudStatus(`第 ${batchNumber}/${totalBatches} 批暂时没下完，继续下载后面的……`);
+      setCloudStatus(`第 ${batchNumber}/${totalBatches} 批暂时没下完，稍后后台重试。`);
     }
   }
+  if (remainingForBackground > 0 || failed > 0) scheduleCloudBackfill(1800);
 
   setCloudStatus(
     failed
-      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇稍后可再点「只下载」补齐。`
+      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇稍后自动重试。`
       : (merge
-        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。`
-        : `已下载云端书架：${state.works.length} 篇。`)
+        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。${remainingForBackground ? `后台继续补 ${remainingForBackground} 篇正文。` : ""}`
+        : `已下载云端书架：${state.works.length} 篇。${remainingForBackground ? `后台继续补 ${remainingForBackground} 篇正文。` : ""}`)
   );
 }
 
@@ -3686,7 +3835,7 @@ function turnPage(delta) {
     changeChapter(-1);
     return;
   }
-  setReaderPage(metrics.current + delta, mode === "swipe");
+  setReaderPage(metrics.current + delta, false);
   updateProgressBar();
   queueProgressPersist(mode === "swipe" ? 180 : 140);
 }
@@ -4259,7 +4408,7 @@ async function boot() {
     } else {
       renderCloudPanel();
     }
-  }, 3200);
+  }, 8500);
 }
 
 async function loadLocalLibrary({ auto = false, shell = null } = {}) {
@@ -4289,6 +4438,9 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
   state.readerSideMargin ||= defaultState.readerSideMargin;
   state.readerVerticalMargin ||= defaultState.readerVerticalMargin;
   state.readerTurnMode ||= defaultState.readerTurnMode;
+  if (!state.readerFontFamily || state.readerFontFamily === "original") state.readerFontFamily = defaultState.readerFontFamily;
+  if (!state.readerEnglishFontFamily || state.readerEnglishFontFamily === "georgia") state.readerEnglishFontFamily = defaultState.readerEnglishFontFamily;
+  state.readerLanguageMode ||= defaultState.readerLanguageMode;
   state.readerBg ||= defaultState.readerBg;
   state.readerBrightness ||= defaultState.readerBrightness;
   state.readerEyeCare ??= defaultState.readerEyeCare;
@@ -4955,9 +5107,8 @@ async function cycleReaderLanguageMode() {
   const modes = ["both", "zh", "en"];
   const next = modes[(modes.indexOf(readerLanguageMode()) + 1) % modes.length];
   state.readerLanguageMode = next;
-  pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 }
 
 $("#languageToggleButton")?.addEventListener("click", cycleReaderLanguageMode);
@@ -4970,9 +5121,8 @@ document.querySelectorAll("[data-language-mode]").forEach((button) => {
   button.addEventListener("click", async () => {
     await persistProgress();
     state.readerLanguageMode = button.dataset.languageMode || "both";
-    pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
-    await saveState();
-    renderAll();
+    applyReaderVisualSettings();
+    queueSettingsSave();
   });
 });
 
@@ -4997,9 +5147,8 @@ document.addEventListener("keydown", (event) => {
 $("#settingsTurnMode").addEventListener("change", async (event) => {
   await persistProgress();
   state.readerTurnMode = normalizedTurnMode(event.target.value);
-  pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 });
 
 document.querySelectorAll("[data-turn-mode]").forEach((button) => {
@@ -5009,9 +5158,8 @@ document.querySelectorAll("[data-turn-mode]").forEach((button) => {
     state.readerTurnMode = mode;
     const select = $("#settingsTurnMode");
     if (select) select.value = mode;
-    pendingJump = activeWork() ? readingToWholeRatio(activeWork()) : null;
-    await saveState();
-    renderAll();
+    applyReaderVisualSettings();
+    queueSettingsSave();
   });
 });
 
@@ -5030,52 +5178,51 @@ document.querySelectorAll("[data-stepper]").forEach((button) => {
     if (button.dataset.stepper === "verticalMargin") {
       state.readerVerticalMargin = Math.max(28, Math.min(76, (state.readerVerticalMargin || 42) + delta * 4));
     }
-    await saveState();
-    renderAll();
+    applyReaderVisualSettings();
+    queueSettingsSave();
   });
 });
 
 document.querySelectorAll("[data-font-family]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.readerFontFamily = button.dataset.fontFamily || "serif";
-    await saveState();
-    renderAll();
+    applyReaderVisualSettings();
+    queueSettingsSave();
   });
 });
 
 document.querySelectorAll("[data-english-font-family]").forEach((button) => {
   button.addEventListener("click", async () => {
-    state.readerEnglishFontFamily = button.dataset.englishFontFamily || "georgia";
-    await saveState();
-    renderAll();
+    state.readerEnglishFontFamily = button.dataset.englishFontFamily || "iowan";
+    applyReaderVisualSettings();
+    queueSettingsSave();
   });
 });
 
 $("#settingsFontSize")?.addEventListener("input", async (event) => {
   state.readerFontSize = Number(event.target.value);
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 });
 
 $("#settingsLineHeight")?.addEventListener("input", async (event) => {
   state.readerLineHeight = Number(event.target.value) / 100;
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 });
 
 $("#settingsSideMargin")?.addEventListener("input", async (event) => {
   state.readerSideMargin = Number(event.target.value);
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 });
 
 $("#settingsNightButton").addEventListener("click", async () => {
-  const next = !(state.readerEyeCare || state.readerBg === "medium");
+  const next = !state.readerEyeCare;
   state.readerEyeCare = next;
-  state.readerBg = next ? "medium" : "white";
   state.theme = "light";
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 });
 
 $("#settingsBrightness")?.addEventListener("input", (event) => {
@@ -5084,8 +5231,8 @@ $("#settingsBrightness")?.addEventListener("input", (event) => {
 });
 
 $("#settingsBrightness")?.addEventListener("change", async () => {
-  await saveState();
-  renderAll();
+  applyReaderVisualSettings();
+  queueSettingsSave();
 });
 
 $("#readerSettingsDialog")?.addEventListener("pointerdown", (event) => {
@@ -5095,10 +5242,8 @@ $("#readerSettingsDialog")?.addEventListener("pointerdown", (event) => {
 document.querySelectorAll("[data-bg]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.readerBg = button.dataset.bg;
-    state.readerEyeCare = button.dataset.bg === "medium";
-    state.theme = state.readerBg === "black" ? "dark" : "light";
-    await saveState();
-    renderAll();
+    applyReaderVisualSettings();
+    queueSettingsSave();
   });
 });
 
@@ -5315,9 +5460,15 @@ document.querySelector(".reader-panel")?.addEventListener("scroll", () => {
 }, { passive: true });
 
 window.addEventListener("resize", () => {
+  updatePortraitLockState();
+  if (isMobileLandscape()) {
+    lockPortraitMode();
+    return;
+  }
+  const ratio = activeWork() ? chapterScrollRatio() : 0;
   resetPageCache();
   requestAnimationFrame(() => {
-    scrollToChapterRatio(activeWork() ? readingToWholeRatio(activeWork()) : 0);
+    scrollToChapterRatio(ratio);
     updateProgressBar();
   });
 }, { passive: true });
@@ -5331,11 +5482,25 @@ window.addEventListener("scroll", () => {
 
 window.addEventListener("pagehide", () => {
   if (activeWork()) persistProgress();
-  if (state.syncCode && cloudTimer && !syncingCloud) saveCloudNow({ silent: true });
+  if (state.syncCode && !syncingCloud) {
+    if (cloudLightTimer || cloudPendingSave || pendingCloudProgressIds.size) {
+      saveCloudLightNow({ silent: true });
+    } else if (cloudTimer) {
+      saveCloudNow({ silent: true });
+    }
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden" && activeWork()) persistProgress();
+  if (document.visibilityState === "hidden" && activeWork()) {
+    persistProgress();
+    return;
+  }
+  if (document.visibilityState === "visible") {
+    updatePortraitLockState();
+    lockPortraitMode();
+    scheduleCloudWakeSync(900);
+  }
 });
 
 function openReaderDialog(tab = "chapters") {
@@ -5559,8 +5724,20 @@ $("#manualForm").addEventListener("submit", async (event) => {
 });
 
 lockPortraitMode();
-window.addEventListener("orientationchange", () => setTimeout(lockPortraitMode, 80));
-screen.orientation?.addEventListener?.("change", lockPortraitMode);
+updatePortraitLockState();
+window.addEventListener("focus", () => {
+  updatePortraitLockState();
+  lockPortraitMode();
+  scheduleCloudWakeSync(900);
+});
+window.addEventListener("orientationchange", () => setTimeout(() => {
+  lockPortraitMode();
+  updatePortraitLockState();
+}, 80));
+screen.orientation?.addEventListener?.("change", () => {
+  lockPortraitMode();
+  updatePortraitLockState();
+});
 
 boot().catch((error) => {
   $("#importStatus").textContent = `启动失败：${error.message}`;
