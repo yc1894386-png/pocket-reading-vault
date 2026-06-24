@@ -8,7 +8,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./vellum-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="./vellum-logo.png" />
-    <link rel="stylesheet" href="./styles.css?v=151-utf8-sync-bilingual-20260624" />
+    <link rel="stylesheet" href="./styles.css?v=152-icons-english-wrap-20260624" />
   </head>
   <body>
     <div class="app-shell">
@@ -22,9 +22,9 @@
         </div>
         <div class="top-actions">
           <button class="cloud-mini highlight-library-mini" id="highlightLibraryButton" type="button" title="摘录" aria-label="摘录"><span class="highlight-library-icon" aria-hidden="true"></span></button>
-          <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步">?</button>
+          <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步"><span class="cloud-sync-icon" aria-hidden="true"></span></button>
           <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="导入作品" aria-label="导入作品">＋</button>
-          <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">?</button>
+          <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗"><span class="theme-mode-icon" aria-hidden="true"></span></button>
         </div>
       </header>
 
@@ -184,24 +184,24 @@
 
     <div class="reader-console hidden" id="readerConsole">
       <div class="reader-console-top">
-        <button class="console-text-button" id="consoleBackButton" type="button">?</button>
+        <button class="console-text-button" id="consoleBackButton" type="button">&larr;</button>
         <button class="console-text-button" id="consoleTopBookmarkButton" type="button" hidden>书签</button>
       </div>
       <div class="reader-console-bottom">
         <div class="console-progress-row">
-          <button class="console-text-button chapter-jump" id="consolePrevChapter" type="button" hidden>?</button>
+          <button class="console-text-button chapter-jump" id="consolePrevChapter" type="button" hidden>&lsaquo;</button>
           <button class="console-main-pill" id="consoleLibraryButton" type="button">
             <span id="consoleMenuProgress">目录 · 0%</span>
-            <b>?</b>
+            <b>&equiv;</b>
           </button>
-          <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button" hidden>?</button>
+          <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button" hidden>&rsaquo;</button>
         </div>
         <div class="console-action-row">
           <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>高亮</span><b id="consoleBookmarkCount">0</b></button>
-          <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>?</b></button>
+          <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>⌕</b></button>
           <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>设置</span><b>Aa</b></button>
-          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>?</b></button>
-          <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>背景</span><b>?</b></button>
+          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>♡</b></button>
+          <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>背景</span><b>◐</b></button>
         </div>
       </div>
     </div>
@@ -232,7 +232,7 @@
           <div class="rs-v59-row">
             <label class="rs-v59-card rs-v59-brightness" for="settingsBrightness">
               <input id="settingsBrightness" type="range" min="45" max="100" step="1" value="100" />
-              <span>?</span>
+              <span class="brightness-icon" aria-hidden="true"></span>
             </label>
             <button class="rs-v59-card rs-v59-toggle" id="settingsNightButton" type="button"><span>护眼</span><b></b></button>
           </div>
@@ -248,7 +248,7 @@
               </div>
             </div>
             <details class="rs-v59-card rs-v59-font-details">
-              <summary>系统字体 ?</summary>
+              <summary>系统字体 &rsaquo;</summary>
               <div class="rs-v59-font-menu" id="fontChoiceGrid">
                 <button type="button" data-font-family="original"><b>Aa</b><span>原站</span></button>
                 <button type="button" data-font-family="serif"><b>Aa</b><span>宋体</span></button>
@@ -266,7 +266,7 @@
               <button type="button" data-language-mode="en">英文</button>
             </div>
             <details class="rs-v59-card rs-v59-font-details rs-v59-english-font-details">
-              <summary>英文字体 ?</summary>
+              <summary>英文字体 &rsaquo;</summary>
               <div class="rs-v59-font-menu" id="englishFontChoiceGrid">
                 <button type="button" data-english-font-family="georgia"><b>Aa</b><span>Georgia</span></button>
                 <button type="button" data-english-font-family="iowan"><b>Aa</b><span>Iowan</span></button>
@@ -284,7 +284,7 @@
               <button type="button" data-bg="medium">护眼</button>
               <button type="button" data-bg="black">纯黑</button>
             </div>
-            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>背景</span><b>?</b></button>
+            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>背景</span><b>&rsaquo;</b></button>
           </div>
 
           <div class="rs-v59-row">
@@ -302,28 +302,28 @@
             </div>
             <button class="rs-v59-card rs-v59-jump rs-v59-margin" id="settingsSpacingButton" type="button">
               <span>间距</span>
-              <output id="settingsSideMargin">?</output>
+              <output id="settingsSideMargin">&rsaquo;</output>
             </button>
           </div>
 
           <div class="rs-v59-spacing-panel" id="settingsSpacingPanel" hidden>
             <div>
               <span>行距</span>
-              <button type="button" data-stepper="line" data-delta="-1">?</button>
+              <button type="button" data-stepper="line" data-delta="-1">-</button>
               <output id="settingsLineHeight">1.8</output>
-              <button type="button" data-stepper="line" data-delta="1">＋</button>
+              <button type="button" data-stepper="line" data-delta="1">+</button>
             </div>
             <div>
               <span>左右</span>
-              <button type="button" data-stepper="margin" data-delta="-1">?</button>
+              <button type="button" data-stepper="margin" data-delta="-1">-</button>
               <output id="settingsSideMarginValue">20px</output>
-              <button type="button" data-stepper="margin" data-delta="1">＋</button>
+              <button type="button" data-stepper="margin" data-delta="1">+</button>
             </div>
             <div>
               <span>上下</span>
-              <button type="button" data-stepper="verticalMargin" data-delta="-1">?</button>
+              <button type="button" data-stepper="verticalMargin" data-delta="-1">-</button>
               <output id="settingsVerticalMargin">42px</output>
-              <button type="button" data-stepper="verticalMargin" data-delta="1">＋</button>
+              <button type="button" data-stepper="verticalMargin" data-delta="1">+</button>
             </div>
           </div>
         </div>
@@ -525,7 +525,7 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=151-utf8-sync-bilingual-20260624" type="module"></script>
+    <script src="./app.js?v=152-icons-english-wrap-20260624" type="module"></script>
   </body>
 </html>
 

@@ -9020,3 +9020,109 @@ body.reading .work-content {
     text-align: center !important;
   }
 }
+
+/* v152: no broken top icons, no broken English words */
+.cloud-sync-icon,
+.theme-mode-icon {
+  position: relative !important;
+  display: inline-block !important;
+  width: 18px !important;
+  height: 18px !important;
+  color: currentColor !important;
+}
+
+.cloud-sync-icon::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 2px !important;
+  right: 2px !important;
+  bottom: 4px !important;
+  height: 8px !important;
+  border: 2px solid currentColor !important;
+  border-top: 0 !important;
+  border-radius: 0 0 8px 8px !important;
+}
+
+.cloud-sync-icon::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 5px !important;
+  top: 3px !important;
+  width: 8px !important;
+  height: 8px !important;
+  border: 2px solid currentColor !important;
+  border-bottom: 0 !important;
+  border-radius: 999px 999px 0 0 !important;
+  background: transparent !important;
+}
+
+.theme-mode-icon {
+  border: 2px solid currentColor !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+
+.theme-mode-icon::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 0 0 50% !important;
+  background: currentColor !important;
+}
+
+.brightness-icon {
+  position: relative !important;
+  display: inline-block !important;
+  width: 20px !important;
+  height: 20px !important;
+  border: 2px solid currentColor !important;
+  border-radius: 50% !important;
+  opacity: 0.65 !important;
+}
+
+.brightness-icon::before,
+.brightness-icon::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 30px !important;
+  height: 2px !important;
+  background: currentColor !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.brightness-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg) !important;
+}
+
+.work-content,
+.work-content p,
+.work-content li,
+.work-content blockquote,
+.work-content dd,
+.work-content dt,
+.work-content figcaption,
+.work-content .reader-block-zh,
+.work-content .reader-block-en,
+.work-content .reader-block-mixed,
+.work-content [lang="en"] {
+  text-align: left !important;
+  text-indent: 0 !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  white-space: normal !important;
+}
+
+.work-content .reader-block-en,
+.work-content [lang="en"] {
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  word-spacing: normal !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.work-content .reader-split-block {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
