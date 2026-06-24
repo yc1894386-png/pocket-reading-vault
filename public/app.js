@@ -2744,29 +2744,25 @@ async function getCloudState() {
 
 async function getCloudflareManifestState() {
   let data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}`, {
-    timeoutMs: 9000,
+    timeoutMs: 14000,
     retries: 1
   }).catch(() => null);
   if (data?.state) {
-    const progress = await cloudWorkerJson(`/api/v2/progress?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 7000,
-      retries: 0
-    }).catch(() => null);
-    if (progress?.works) {
-      data.state.works = (data.state.works || []).map((work) => applyCloudProgressToLocalWork(work, progress));
-      data.updated_at = progress.updated_at || data.updated_at;
+    if (!data.progressIncluded) {
+      const progress = await cloudWorkerJson(`/api/v2/progress?syncCode=${encodeURIComponent(state.syncCode)}`, {
+        timeoutMs: 7000,
+        retries: 0
+      }).catch(() => null);
+      if (progress?.works) {
+        data.state.works = (data.state.works || []).map((work) => applyCloudProgressToLocalWork(work, progress));
+        data.updated_at = progress.updated_at || data.updated_at;
+      }
     }
   }
   if (!data?.state) {
     data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
       timeoutMs: 18000,
       retries: 1
-    });
-  }
-  if (!data?.state) {
-    data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 45000,
-      retries: 0
     });
   }
   return data?.state ? cloneLibraryState(data.state) : null;
@@ -2791,24 +2787,7 @@ function scheduleCloudBackfill() {
 }
 
 async function getCloudflareState() {
-  const cloudState = await getCloudflareManifestState();
-  if (!cloudState) return null;
-  const refs = Array.isArray(cloudState.works) ? cloudState.works : [];
-  const fullWorks = new Map(refs.map((work) => [work.id, work]));
-  const ids = refs.map((work) => work.id).filter(Boolean);
-  const batchSize = cloudWorkBatchSize();
-  const totalBatches = Math.max(1, Math.ceil(ids.length / batchSize));
-  for (let index = 0; index < ids.length; index += batchSize) {
-    const batchIds = ids.slice(index, index + batchSize);
-    const batchNumber = Math.floor(index / batchSize) + 1;
-    if (ids.length > batchSize) setCloudStatus(`正在读取云端：第 ${batchNumber}/${totalBatches} 批……`);
-    const works = await getCloudflareWorkBatch(batchIds);
-    for (const work of works) {
-      if (work?.id) fullWorks.set(work.id, normalizeWork({ ...(fullWorks.get(work.id) || {}), ...work }));
-    }
-  }
-  cloudState.works = [...fullWorks.values()];
-  return cloudState;
+  return await getCloudflareManifestState();
 }
 
 async function saveCloudLibraryV2(payload, { silent = false } = {}) {
@@ -3037,6 +3016,23 @@ async function saveCloudNow({ silent = false } = {}) {
 
 function queueCloudSave(delay = 6500) {
   if (!state.syncCode || SAFE_MODE) return;
+  if (hasCustomCloudEndpoint()) {
+    queueCloudLightSave();
+    return;
+  }
+  markCloudPendingSave();
+  if (syncingCloud) return;
+  clearTimeout(cloudLightTimer);
+  if (isCloudPaused()) {
+    scheduleCloudRetryAfterPause();
+    return;
+  }
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(() => saveCloudNow({ silent: true }), delay);
+}
+
+function queueCloudFullSave(delay = 6500) {
+  if (!state.syncCode || SAFE_MODE) return;
   markCloudPendingSave();
   if (syncingCloud) return;
   clearTimeout(cloudLightTimer);
@@ -3090,7 +3086,7 @@ async function pullCloudInBackground({ initial = false } = {}) {
     if (hasCustomCloudEndpoint()) {
       if (state.works.length > cloudCount) {
         setCloudStatus(`本机比云端多 ${state.works.length - cloudCount} 篇，正在自动补上传……`);
-        queueCloudSave(900);
+        queueCloudFullSave(900);
       }
     } else if (beforeCount !== state.works.length && state.syncCode) {
       queueCloudSave();
@@ -3306,7 +3302,7 @@ async function addWork(work) {
   await saveState();
   if (hasCustomCloudEndpoint()) {
     setCloudStatus("已保存到本机，正在把新增文章同步到云端……");
-    queueCloudSave(900);
+    queueCloudFullSave(900);
   }
   renderAll();
 }

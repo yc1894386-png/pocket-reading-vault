@@ -291,12 +291,19 @@ async function readShardedManifest(env, syncCode) {
 async function readShardedIndex(env, syncCode) {
   const manifest = await env.VELLUM_SYNC.get(manifestKey(syncCode), { type: "json" });
   if (!manifest) return null;
+  const progress = await env.VELLUM_SYNC.get(progressKey(syncCode), { type: "json" }) || {};
   return {
     ...manifest,
+    state: {
+      ...manifest.state,
+      works: (manifest.state?.works || []).map((work) => applyProgressToWork({ ...work }, progress))
+    },
+    updated_at: progress.updated_at || manifest.updated_at,
     provider: "cloudflare-r2-v2",
     sharded: true,
     manifestOnly: true,
-    indexOnly: true
+    indexOnly: true,
+    progressIncluded: true
   };
 }
 

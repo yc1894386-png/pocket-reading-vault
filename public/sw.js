@@ -1,4 +1,4 @@
-const CACHE_NAME = "vellum-v155-cloud-demand-sync-top-actions-20260624";
+const CACHE_NAME = "vellum-v156-cloud-fast-index-sync-20260624";
 const ASSETS = [
   "./",
   "./index.html",
