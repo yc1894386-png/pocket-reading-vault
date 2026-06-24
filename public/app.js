@@ -322,6 +322,19 @@ function textFromHtml(html = "") {
   return div.textContent || "";
 }
 
+function titleFromImportFilename(filename = "") {
+  const base = String(filename)
+    .replace(/\.[^.\\/]+$/i, "")
+    .replace(/[_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  try {
+    return decodeURIComponent(base).replace(/\s+/g, " ").trim();
+  } catch {
+    return base;
+  }
+}
+
 function proxiedImageUrl(value, baseUrl = "") {
   if (!value || /^(data:|blob:)/i.test(value)) return value;
   try {
@@ -2926,14 +2939,14 @@ function queueCloudLightSave() {
   if (!state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return;
   markCloudPendingSave();
   clearTimeout(cloudLightTimer);
-  cloudLightTimer = setTimeout(() => saveCloudLightNow({ silent: true }), 1800);
+  cloudLightTimer = setTimeout(() => saveCloudLightNow({ silent: true }), 900);
 }
 
 function queueCloudProgressSave(work) {
   if (!work?.id || !state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return false;
   pendingCloudProgressIds.add(work.id);
   clearTimeout(cloudProgressTimer);
-  cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 1800);
+  cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 900);
   return true;
 }
 
@@ -3096,8 +3109,8 @@ function startCloudRealtime() {
       else await saveCloudNow({ silent: true });
     }
     await pullCloudInBackground({ initial: true });
-  }, hasCustomCloudEndpoint() ? 8000 : 14000);
-  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 25000 : 90000);
+  }, hasCustomCloudEndpoint() ? 2500 : 14000);
+  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 15000 : 90000);
   setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
 }
 
@@ -3548,7 +3561,10 @@ async function parseImportedWorkFile(file) {
   const text = await file.text();
   const isJson = /\.json$/i.test(file.name) || /^\s*\{/.test(text);
   if (isJson) return normalizeImportedWorkPayload(JSON.parse(text));
-  return parseWorkHtml(text);
+  const parsed = parseWorkHtml(text);
+  const fileTitle = titleFromImportFilename(file.name);
+  if (fileTitle) parsed.title = fileTitle;
+  return parsed;
 }
 
 function createCollectorBookmarklet() {
@@ -5728,7 +5744,7 @@ updatePortraitLockState();
 window.addEventListener("focus", () => {
   updatePortraitLockState();
   lockPortraitMode();
-  scheduleCloudWakeSync(900);
+  scheduleCloudWakeSync(500);
 });
 window.addEventListener("orientationchange", () => setTimeout(() => {
   lockPortraitMode();

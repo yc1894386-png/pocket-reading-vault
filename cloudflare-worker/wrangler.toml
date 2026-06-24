@@ -1,0 +1,11 @@
+name = "vellum-sync"
+main = "worker.js"
+compatibility_date = "2026-06-21"
+
+[[kv_namespaces]]
+binding = "VELLUM_SYNC"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[[r2_buckets]]
+binding = "VELLUM_BUCKET"
+bucket_name = "vellum-library"

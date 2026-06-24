@@ -9126,3 +9126,78 @@ body.reading .work-content {
   margin-left: 0 !important;
   padding-left: 0 !important;
 }
+
+/* v153: stable app-packaging polish */
+.work-card {
+  overflow: hidden !important;
+  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.035) !important;
+}
+
+.work-title-line {
+  min-width: 0 !important;
+}
+
+.work-title-line span {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35 !important;
+  max-width: 100% !important;
+}
+
+.work-card p {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.work-card .work-progress-text {
+  -webkit-line-clamp: 1 !important;
+}
+
+.work-content .reader-split-block.reader-block-en,
+.work-content .reader-split-block.reader-block-zh {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
+}
+
+.work-content .reader-split-block.reader-block-en {
+  margin-top: 0 !important;
+  margin-bottom: 0.45em !important;
+  line-height: calc(var(--reader-line-height) * 0.98) !important;
+}
+
+.work-content .reader-split-block.reader-block-en + .reader-split-block.reader-block-zh {
+  margin-top: 0 !important;
+  margin-bottom: 1.05em !important;
+}
+
+.work-content .reader-split-block.reader-block-zh + .reader-split-block.reader-block-en {
+  margin-top: 1.05em !important;
+}
+
+.work-content .reader-block-en,
+.work-content [lang="en"] {
+  text-align: left !important;
+  text-indent: 0 !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  line-break: auto !important;
+}
+
+.work-content .reader-block-zh,
+.work-content .reader-block-mixed {
+  text-align: left !important;
+  text-indent: 0 !important;
+}
