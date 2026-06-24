@@ -2,7 +2,8 @@
 const DB_VERSION = 1;
 const STORE = "state";
 const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
-const DEFAULT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev";
+const DIRECT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev";
+const DEFAULT_CLOUDFLARE_WORKER_BASE = `${IMPORT_API_BASE}/api/sync`;
 const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
 const CLOUD_DESKTOP_WORK_BATCH_SIZE = 3;
@@ -776,6 +777,13 @@ function sentenceChunks(text = "") {
   return (String(text).match(/[^。！？!?]+[。！？!?]?/g) || [text]).map((item) => item.trim()).filter(Boolean);
 }
 
+function cleanReaderSegmentText(text = "") {
+  return String(text)
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
+}
+
 function splitMixedTextForReading(text = "") {
   const chunks = sentenceChunks(text);
   const segments = [];
@@ -791,7 +799,7 @@ function splitMixedTextForReading(text = "") {
   }
   const meaningful = segments.map((segment) => ({
     ...segment,
-    text: segment.text.replace(/\s+/g, " ").trim()
+    text: cleanReaderSegmentText(segment.text)
   })).filter((segment) => {
     const stats = languageStats(segment.text);
     if (segment.lang === "en") return stats.enLetters >= 45 || stats.enWords >= 7;
@@ -802,7 +810,7 @@ function splitMixedTextForReading(text = "") {
   if (!hasBoth) return [];
   const merged = [];
   for (const segment of meaningful) {
-    const text = segment.text.trim();
+    const text = cleanReaderSegmentText(segment.text);
     if (!text) continue;
     const last = merged[merged.length - 1];
     if (last && last.lang === segment.lang && (last.text.length < 90 || text.length < 40)) {
@@ -833,7 +841,7 @@ function splitBilingualParagraphs(root) {
       const item = document.createElement(node.tagName.toLowerCase());
       item.className = `${node.className || ""} reader-block-${segment.lang} reader-split-block`.trim();
       if (segment.lang === "en") item.lang = "en";
-      item.textContent = segment.text;
+      item.textContent = cleanReaderSegmentText(segment.text);
       fragment.appendChild(item);
     }
     node.replaceWith(fragment);
@@ -2280,48 +2288,55 @@ async function supabaseProxyRest(path, { method = "GET", query = "", body = null
 }
 
 async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 12000, retries = CLOUD_REQUEST_RETRIES } = {}) {
-  const base = getCustomCloudEndpoint();
-  if (!base) throw new Error("Cloudflare Worker 地址还没填写。");
+  const preferredBase = getCustomCloudEndpoint();
+  const bases = [preferredBase, DIRECT_CLOUDFLARE_WORKER_BASE].filter(Boolean).filter((base, index, list) => list.indexOf(base) === index);
+  if (!bases.length) throw new Error("Cloudflare Worker 地址还没填写。");
   let lastError = null;
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetch(`${base}${path}`, {
-        method,
-        signal: controller.signal,
-        headers: {
-          accept: "application/json",
-          ...(body ? { "content-type": "application/json" } : {})
-        },
-        body: body ? JSON.stringify(body) : undefined
-      });
-      const text = await response.text();
-      let data = null;
+  for (const base of bases) {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        throw new Error("Cloudflare Worker 返回的不是新版 JSON。请重新部署 worker.js。");
+        const response = await fetch(`${base}${path}`, {
+          method,
+          signal: controller.signal,
+          headers: {
+            accept: "application/json",
+            ...(body ? { "content-type": "application/json" } : {})
+          },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        const text = await response.text();
+        let data = null;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          throw new Error("Cloudflare Worker 返回的不是新版 JSON。请重新部署 worker.js。");
+        }
+        if (!response.ok) {
+          const error = new Error(data?.error || `Cloudflare Worker ${response.status}`);
+          error.status = response.status;
+          throw error;
+        }
+        return data;
+      } catch (error) {
+        if (error.name === "AbortError") {
+          const timeoutError = new Error(base.includes("/api/sync") ? "同域同步代理这次响应超时。" : "Cloudflare Worker 这次响应超时。");
+          timeoutError.status = 504;
+          lastError = timeoutError;
+        } else {
+          lastError = error;
+        }
+        if (attempt < retries && isRetryableCloudError(lastError)) {
+          await sleep(500 + attempt * 900);
+          continue;
+        }
+        break;
+      } finally {
+        clearTimeout(timeout);
       }
-      if (!response.ok) {
-        const error = new Error(data?.error || `Cloudflare Worker ${response.status}`);
-        error.status = response.status;
-        throw error;
-      }
-      return data;
-    } catch (error) {
-      if (error.name === "AbortError") {
-        const timeoutError = new Error("Cloudflare Worker 这次响应超时。");
-        timeoutError.status = 504;
-        lastError = timeoutError;
-      } else {
-        lastError = error;
-      }
-      if (attempt >= retries || !isRetryableCloudError(lastError)) throw lastError;
-      await sleep(700 + attempt * 1300);
-    } finally {
-      clearTimeout(timeout);
     }
+    if (!isRetryableCloudError(lastError)) throw lastError;
   }
   throw lastError || new Error("Cloudflare Worker 请求失败。");
 }

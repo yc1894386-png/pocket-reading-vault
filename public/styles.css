@@ -9367,3 +9367,83 @@ body.reading .work-content {
     height: 18px !important;
   }
 }
+
+/* v157: final mobile bilingual typography reset */
+.work-content,
+.work-content p,
+.work-content li,
+.work-content blockquote,
+.work-content dd,
+.work-content dt,
+.work-content figcaption,
+.work-content .reader-split-block,
+.work-content .reader-block-en,
+.work-content .reader-block-zh,
+.work-content .reader-block-mixed,
+.work-content [lang="en"] {
+  text-align: left !important;
+  text-indent: 0 !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+.work-content .reader-block-en,
+.work-content [lang="en"] {
+  direction: ltr !important;
+  unicode-bidi: plaintext !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  line-break: auto !important;
+  text-wrap: pretty;
+}
+
+@media (max-width: 879px) {
+  .work-content {
+    text-align: left !important;
+    text-justify: auto !important;
+  }
+
+  .work-content p,
+  .work-content li,
+  .work-content dd,
+  .work-content dt,
+  .work-content figcaption {
+    margin-top: 0 !important;
+  }
+
+  .work-content .reader-block-en,
+  .work-content [lang="en"] {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Avenir Next", "Helvetica Neue", Arial, sans-serif !important;
+    font-size: calc(var(--reader-font-size) * 0.96) !important;
+    font-weight: 400 !important;
+    line-height: calc(var(--reader-line-height) * 0.94) !important;
+    word-spacing: 0.01em !important;
+    margin-right: 0 !important;
+  }
+
+  .work-content .reader-block-zh,
+  .work-content .reader-block-mixed {
+    font-family: var(--reader-font-family) !important;
+    font-size: var(--reader-font-size) !important;
+    line-height: var(--reader-line-height) !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .work-content .reader-split-block.reader-block-en {
+    margin-top: 0 !important;
+    margin-bottom: 0.48em !important;
+  }
+
+  .work-content .reader-split-block.reader-block-en + .reader-split-block.reader-block-zh {
+    margin-top: 0 !important;
+    margin-bottom: 1.28em !important;
+  }
+
+  .work-content .reader-split-block.reader-block-zh + .reader-split-block.reader-block-en {
+    margin-top: 1.28em !important;
+  }
+}
