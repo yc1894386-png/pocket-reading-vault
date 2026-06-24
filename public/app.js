@@ -10,6 +10,8 @@ const CLOUD_DESKTOP_WORK_BATCH_SIZE = 3;
 const CLOUD_MOBILE_WORK_BATCH_SIZE = 2;
 const CLOUD_REQUEST_RETRIES = 2;
 const CLOUD_INITIAL_WORK_BATCH_LIMIT = 4;
+const CLOUD_BACKGROUND_WORK_BATCH_SIZE = 1;
+const CLOUD_BACKGROUND_PREFETCH_DELAY = 900;
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -131,6 +133,7 @@ let cloudPullTimer = null;
 let cloudProgressTimer = null;
 let cloudBackfillTimer = null;
 let cloudBackfillRunning = false;
+let cloudBackfillQueue = [];
 let pendingCloudProgressIds = new Set();
 let syncingCloudProgress = false;
 let supabase;
@@ -841,6 +844,7 @@ function splitBilingualParagraphs(root) {
       const item = document.createElement(node.tagName.toLowerCase());
       item.className = `${node.className || ""} reader-block-${segment.lang} reader-split-block`.trim();
       if (segment.lang === "en") item.lang = "en";
+      if (segment.lang === "en" && /\S{34,}/.test(segment.text || "")) item.classList.add("long-token");
       item.textContent = cleanReaderSegmentText(segment.text);
       fragment.appendChild(item);
     }
@@ -2088,7 +2092,12 @@ function getCloudProxyBase() {
 }
 
 function getCustomCloudEndpoint() {
-  return normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "") || DEFAULT_CLOUDFLARE_WORKER_BASE;
+  const saved = normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "");
+  if (!saved || /vellum-sync\.yc1894386\.workers\.dev/i.test(saved)) {
+    if (saved) localStorage.removeItem("vellum-cloud-worker-url");
+    return DEFAULT_CLOUDFLARE_WORKER_BASE;
+  }
+  return saved;
 }
 
 function hasCustomCloudEndpoint() {
@@ -2129,11 +2138,15 @@ function isCloudPaused() {
 }
 
 function pauseCloudSync(reason, minutes = 20) {
+  if (hasCustomCloudEndpoint() && /timeout|超时|failed to fetch|network|502|503|504|连接已经关闭/i.test(reason || "")) {
+    minutes = Math.min(minutes, 0.35);
+  }
   cloudPausedUntil = Date.now() + minutes * 60 * 1000;
   cloudPausedReason = reason;
   localStorage.setItem("vellum-cloud-paused-until", String(cloudPausedUntil));
   localStorage.setItem("vellum-cloud-paused-reason", reason);
   stopCloudRealtime();
+  scheduleCloudRetryAfterPause();
 }
 
 function resumeCloudSync() {
@@ -2435,6 +2448,45 @@ function mergeAnnotationList(localItems = [], cloudItems = []) {
   return [...map.values()];
 }
 
+function readingRatioValue(reading = {}) {
+  const whole = Number(reading.wholeRatio ?? reading.ratio ?? 0);
+  return Number.isFinite(whole) ? Math.max(0, Math.min(1, whole)) : 0;
+}
+
+function mergeReadingRecord(localReading = {}, cloudReading = {}) {
+  const local = normalizeReading(localReading || {});
+  const cloud = normalizeReading(cloudReading || {});
+  const localTime = new Date(local.updatedAt || 0).getTime() || 0;
+  const cloudTime = new Date(cloud.updatedAt || 0).getTime() || 0;
+  if (localTime || cloudTime) return cloudTime >= localTime ? cloud : local;
+  return readingRatioValue(cloud) >= readingRatioValue(local) ? cloud : local;
+}
+
+function canonicalSourceUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    url.hash = "";
+    const path = url.pathname.replace(/\/+$/, "");
+    if (/archiveofourown\.org$/i.test(url.hostname)) {
+      const match = path.match(/\/works\/(\d+)/i);
+      if (match) return `ao3:${match[1]}`;
+    }
+    return `${url.hostname.toLowerCase()}${path.toLowerCase()}`;
+  } catch {
+    return raw.toLowerCase().replace(/\s+/g, "");
+  }
+}
+
+function workMergeKey(work = {}) {
+  const source = canonicalSourceUrl(work.sourceUrl || "");
+  if (source) return `url:${source}`;
+  const title = String(work.title || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const author = String(work.author || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return title ? `title:${title}|author:${author}` : "";
+}
+
 function mergeMetadata(localMetadata = {}, cloudMetadata = {}, newerMetadata = {}, richerMetadata = {}) {
   const merged = { ...localMetadata, ...cloudMetadata, ...newerMetadata };
   const keys = new Set([
@@ -2470,7 +2522,7 @@ function mergeWorkRecords(localWork, cloudWork) {
   const localScore = cloudWorkContentScore(local);
   const cloudScore = cloudWorkContentScore(cloud);
   const richer = cloudScore > localScore ? cloud : local;
-  const reading = readingTime(cloud) > readingTime(local) ? cloud.reading : local.reading;
+  const reading = mergeReadingRecord(local.reading || {}, cloud.reading || {});
   const merged = normalizeWork({
     ...older,
     ...newer,
@@ -2508,17 +2560,19 @@ function applyCloudProgressToLocalWork(work = {}, progress = {}) {
   if (!entry) return work;
   const currentTime = readingTime(work);
   const nextTime = new Date(entry.reading?.updatedAt || entry.updatedAt || 0).getTime() || 0;
-  if (nextTime >= currentTime) {
-    return {
-      ...work,
-      reading: normalizeReading(entry.reading || {}, work.reading || {}),
-      sortOrder: entry.sortOrder !== undefined ? entry.sortOrder : work.sortOrder,
-      folderId: entry.folderId || work.folderId,
-      folderIds: Array.isArray(entry.folderIds) ? entry.folderIds : work.folderIds,
-      updatedAt: entry.updatedAt || work.updatedAt
-    };
-  }
-  return work;
+  const mergedReading = nextTime >= currentTime
+    ? normalizeReading(entry.reading || {}, work.reading || {})
+    : mergeReadingRecord(work.reading || {}, entry.reading || {});
+  return {
+    ...work,
+    reading: mergedReading,
+    sortOrder: entry.sortOrder !== undefined ? entry.sortOrder : work.sortOrder,
+    folderId: entry.folderId || work.folderId,
+    folderIds: Array.isArray(entry.folderIds)
+      ? uniqueValues([...(work.folderIds || []), ...entry.folderIds]).filter((id) => id !== "all" && id !== "unfiled")
+      : work.folderIds,
+    updatedAt: nextTime >= currentTime ? (entry.updatedAt || work.updatedAt) : work.updatedAt
+  };
 }
 
 function arrayBufferToBase64(buffer) {
@@ -2714,14 +2768,45 @@ function mergeLibraryState(localState, cloudState) {
   if (!merged.folders.some((folder) => folder.id === "unfiled")) merged.folders.push(defaultState.folders[1]);
   merged.deletedFolderIds = [...deletedFolderIds];
 
-  const workMap = new Map((merged.works || []).map((work) => [work.id, normalizeWork(work)]));
+  const workMap = new Map();
+  const keyMap = new Map();
+  const rememberWork = (work) => {
+    const normalized = normalizeWork(work);
+    const existing = workMap.get(normalized.id);
+    const key = workMergeKey(normalized);
+    const keyed = key ? keyMap.get(key) : null;
+    let storedId = normalized.id;
+    if (existing) {
+      const mergedWork = mergeWorkRecords(existing, normalized);
+      storedId = mergedWork.id || normalized.id;
+      workMap.set(storedId, mergedWork);
+    } else if (keyed && workMap.has(keyed)) {
+      const mergedWork = mergeWorkRecords(workMap.get(keyed), normalized);
+      workMap.delete(keyed);
+      storedId = mergedWork.id || normalized.id || keyed;
+      workMap.set(storedId, mergedWork);
+    } else {
+      storedId = normalized.id;
+      workMap.set(storedId, normalized);
+    }
+    const stored = workMap.get(storedId) || normalized;
+    const storedKey = workMergeKey(stored);
+    if (storedKey) keyMap.set(storedKey, stored.id || storedId);
+  };
+  (merged.works || []).forEach(rememberWork);
   for (const cloudWork of cloudState.works || []) {
-    const existing = workMap.get(cloudWork.id);
+    const cloudKey = workMergeKey(cloudWork);
+    const existingId = cloudWork.id && workMap.has(cloudWork.id) ? cloudWork.id : (cloudKey ? keyMap.get(cloudKey) : "");
+    const existing = existingId ? workMap.get(existingId) : null;
     if (!existing) {
-      workMap.set(cloudWork.id, normalizeWork(cloudWork));
+      rememberWork(cloudWork);
       continue;
     }
-    workMap.set(cloudWork.id, mergeWorkRecords(existing, cloudWork));
+    const mergedWork = mergeWorkRecords(existing, cloudWork);
+    if (existingId !== mergedWork.id && workMap.has(existingId)) workMap.delete(existingId);
+    workMap.set(mergedWork.id, mergedWork);
+    const mergedKey = workMergeKey(mergedWork);
+    if (mergedKey) keyMap.set(mergedKey, mergedWork.id);
   }
   merged.works = [...workMap.values()].map((work) => {
     const normalized = normalizeWork(work);
@@ -2792,13 +2877,57 @@ async function getCloudflareWorkBatch(batchIds) {
 }
 
 async function backfillCloudWorks({ immediate = false } = {}) {
-  // 保留旧入口但不再运行：正文改为点开文章时按需下载，避免手机加载整库卡死。
-  return;
+  if (!state.syncCode || !hasCustomCloudEndpoint() || cloudBackfillRunning || SAFE_MODE) return;
+  if (document.visibilityState && document.visibilityState !== "visible") return;
+  const missing = cloudMissingWorkIds();
+  if (!missing.length) {
+    cloudBackfillQueue = [];
+    return;
+  }
+  const seen = new Set(cloudBackfillQueue);
+  for (const id of missing) {
+    if (!seen.has(id)) {
+      cloudBackfillQueue.push(id);
+      seen.add(id);
+    }
+  }
+  cloudBackfillRunning = true;
+  try {
+    const batchIds = cloudBackfillQueue.splice(0, CLOUD_BACKGROUND_WORK_BATCH_SIZE);
+    if (!batchIds.length) return;
+    if (immediate) setCloudStatus("正在后台缓存正文……");
+    const works = await getCloudflareWorkBatch(batchIds);
+    if (works.length) {
+      const signatures = loadCloudUploadSignatures();
+      state = mergeLibraryState(state, { works });
+      for (const work of works) {
+        if (work?.id) signatures[work.id] = cloudUploadSignature(cloudSafeWork(work));
+      }
+      saveCloudUploadSignatures(signatures);
+      await dbSet("library", state);
+      renderWorks();
+      renderCloudPanel();
+      const left = cloudMissingWorkIds().length;
+      setCloudStatus(left ? `已后台缓存 ${works.length} 篇正文，还剩 ${left} 篇会继续补。` : "云端正文已缓存完成。");
+    }
+  } catch (error) {
+    for (const id of cloudMissingWorkIds(CLOUD_BACKGROUND_WORK_BATCH_SIZE)) {
+      if (!cloudBackfillQueue.includes(id)) cloudBackfillQueue.push(id);
+    }
+    setCloudStatus(`后台缓存暂时慢：${cloudRestErrorText(error)}。会继续重试。`);
+  } finally {
+    cloudBackfillRunning = false;
+    if (cloudMissingWorkIds().length && state.syncCode && hasCustomCloudEndpoint() && !SAFE_MODE) {
+      clearTimeout(cloudBackfillTimer);
+      cloudBackfillTimer = setTimeout(() => backfillCloudWorks(), CLOUD_BACKGROUND_PREFETCH_DELAY);
+    }
+  }
 }
 
 function scheduleCloudBackfill() {
-  // 正文不再自动全量补齐：目录/进度先同步，正文在点开文章时按需下载。
-  return;
+  if (!state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return;
+  clearTimeout(cloudBackfillTimer);
+  cloudBackfillTimer = setTimeout(() => backfillCloudWorks({ immediate: false }), CLOUD_BACKGROUND_PREFETCH_DELAY);
 }
 
 async function getCloudflareState() {
@@ -3098,6 +3227,7 @@ async function pullCloudInBackground({ initial = false } = {}) {
     syncingCloud = false;
     renderAll();
     setCloudStatus(`已后台同步：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
+    if (hasCustomCloudEndpoint()) scheduleCloudBackfill();
     if (hasCustomCloudEndpoint()) {
       if (state.works.length > cloudCount) {
         setCloudStatus(`本机比云端多 ${state.works.length - cloudCount} 篇，正在自动补上传……`);
@@ -3138,8 +3268,8 @@ function startCloudRealtime() {
       if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
       else await saveCloudNow({ silent: true });
     }
-  }, hasCustomCloudEndpoint() ? 2500 : 14000);
-  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 15000 : 90000);
+  }, hasCustomCloudEndpoint() ? 900 : 14000);
+  cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 10000 : 90000);
   setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
 }
 
@@ -3283,6 +3413,7 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
         ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文会在点开时下载。` : ""}`
         : `已下载云端书架：${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文会在点开时下载。` : ""}`)
   );
+  scheduleCloudBackfill();
 }
 
 async function refreshCloudSession({ initial = false } = {}) {
