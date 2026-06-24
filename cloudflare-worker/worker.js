@@ -288,6 +288,22 @@ async function readShardedManifest(env, syncCode) {
   };
 }
 
+async function readShardedIndex(env, syncCode) {
+  const manifest = await env.VELLUM_SYNC.get(manifestKey(syncCode), { type: "json" });
+  if (!manifest) return null;
+  return {
+    ...manifest,
+    provider: "cloudflare-r2-v2",
+    sharded: true,
+    manifestOnly: true,
+    indexOnly: true
+  };
+}
+
+async function readProgress(env, syncCode) {
+  return await env.VELLUM_SYNC.get(progressKey(syncCode), { type: "json" }) || { works: {}, updated_at: "" };
+}
+
 async function readWorkBatch(env, syncCode, ids = []) {
   if (!env.VELLUM_BUCKET) return { error: "R2_BINDING_MISSING" };
   const progress = await env.VELLUM_SYNC.get(progressKey(syncCode), { type: "json" }) || {};
@@ -429,10 +445,11 @@ export default {
     }
 
     const isCloudPath = url.pathname === "/api/cloud" || url.pathname === "/api/v2/cloud";
+    const isIndexPath = url.pathname === "/api/v2/index";
     const isManifestPath = url.pathname === "/api/v2/manifest";
     const isWorksPath = url.pathname === "/api/v2/works";
     const isProgressPath = url.pathname === "/api/v2/progress";
-    if (!isCloudPath && !isManifestPath && !isWorksPath && !isProgressPath) return json({ error: "NOT_FOUND" }, 404);
+    if (!isCloudPath && !isIndexPath && !isManifestPath && !isWorksPath && !isProgressPath) return json({ error: "NOT_FOUND" }, 404);
 
     if (request.method === "GET" && isCloudPath) {
       const syncCode = cleanSyncCode(url.searchParams.get("syncCode") || "");
@@ -448,6 +465,20 @@ export default {
       const stored = await readShardedManifest(env, syncCode);
       if (stored?.error) return json(stored, 500);
       return json(stored || null);
+    }
+
+    if (request.method === "GET" && isIndexPath) {
+      const syncCode = cleanSyncCode(url.searchParams.get("syncCode") || "");
+      if (!validSyncCode(syncCode)) return json({ error: "BAD_SYNC_CODE" }, 400);
+      const stored = await readShardedIndex(env, syncCode);
+      if (stored?.error) return json(stored, 500);
+      return json(stored || null);
+    }
+
+    if (request.method === "GET" && isProgressPath) {
+      const syncCode = cleanSyncCode(url.searchParams.get("syncCode") || "");
+      if (!validSyncCode(syncCode)) return json({ error: "BAD_SYNC_CODE" }, 400);
+      return json(await readProgress(env, syncCode));
     }
 
     if (request.method === "GET" && isWorksPath) {

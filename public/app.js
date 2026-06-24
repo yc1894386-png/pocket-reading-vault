@@ -2214,6 +2214,10 @@ function cloudWorkBatchSize() {
     : CLOUD_DESKTOP_WORK_BATCH_SIZE;
 }
 
+function cloudInitialWorkBatchLimit() {
+  return window.matchMedia?.("(max-width: 879px)")?.matches ? 0 : CLOUD_INITIAL_WORK_BATCH_LIMIT;
+}
+
 function isCloudStubWork(work = {}) {
   return Boolean(work?.id && work.hasCloudShard && !(work.contentHtml || "").trim());
 }
@@ -2483,6 +2487,24 @@ function mergeWorkRecords(localWork, cloudWork) {
   return merged;
 }
 
+function applyCloudProgressToLocalWork(work = {}, progress = {}) {
+  const entry = progress?.works?.[work.id];
+  if (!entry) return work;
+  const currentTime = readingTime(work);
+  const nextTime = new Date(entry.reading?.updatedAt || entry.updatedAt || 0).getTime() || 0;
+  if (nextTime >= currentTime) {
+    return {
+      ...work,
+      reading: normalizeReading(entry.reading || {}, work.reading || {}),
+      sortOrder: entry.sortOrder !== undefined ? entry.sortOrder : work.sortOrder,
+      folderId: entry.folderId || work.folderId,
+      folderIds: Array.isArray(entry.folderIds) ? entry.folderIds : work.folderIds,
+      updatedAt: entry.updatedAt || work.updatedAt
+    };
+  }
+  return work;
+}
+
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -2720,12 +2742,30 @@ async function getCloudState() {
 }
 
 async function getCloudflareManifestState() {
-  let data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
-    timeoutMs: 16000
-  });
+  let data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}`, {
+    timeoutMs: 9000,
+    retries: 1
+  }).catch(() => null);
+  if (data?.state) {
+    const progress = await cloudWorkerJson(`/api/v2/progress?syncCode=${encodeURIComponent(state.syncCode)}`, {
+      timeoutMs: 7000,
+      retries: 0
+    }).catch(() => null);
+    if (progress?.works) {
+      data.state.works = (data.state.works || []).map((work) => applyCloudProgressToLocalWork(work, progress));
+      data.updated_at = progress.updated_at || data.updated_at;
+    }
+  }
+  if (!data?.state) {
+    data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
+      timeoutMs: 18000,
+      retries: 1
+    });
+  }
   if (!data?.state) {
     data = await cloudWorkerJson(`/api/v2/cloud?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 30000
+      timeoutMs: 45000,
+      retries: 0
     });
   }
   return data?.state ? cloneLibraryState(data.state) : null;
@@ -3104,11 +3144,11 @@ function startCloudRealtime() {
     return;
   }
   cloudPullTimer = setTimeout(async () => {
+    await pullCloudInBackground({ initial: true });
     if (cloudPendingSave) {
       if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
       else await saveCloudNow({ silent: true });
     }
-    await pullCloudInBackground({ initial: true });
   }, hasCustomCloudEndpoint() ? 2500 : 14000);
   cloudRealtimeTimer = setInterval(() => pullCloudInBackground(), hasCustomCloudEndpoint() ? 15000 : 90000);
   setCloudStatus(cloudPendingSave ? "同步码已连接。有本机改动待上传，云端恢复后会自动补同步。" : "同步码已连接。页面会先打开，云端稍后在后台自动同步。");
@@ -3119,13 +3159,13 @@ function scheduleCloudWakeSync(delay = 1200) {
   clearTimeout(cloudPullTimer);
   cloudPullTimer = setTimeout(async () => {
     if (document.visibilityState && document.visibilityState !== "visible") return;
+    await pullCloudInBackground({ initial: false });
     if (cloudPendingSave || pendingCloudProgressIds.size || cloudLightTimer) {
       try {
         if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
         else await saveCloudNow({ silent: true });
       } catch {}
     }
-    await pullCloudInBackground({ initial: false });
   }, delay);
 }
 
@@ -3214,7 +3254,7 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
   renderAll();
 
   const batchSize = cloudWorkBatchSize();
-  const idsToLoadNow = ids.slice(0, CLOUD_INITIAL_WORK_BATCH_LIMIT);
+  const idsToLoadNow = ids.slice(0, cloudInitialWorkBatchLimit());
   const remainingForBackground = ids.length - idsToLoadNow.length;
   const totalBatches = Math.max(1, Math.ceil(idsToLoadNow.length / batchSize));
   const signatures = loadCloudUploadSignatures();

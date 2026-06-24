@@ -9201,3 +9201,46 @@ body.reading .work-content {
   text-align: left !important;
   text-indent: 0 !important;
 }
+
+/* v154: Apple-Books-like mobile bilingual reading rhythm */
+@media (max-width: 879px) {
+  .work-content {
+    text-align: left !important;
+    text-justify: auto !important;
+  }
+
+  .work-content .reader-block-en,
+  .work-content [lang="en"] {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
+    font-weight: 400 !important;
+    line-height: calc(var(--reader-line-height) * 1.02) !important;
+    letter-spacing: 0 !important;
+    word-spacing: 0.015em !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+  }
+
+  .work-content .reader-block-zh,
+  .work-content .reader-block-mixed {
+    font-family: var(--reader-font-family) !important;
+    line-height: var(--reader-line-height) !important;
+    letter-spacing: 0 !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .work-content .reader-split-block.reader-block-en {
+    margin: 0 0 0.55em !important;
+  }
+
+  .work-content .reader-split-block.reader-block-en + .reader-split-block.reader-block-zh {
+    margin-top: 0 !important;
+    margin-bottom: 1.25em !important;
+  }
+
+  .work-content .reader-split-block.reader-block-zh + .reader-split-block.reader-block-en {
+    margin-top: 1.25em !important;
+  }
+}
