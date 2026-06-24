@@ -20,7 +20,6 @@ const imageCache = new Map();
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://pocket-reading-vault.onrender.com";
 const supabaseUrl = process.env.SUPABASE_URL || "https://bhliywysdezcykoyyozw.supabase.co";
 const supabaseKey = process.env.SUPABASE_KEY || "sb_publishable_hh04jm0Nqp3_Jq-3FTcs5w_FbuaSO0v";
-const cloudflareWorkerUrl = (process.env.CLOUDFLARE_WORKER_URL || "https://vellum-sync.yc1894386.workers.dev").replace(/\/+$/, "");
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -71,57 +70,6 @@ function sendText(res, status, value) {
     "access-control-allow-origin": "*"
   });
   res.end(value);
-}
-
-async function proxyCloudflareSync(req, res, url) {
-  const pathname = url.pathname.replace(/^\/api\/sync/, "") || "/";
-  const target = `${cloudflareWorkerUrl}${pathname}${url.search || ""}`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 22000);
-  try {
-    let body;
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      body = await new Promise((resolve, reject) => {
-        const chunks = [];
-        let size = 0;
-        req.on("data", (chunk) => {
-          size += chunk.length;
-          if (size > 35 * 1024 * 1024) {
-            reject(new Error("同步请求太大了。"));
-            req.destroy();
-            return;
-          }
-          chunks.push(chunk);
-        });
-        req.on("end", () => resolve(Buffer.concat(chunks)));
-        req.on("error", reject);
-      });
-    }
-    const response = await fetch(target, {
-      method: req.method,
-      signal: controller.signal,
-      headers: {
-        accept: req.headers.accept || "application/json",
-        ...(req.headers["content-type"] ? { "content-type": req.headers["content-type"] } : {})
-      },
-      body
-    });
-    const text = await response.text();
-    res.writeHead(response.status, {
-      "content-type": response.headers.get("content-type") || "application/json; charset=utf-8",
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, POST, OPTIONS",
-      "access-control-allow-headers": "content-type, accept",
-      "cache-control": "no-store"
-    });
-    return res.end(text);
-  } catch (error) {
-    return sendJson(res, error.name === "AbortError" ? 504 : 502, {
-      error: error.name === "AbortError" ? "同域同步代理响应超时。" : (error.message || "同域同步代理失败。")
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 function decodeEntities(value = "") {
@@ -1385,10 +1333,6 @@ const server = http.createServer(async (req, res) => {
     }
 
     const url = new URL(req.url, `http://${req.headers.host}`);
-    if (url.pathname === "/api/sync" || url.pathname.startsWith("/api/sync/")) {
-      return proxyCloudflareSync(req, res, url);
-    }
-
     if (url.pathname === "/api/import") {
       const source = url.searchParams.get("url");
       if (!source) return sendJson(res, 400, { error: "缺少原站链接。" });
