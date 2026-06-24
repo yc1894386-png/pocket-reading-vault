@@ -1066,7 +1066,8 @@ function renderWorks() {
     const chapterCount = lightweightChapterCount(work);
     const chapterText = work.metadata?.chapters || "";
     const complete = /(\d+)\s*\/\s*\1/.test(chapterText) || /complete|完结/i.test(work.metadata?.status || "");
-    const status = complete ? "完结" : (chapterText ? "连载" : "未知");
+    const cloudStub = isCloudStubWork(work);
+    const status = cloudStub ? "未缓存" : (complete ? "完结" : (chapterText ? "连载" : "未知"));
     const ratio = lightweightReadingRatio(work);
     const progress = Math.round(ratio * 100);
     const safeProgress = Math.min(100, Math.max(0, progress));
@@ -1075,7 +1076,7 @@ function renderWorks() {
     const customTags = (work.customTags || []).slice(0, 3);
     const contrastClass = isDarkHex(state.progressAccent) && safeProgress > 18 ? "progress-contrast" : "";
     return `
-      <button class="work-card ${contrastClass} ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}" data-progress-width="${progressWidth}%" style="--work-progress: ${progressWidth}%;">
+      <button class="work-card ${cloudStub ? "cloud-stub" : ""} ${contrastClass} ${state.selectedWorkId === work.id ? "active" : ""}" data-work="${work.id}" data-progress-width="${progressWidth}%" style="--work-progress: ${progressWidth}%;">
         <span class="work-progress-wash" aria-hidden="true"></span>
         <h3 class="work-title-line"><span>${escapeHtml(work.title)}</span><small>${status}</small><b>›</b></h3>
         <p>${escapeHtml(work.author || "作者待补")} · ${escapeHtml(rel)}</p>
@@ -2780,40 +2781,13 @@ async function getCloudflareWorkBatch(batchIds) {
 }
 
 async function backfillCloudWorks({ immediate = false } = {}) {
-  if (!hasCustomCloudEndpoint() || !state.syncCode || cloudBackfillRunning || SAFE_MODE || isCloudPaused()) return;
-  if (document.visibilityState && document.visibilityState !== "visible") return;
-  const ids = cloudMissingWorkIds(cloudWorkBatchSize());
-  if (!ids.length) return;
-  cloudBackfillRunning = true;
-  try {
-    if (immediate) setCloudStatus(`正在后台补全文：剩 ${cloudMissingWorkIds().length} 篇……`);
-    const works = await getCloudflareWorkBatch(ids);
-    if (works.length) {
-      const signatures = loadCloudUploadSignatures();
-      state = mergeLibraryState(state, { works });
-      for (const work of works) {
-        if (work?.id) signatures[work.id] = cloudUploadSignature(cloudSafeWork(work));
-      }
-      saveCloudUploadSignatures(signatures);
-      await dbSet("library", state);
-      renderWorks();
-      renderCloudPanel();
-    }
-    const remaining = cloudMissingWorkIds().length;
-    setCloudStatus(remaining ? `后台补全文中：还剩 ${remaining} 篇。` : "云端正文已自动补齐。");
-    if (remaining) scheduleCloudBackfill(2500);
-  } catch (error) {
-    setCloudStatus(`后台补全文稍后重试：${cloudRestErrorText(error)}`);
-    scheduleCloudBackfill(12000);
-  } finally {
-    cloudBackfillRunning = false;
-  }
+  // 保留旧入口但不再运行：正文改为点开文章时按需下载，避免手机加载整库卡死。
+  return;
 }
 
-function scheduleCloudBackfill(delay = 4000) {
-  if (!hasCustomCloudEndpoint() || !state.syncCode || SAFE_MODE) return;
-  clearTimeout(cloudBackfillTimer);
-  cloudBackfillTimer = setTimeout(() => backfillCloudWorks(), delay);
+function scheduleCloudBackfill() {
+  // 正文不再自动全量补齐：目录/进度先同步，正文在点开文章时按需下载。
+  return;
 }
 
 async function getCloudflareState() {
@@ -2901,7 +2875,12 @@ function cloudProgressEntry(work) {
 }
 
 async function saveCloudProgressNow({ silent = true } = {}) {
-  if (!state.syncCode || !hasCustomCloudEndpoint() || syncingCloudProgress || syncingCloud || SAFE_MODE) return;
+  if (!state.syncCode || !hasCustomCloudEndpoint() || syncingCloudProgress || SAFE_MODE) return;
+  if (syncingCloud) {
+    clearTimeout(cloudProgressTimer);
+    cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 1500);
+    return;
+  }
   const ids = [...pendingCloudProgressIds];
   if (!ids.length) return;
   pendingCloudProgressIds.clear();
@@ -3113,7 +3092,6 @@ async function pullCloudInBackground({ initial = false } = {}) {
         setCloudStatus(`本机比云端多 ${state.works.length - cloudCount} 篇，正在自动补上传……`);
         queueCloudSave(900);
       }
-      scheduleCloudBackfill(1500);
     } else if (beforeCount !== state.works.length && state.syncCode) {
       queueCloudSave();
     }
@@ -3264,7 +3242,7 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
     setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇，没有缺正文。`);
     return;
   }
-  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。正文会后台补齐。`);
+  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。正文点开文章时再下载。`);
   for (let index = 0; index < idsToLoadNow.length; index += batchSize) {
     const batchIds = idsToLoadNow.slice(index, index + batchSize);
     const batchNumber = Math.floor(index / batchSize) + 1;
@@ -3287,14 +3265,12 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
       setCloudStatus(`第 ${batchNumber}/${totalBatches} 批暂时没下完，稍后后台重试。`);
     }
   }
-  if (remainingForBackground > 0 || failed > 0) scheduleCloudBackfill(1800);
-
   setCloudStatus(
     failed
-      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇稍后自动重试。`
+      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇点开时再重试。`
       : (merge
-        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。${remainingForBackground ? `后台继续补 ${remainingForBackground} 篇正文。` : ""}`
-        : `已下载云端书架：${state.works.length} 篇。${remainingForBackground ? `后台继续补 ${remainingForBackground} 篇正文。` : ""}`)
+        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文会在点开时下载。` : ""}`
+        : `已下载云端书架：${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文会在点开时下载。` : ""}`)
   );
 }
 
@@ -4673,7 +4649,6 @@ $("#cloudStartButton").addEventListener("click", async () => {
     startCloudRealtime();
     if (hasCustomCloudEndpoint()) {
       await pullCloudInBackground({ initial: true });
-      scheduleCloudBackfill(3500);
     } else {
       try {
         await loadCloudIntoLocal({ merge: true });
@@ -4760,7 +4735,6 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
     setCloudStatus("正在同步……");
     if (hasCustomCloudEndpoint()) {
       await pullCloudInBackground({ initial: true });
-      scheduleCloudBackfill(1500);
       if (cloudPendingSave || pendingCloudProgressIds.size) await saveCloudLightNow({ silent: false });
     } else {
       try {
