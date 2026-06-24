@@ -8,7 +8,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./vellum-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="./vellum-logo.png" />
-    <link rel="stylesheet" href="./styles.css?v=150-cloud-bilingual-polish-20260624" />
+    <link rel="stylesheet" href="./styles.css?v=151-utf8-sync-bilingual-20260624" />
   </head>
   <body>
     <div class="app-shell">
@@ -16,42 +16,42 @@
         <div class="brand-lockup">
           <img class="brand-logo" src="./vellum-logo.png" alt="" aria-hidden="true" />
           <div>
-            <p class="eyebrow">Ë½ÈËÎÄ¿â</p>
+            <p class="eyebrow">ç§äººæ–‡åº“</p>
             <h1>Vellum</h1>
           </div>
         </div>
         <div class="top-actions">
-          <button class="cloud-mini highlight-library-mini" id="highlightLibraryButton" type="button" title="ÕªÂ¼" aria-label="ÕªÂ¼"><span class="highlight-library-icon" aria-hidden="true"></span></button>
-          <button class="cloud-mini" id="cloudPanelButton" type="button" title="ÔÆ¶ËÍ¬²½" aria-label="ÔÆ¶ËÍ¬²½">?</button>
-          <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="µ¼Èë×÷Æ·" aria-label="µ¼Èë×÷Æ·">£«</button>
-          <button class="icon-button" id="themeToggle" title="ÇÐ»»Ã÷°µ" aria-label="ÇÐ»»Ã÷°µ">?</button>
+          <button class="cloud-mini highlight-library-mini" id="highlightLibraryButton" type="button" title="æ‘˜å½•" aria-label="æ‘˜å½•"><span class="highlight-library-icon" aria-hidden="true"></span></button>
+          <button class="cloud-mini" id="cloudPanelButton" type="button" title="äº‘ç«¯åŒæ­¥" aria-label="äº‘ç«¯åŒæ­¥">?</button>
+          <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="å¯¼å…¥ä½œå“" aria-label="å¯¼å…¥ä½œå“">ï¼‹</button>
+          <button class="icon-button" id="themeToggle" title="åˆ‡æ¢æ˜Žæš—" aria-label="åˆ‡æ¢æ˜Žæš—">?</button>
         </div>
       </header>
 
       <main class="layout">
-        <aside class="panel library-panel" aria-label="Êé¼Ü">
+        <aside class="panel library-panel" aria-label="ä¹¦æž¶">
           <form class="import-box import-drawer" id="importForm">
-            <label for="sourceUrl">Ô­Õ¾Á´½Ó</label>
+            <label for="sourceUrl">åŽŸç«™é“¾æŽ¥</label>
             <div class="url-row">
-              <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://×÷Æ·Õ¾µã/works/..." autocomplete="off" />
-              <button type="submit">±£´æ</button>
+              <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://ä½œå“ç«™ç‚¹/works/..." autocomplete="off" />
+              <button type="submit">ä¿å­˜</button>
             </div>
-            <button class="ghost-button" type="button" id="manualOpen">ÊÖ¶¯µ¼Èë</button>
-            <button class="ghost-button" type="button" id="copyCollectorButton">±¸ÓÃ²É¼¯</button>
+            <button class="ghost-button" type="button" id="manualOpen">æ‰‹åŠ¨å¯¼å…¥</button>
+            <button class="ghost-button" type="button" id="copyCollectorButton">å¤‡ç”¨é‡‡é›†</button>
             <label class="file-import">
-              <span>µ¼Èë HTML / ²É¼¯ÎÄ¼þ</span>
+              <span>å¯¼å…¥ HTML / é‡‡é›†æ–‡ä»¶</span>
               <input id="htmlFileInput" type="file" accept=".html,.htm,.json,text/html,application/json" />
             </label>
-            <p class="helper-text">ÌùÁ´½Ó»áÓÅÏÈ×Ô¶¯µ¼Èë£»ÈôÔ­Õ¾ÁÙÊ±¾Ü¾ø£¬»áÔÚºóÌ¨¼ÌÐøÖØÊÔ¡£</p>
+            <p class="helper-text">è´´é“¾æŽ¥ä¼šä¼˜å…ˆè‡ªåŠ¨å¯¼å…¥ï¼›è‹¥åŽŸç«™ä¸´æ—¶æ‹’ç»ï¼Œä¼šåœ¨åŽå°ç»§ç»­é‡è¯•ã€‚</p>
             <p class="status" id="importStatus" role="status"></p>
           </form>
 
           <section class="folder-tools shelf-directory">
             <div class="section-title">
-              <h2>ÎÄ¿â</h2>
+              <h2>æ–‡åº“</h2>
               <div class="section-actions">
-                <button class="tiny-button" id="batchManageButton" title="ÅúÁ¿ÕûÀí" aria-label="ÅúÁ¿ÕûÀí" type="button">£«</button>
-                <button class="tiny-button" id="newFolderButton" title="ÐÂ½¨·Ö×é" aria-label="ÐÂ½¨·Ö×é">ÐÂ½¨</button>
+                <button class="tiny-button" id="batchManageButton" title="æ‰¹é‡æ•´ç†" aria-label="æ‰¹é‡æ•´ç†" type="button">ï¼‹</button>
+                <button class="tiny-button" id="newFolderButton" title="æ–°å»ºåˆ†ç»„" aria-label="æ–°å»ºåˆ†ç»„">æ–°å»º</button>
               </div>
             </div>
             <div class="folder-list" id="folderList"></div>
@@ -61,59 +61,59 @@
             <div class="cloud-box">
               <div class="cloud-card-head">
                 <div>
-                  <h2>ÔÆ¶ËÍ¬²½</h2>
-                  <p id="cloudUser">Î´Á¬½ÓÍ¬²½Âë</p>
+                  <h2>äº‘ç«¯åŒæ­¥</h2>
+                  <p id="cloudUser">æœªè¿žæŽ¥åŒæ­¥ç </p>
                 </div>
-                <button class="cloud-close-button" type="button" id="cloudPanelCloseButton" aria-label="¹Ø±ÕÔÆ¶ËÍ¬²½">¡Á</button>
+                <button class="cloud-close-button" type="button" id="cloudPanelCloseButton" aria-label="å…³é—­äº‘ç«¯åŒæ­¥">Ã—</button>
               </div>
               <input id="cloudEndpoint" class="hidden" type="url" autocomplete="off" />
-              <label class="cloud-code-label" for="cloudCode">Í¬²½Âë</label>
-              <input id="cloudCode" type="text" placeholder="ÊäÈëÍ¬²½Âë£¬»òµãÉú³É" autocomplete="off" />
-              <div class="cloud-history" id="cloudHistoryList" aria-label="ÀúÊ·Í¬²½Âë"></div>
+              <label class="cloud-code-label" for="cloudCode">åŒæ­¥ç </label>
+              <input id="cloudCode" type="text" placeholder="è¾“å…¥åŒæ­¥ç ï¼Œæˆ–ç‚¹ç”Ÿæˆ" autocomplete="off" />
+              <div class="cloud-history" id="cloudHistoryList" aria-label="åŽ†å²åŒæ­¥ç "></div>
               <div class="cloud-actions" id="cloudConnectActions">
-                <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">Á¬½Ó</button>
-                <button class="ghost-button" type="button" id="cloudGenerateButton">Éú³É</button>
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">è¿žæŽ¥</button>
+                <button class="ghost-button" type="button" id="cloudGenerateButton">ç”Ÿæˆ</button>
               </div>
               <div class="backup-actions cloud-sync-actions" id="cloudSyncActions">
-                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>Í¬²½</button>
-                <button class="ghost-button" type="button" id="cloudUploadButton" disabled>ÉÏ´«</button>
-                <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>ÏÂÔØ</button>
-                <button class="ghost-button" type="button" id="cloudLogoutButton">¶Ï¿ª</button>
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>åŒæ­¥</button>
+                <button class="ghost-button" type="button" id="cloudUploadButton" disabled>ä¸Šä¼ </button>
+                <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>ä¸‹è½½</button>
+                <button class="ghost-button" type="button" id="cloudLogoutButton">æ–­å¼€</button>
               </div>
-              <p class="status" id="cloudStatus">ÌîÍ¬Ò»¸öÍ¬²½Âë£¬ÊÖ»úºÍµçÄÔ¾ÍÊÇÍ¬Ò»¸öÔÆ¶ËÊé¼Ü¡£</p>
+              <p class="status" id="cloudStatus">å¡«åŒä¸€ä¸ªåŒæ­¥ç ï¼Œæ‰‹æœºå’Œç”µè„‘å°±æ˜¯åŒä¸€ä¸ªäº‘ç«¯ä¹¦æž¶ã€‚</p>
               <details class="cloud-account-details hidden" id="cloudAccountDetails">
-                <summary>¸ß¼¶</summary>
-                <input class="hidden" id="cloudEmail" type="email" placeholder="ÓÊÏä" autocomplete="email" />
-                <input class="hidden" id="cloudPassword" type="password" placeholder="ÃÜÂë£¬ÖÁÉÙ 6 Î»" autocomplete="current-password" />
-                <button class="hidden" type="button" id="cloudPasswordLoginButton">ÃÜÂëµÇÂ¼</button>
-                <button class="hidden" type="button" id="cloudSignupButton">ÐÂ½¨ÕËºÅ</button>
-                <button class="hidden" type="button" id="cloudSetPasswordButton">ÉèÖÃÃÜÂë</button>
-                <button class="hidden" type="button" id="cloudLoginButton">ÓÊ¼þµÇÂ¼£¨±¸ÓÃ£©</button>
+                <summary>é«˜çº§</summary>
+                <input class="hidden" id="cloudEmail" type="email" placeholder="é‚®ç®±" autocomplete="email" />
+                <input class="hidden" id="cloudPassword" type="password" placeholder="å¯†ç ï¼Œè‡³å°‘ 6 ä½" autocomplete="current-password" />
+                <button class="hidden" type="button" id="cloudPasswordLoginButton">å¯†ç ç™»å½•</button>
+                <button class="hidden" type="button" id="cloudSignupButton">æ–°å»ºè´¦å·</button>
+                <button class="hidden" type="button" id="cloudSetPasswordButton">è®¾ç½®å¯†ç </button>
+                <button class="hidden" type="button" id="cloudLoginButton">é‚®ä»¶ç™»å½•ï¼ˆå¤‡ç”¨ï¼‰</button>
               </details>
             </div>
           </section>
 
           <section class="sync-tools backup-section">
             <div class="section-title">
-              <h2>±¸·Ý</h2>
+              <h2>å¤‡ä»½</h2>
             </div>
             <div class="backup-actions">
-              <button class="ghost-button primary-cloud-action" type="button" id="loadLocalLibraryButton">»Ö¸´±¾»úÊé¼Ü</button>
-              <button class="ghost-button" type="button" id="exportLibraryButton">µ¼³öÊé¼Ü</button>
+              <button class="ghost-button primary-cloud-action" type="button" id="loadLocalLibraryButton">æ¢å¤æœ¬æœºä¹¦æž¶</button>
+              <button class="ghost-button" type="button" id="exportLibraryButton">å¯¼å‡ºä¹¦æž¶</button>
               <label class="file-import compact-file-import">
-                <span>µ¼ÈëÊé¼Ü</span>
+                <span>å¯¼å…¥ä¹¦æž¶</span>
                 <input id="libraryFileInput" type="file" accept=".json,application/json" />
               </label>
             </div>
-            <p class="helper-text">µçÄÔ×¥È¡ºóµ¼³öÊé¼Ü£¬°Ñ JSON ÎÄ¼þ·¢µ½ÊÖ»úµ¼Èë¡£</p>
+            <p class="helper-text">ç”µè„‘æŠ“å–åŽå¯¼å‡ºä¹¦æž¶ï¼ŒæŠŠ JSON æ–‡ä»¶å‘åˆ°æ‰‹æœºå¯¼å…¥ã€‚</p>
           </section>
 
           <section class="search-tools">
-            <label for="searchInput">ËÑË÷</label>
-            <input id="searchInput" type="search" placeholder="±êÌâ¡¢×÷Õß¡¢CP¡¢±¸×¢" />
+            <label for="searchInput">æœç´¢</label>
+            <input id="searchInput" type="search" placeholder="æ ‡é¢˜ã€ä½œè€…ã€CPã€å¤‡æ³¨" />
           </section>
 
-          <section class="work-list" id="workList" aria-label="×÷Æ·ÁÐ±í"></section>
+          <section class="work-list" id="workList" aria-label="ä½œå“åˆ—è¡¨"></section>
         </aside>
 
         <article class="reader-panel" id="readerPanel">
@@ -125,24 +125,24 @@
               <span class="archive-halo"></span>
               <span class="archive-ring ring-outer"></span>
               <span class="archive-ring ring-inner"></span>
-              <span class="empty-mark">Ô­Õ¾</span>
+              <span class="empty-mark">åŽŸç«™</span>
             </div>
             <div class="empty-copy">
-              <h2>°ÑÏë¶ÁµÄ×÷Æ·ÊÕ½øÀ´</h2>
-              <p>×÷Æ·»á±£´æÔÚÕâÌ¨Éè±¸µÄä¯ÀÀÆ÷Àï£¬¶ÏÍøºóÒ²ÄÜ´ò¿ª¡£Äã¿ÉÒÔ°´ CP¡¢¿ÓÎ»¡¢ÔÄ¶Á×´Ì¬»òÈÎºÎÏ°¹ß½¨Á¢ÎÄ¼þ¼Ð¡£</p>
+              <h2>æŠŠæƒ³è¯»çš„ä½œå“æ”¶è¿›æ¥</h2>
+              <p>ä½œå“ä¼šä¿å­˜åœ¨è¿™å°è®¾å¤‡çš„æµè§ˆå™¨é‡Œï¼Œæ–­ç½‘åŽä¹Ÿèƒ½æ‰“å¼€ã€‚ä½ å¯ä»¥æŒ‰ CPã€å‘ä½ã€é˜…è¯»çŠ¶æ€æˆ–ä»»ä½•ä¹ æƒ¯å»ºç«‹æ–‡ä»¶å¤¹ã€‚</p>
             </div>
           </div>
 
           <div class="reader hidden" id="reader">
             <div class="reader-actions">
-              <button class="ghost-button" id="backToList">Êé¼Ü</button>
+              <button class="ghost-button" id="backToList">ä¹¦æž¶</button>
               <div>
-                <button class="ghost-button square-button" id="fontDecrease" title="ËõÐ¡×ÖºÅ" aria-label="ËõÐ¡×ÖºÅ">A-</button>
-                <button class="ghost-button square-button" id="fontIncrease" title="·Å´ó×ÖºÅ" aria-label="·Å´ó×ÖºÅ">A+</button>
-                <button class="ghost-button hidden" id="languageToggleButton" type="button">Ë«Óï</button>
-                <button class="ghost-button" id="highlightButton">¸ßÁÁ</button>
-                <button class="ghost-button" id="editMetaButton">ÕûÀí</button>
-                <button class="danger-button" id="deleteWorkButton">É¾³ý</button>
+                <button class="ghost-button square-button" id="fontDecrease" title="ç¼©å°å­—å·" aria-label="ç¼©å°å­—å·">A-</button>
+                <button class="ghost-button square-button" id="fontIncrease" title="æ”¾å¤§å­—å·" aria-label="æ”¾å¤§å­—å·">A+</button>
+                <button class="ghost-button hidden" id="languageToggleButton" type="button">åŒè¯­</button>
+                <button class="ghost-button" id="highlightButton">é«˜äº®</button>
+                <button class="ghost-button" id="editMetaButton">æ•´ç†</button>
+                <button class="danger-button" id="deleteWorkButton">åˆ é™¤</button>
               </div>
             </div>
 
@@ -154,15 +154,15 @@
             </header>
 
             <section class="chapter-strip">
-              <button class="ghost-button" id="prevChapter">ÉÏÒ»ÕÂ</button>
-              <button class="ghost-button chapter-current" id="openChapterDialog">Ä¿Â¼</button>
-              <button class="ghost-button" id="nextChapter">ÏÂÒ»ÕÂ</button>
+              <button class="ghost-button" id="prevChapter">ä¸Šä¸€ç« </button>
+              <button class="ghost-button chapter-current" id="openChapterDialog">ç›®å½•</button>
+              <button class="ghost-button" id="nextChapter">ä¸‹ä¸€ç« </button>
             </section>
 
             <section class="metadata-block" id="metadataBlock"></section>
             <section class="notes-block">
-              <label for="noteInput">ÎÒµÄ±¸×¢</label>
-              <textarea id="noteInput" placeholder="¶Áºó¸Ð¡¢À×µãÌáÐÑ¡¢Ãû³¡Ãæ¡¢½ø¶È¡­¡­"></textarea>
+              <label for="noteInput">æˆ‘çš„å¤‡æ³¨</label>
+              <textarea id="noteInput" placeholder="è¯»åŽæ„Ÿã€é›·ç‚¹æé†’ã€ååœºé¢ã€è¿›åº¦â€¦â€¦"></textarea>
             </section>
             <section class="summary-block" id="summaryBlock"></section>
             <section class="summary-block source-notes-block" id="sourceNotesBlock"></section>
@@ -173,11 +173,11 @@
       </main>
     </div>
 
-    <nav class="reading-bar hidden" id="readingBar" aria-label="ÔÄ¶Á½ø¶È">
-      <button class="ghost-button" id="barTocButton">Ä¿Â¼</button>
+    <nav class="reading-bar hidden" id="readingBar" aria-label="é˜…è¯»è¿›åº¦">
+      <button class="ghost-button" id="barTocButton">ç›®å½•</button>
       <input id="progressRange" type="range" min="0" max="1000" value="0" />
       <span id="progressText">0%</span>
-      <button class="ghost-button" id="bookmarkButton" hidden>ÊéÇ©</button>
+      <button class="ghost-button" id="bookmarkButton" hidden>ä¹¦ç­¾</button>
     </nav>
 
     <div class="reader-page-count hidden" id="readerPageCount">1 / 1</div>
@@ -185,43 +185,43 @@
     <div class="reader-console hidden" id="readerConsole">
       <div class="reader-console-top">
         <button class="console-text-button" id="consoleBackButton" type="button">?</button>
-        <button class="console-text-button" id="consoleTopBookmarkButton" type="button" hidden>ÊéÇ©</button>
+        <button class="console-text-button" id="consoleTopBookmarkButton" type="button" hidden>ä¹¦ç­¾</button>
       </div>
       <div class="reader-console-bottom">
         <div class="console-progress-row">
           <button class="console-text-button chapter-jump" id="consolePrevChapter" type="button" hidden>?</button>
           <button class="console-main-pill" id="consoleLibraryButton" type="button">
-            <span id="consoleMenuProgress">Ä¿Â¼ ¡¤ 0%</span>
+            <span id="consoleMenuProgress">ç›®å½• Â· 0%</span>
             <b>?</b>
           </button>
           <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button" hidden>?</button>
         </div>
         <div class="console-action-row">
-          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>¸ßÁÁ</span><b id="consoleBookmarkCount">0</b></button>
-          <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>ËÑË÷</span><b>?</b></button>
-          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>ÉèÖÃ</span><b>Aa</b></button>
-          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>¼ÓÈëÊéÇ©</span><b>?</b></button>
-          <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>±³¾°</span><b>?</b></button>
+          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>é«˜äº®</span><b id="consoleBookmarkCount">0</b></button>
+          <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>æœç´¢</span><b>?</b></button>
+          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>è®¾ç½®</span><b>Aa</b></button>
+          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>åŠ å…¥ä¹¦ç­¾</span><b>?</b></button>
+          <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>èƒŒæ™¯</span><b>?</b></button>
         </div>
       </div>
     </div>
 
-    <div class="selection-toolbar hidden" id="selectionToolbar" aria-label="¸ßÁÁ¹¤¾ß">
-      <button class="highlight-dot yellow" type="button" data-highlight-color="yellow" aria-label="µ­»Æ¸ßÁÁ"></button>
-      <button class="highlight-dot green" type="button" data-highlight-color="green" aria-label="µ­ÂÌ¸ßÁÁ"></button>
-      <button class="highlight-dot blue" type="button" data-highlight-color="blue" aria-label="µ­À¶¸ßÁÁ"></button>
-      <button class="highlight-dot pink" type="button" data-highlight-color="pink" aria-label="µ­·Û¸ßÁÁ"></button>
-      <button type="button" data-highlight-action="note">±¸×¢</button>
-      <button type="button" data-highlight-action="copy">¸´ÖÆ</button>
-      <button type="button" data-highlight-action="delete">É¾³ý</button>
+    <div class="selection-toolbar hidden" id="selectionToolbar" aria-label="é«˜äº®å·¥å…·">
+      <button class="highlight-dot yellow" type="button" data-highlight-color="yellow" aria-label="æ·¡é»„é«˜äº®"></button>
+      <button class="highlight-dot green" type="button" data-highlight-color="green" aria-label="æ·¡ç»¿é«˜äº®"></button>
+      <button class="highlight-dot blue" type="button" data-highlight-color="blue" aria-label="æ·¡è“é«˜äº®"></button>
+      <button class="highlight-dot pink" type="button" data-highlight-color="pink" aria-label="æ·¡ç²‰é«˜äº®"></button>
+      <button type="button" data-highlight-action="note">å¤‡æ³¨</button>
+      <button type="button" data-highlight-action="copy">å¤åˆ¶</button>
+      <button type="button" data-highlight-action="delete">åˆ é™¤</button>
     </div>
 
     <dialog id="imagePreviewDialog" class="image-preview-dialog">
       <div class="image-preview-card">
-        <img id="imagePreview" alt="Ô¤ÀÀÍ¼Æ¬" />
+        <img id="imagePreview" alt="é¢„è§ˆå›¾ç‰‡" />
         <div class="image-preview-actions">
-          <button class="ghost-button" id="downloadPreviewImage" type="button">ÏÂÔØ</button>
-          <button class="ghost-button" id="closeImagePreview" type="button">¹Ø±Õ</button>
+          <button class="ghost-button" id="downloadPreviewImage" type="button">ä¸‹è½½</button>
+          <button class="ghost-button" id="closeImagePreview" type="button">å…³é—­</button>
         </div>
       </div>
     </dialog>
@@ -234,7 +234,7 @@
               <input id="settingsBrightness" type="range" min="45" max="100" step="1" value="100" />
               <span>?</span>
             </label>
-            <button class="rs-v59-card rs-v59-toggle" id="settingsNightButton" type="button"><span>»¤ÑÛ</span><b></b></button>
+            <button class="rs-v59-card rs-v59-toggle" id="settingsNightButton" type="button"><span>æŠ¤çœ¼</span><b></b></button>
           </div>
 
           <div class="rs-v59-row">
@@ -248,25 +248,25 @@
               </div>
             </div>
             <details class="rs-v59-card rs-v59-font-details">
-              <summary>ÏµÍ³×ÖÌå ?</summary>
+              <summary>ç³»ç»Ÿå­—ä½“ ?</summary>
               <div class="rs-v59-font-menu" id="fontChoiceGrid">
-                <button type="button" data-font-family="original"><b>Aa</b><span>Ô­Õ¾</span></button>
-                <button type="button" data-font-family="serif"><b>Aa</b><span>ËÎÌå</span></button>
-                <button type="button" data-font-family="system"><b>Aa</b><span>ºÚÌå</span></button>
-                <button type="button" data-font-family="kaiti"><b>Aa</b><span>¿¬Ìå</span></button>
-                <button type="button" data-font-family="wenkai"><b>Aa</b><span>ÎÄ¿¬</span></button>
+                <button type="button" data-font-family="original"><b>Aa</b><span>åŽŸç«™</span></button>
+                <button type="button" data-font-family="serif"><b>Aa</b><span>å®‹ä½“</span></button>
+                <button type="button" data-font-family="system"><b>Aa</b><span>é»‘ä½“</span></button>
+                <button type="button" data-font-family="kaiti"><b>Aa</b><span>æ¥·ä½“</span></button>
+                <button type="button" data-font-family="wenkai"><b>Aa</b><span>æ–‡æ¥·</span></button>
               </div>
             </details>
           </div>
 
           <div class="rs-v59-row rs-v59-language-row">
             <div class="rs-v59-card rs-v59-language-mode" id="settingsLanguageMode">
-              <button type="button" data-language-mode="both">Ë«Óï</button>
-              <button type="button" data-language-mode="zh">ÖÐÎÄ</button>
-              <button type="button" data-language-mode="en">Ó¢ÎÄ</button>
+              <button type="button" data-language-mode="both">åŒè¯­</button>
+              <button type="button" data-language-mode="zh">ä¸­æ–‡</button>
+              <button type="button" data-language-mode="en">è‹±æ–‡</button>
             </div>
             <details class="rs-v59-card rs-v59-font-details rs-v59-english-font-details">
-              <summary>Ó¢ÎÄ×ÖÌå ?</summary>
+              <summary>è‹±æ–‡å­—ä½“ ?</summary>
               <div class="rs-v59-font-menu" id="englishFontChoiceGrid">
                 <button type="button" data-english-font-family="georgia"><b>Aa</b><span>Georgia</span></button>
                 <button type="button" data-english-font-family="iowan"><b>Aa</b><span>Iowan</span></button>
@@ -279,51 +279,51 @@
 
           <div class="rs-v59-row">
             <div class="rs-v59-bg-dots">
-              <button type="button" data-bg="white">´¿°×</button>
-              <button type="button" data-bg="light">Ç³»Ò</button>
-              <button type="button" data-bg="medium">»¤ÑÛ</button>
-              <button type="button" data-bg="black">´¿ºÚ</button>
+              <button type="button" data-bg="white">çº¯ç™½</button>
+              <button type="button" data-bg="light">æµ…ç°</button>
+              <button type="button" data-bg="medium">æŠ¤çœ¼</button>
+              <button type="button" data-bg="black">çº¯é»‘</button>
             </div>
-            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>±³¾°</span><b>?</b></button>
+            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>èƒŒæ™¯</span><b>?</b></button>
           </div>
 
           <div class="rs-v59-row">
             <div class="rs-v59-card rs-v59-turn">
               <div>
-                <button type="button" data-turn-mode="tap">¸²¸Ç</button>
-                <button type="button" data-turn-mode="swipe">·ÂÕæ</button>
-                <button type="button" data-turn-mode="scroll">ÉÏÏÂ</button>
+                <button type="button" data-turn-mode="tap">è¦†ç›–</button>
+                <button type="button" data-turn-mode="swipe">ä»¿çœŸ</button>
+                <button type="button" data-turn-mode="scroll">ä¸Šä¸‹</button>
               </div>
-              <select id="settingsTurnMode" aria-label="·­Ò³·½Ê½" hidden>
-                <option value="tap">¸²¸Ç</option>
-                <option value="swipe">·ÂÕæ</option>
-                <option value="scroll">ÉÏÏÂ</option>
+              <select id="settingsTurnMode" aria-label="ç¿»é¡µæ–¹å¼" hidden>
+                <option value="tap">è¦†ç›–</option>
+                <option value="swipe">ä»¿çœŸ</option>
+                <option value="scroll">ä¸Šä¸‹</option>
               </select>
             </div>
             <button class="rs-v59-card rs-v59-jump rs-v59-margin" id="settingsSpacingButton" type="button">
-              <span>¼ä¾à</span>
+              <span>é—´è·</span>
               <output id="settingsSideMargin">?</output>
             </button>
           </div>
 
           <div class="rs-v59-spacing-panel" id="settingsSpacingPanel" hidden>
             <div>
-              <span>ÐÐ¾à</span>
+              <span>è¡Œè·</span>
               <button type="button" data-stepper="line" data-delta="-1">?</button>
               <output id="settingsLineHeight">1.8</output>
-              <button type="button" data-stepper="line" data-delta="1">£«</button>
+              <button type="button" data-stepper="line" data-delta="1">ï¼‹</button>
             </div>
             <div>
-              <span>×óÓÒ</span>
+              <span>å·¦å³</span>
               <button type="button" data-stepper="margin" data-delta="-1">?</button>
               <output id="settingsSideMarginValue">20px</output>
-              <button type="button" data-stepper="margin" data-delta="1">£«</button>
+              <button type="button" data-stepper="margin" data-delta="1">ï¼‹</button>
             </div>
             <div>
-              <span>ÉÏÏÂ</span>
+              <span>ä¸Šä¸‹</span>
               <button type="button" data-stepper="verticalMargin" data-delta="-1">?</button>
               <output id="settingsVerticalMargin">42px</output>
-              <button type="button" data-stepper="verticalMargin" data-delta="1">£«</button>
+              <button type="button" data-stepper="verticalMargin" data-delta="1">ï¼‹</button>
             </div>
           </div>
         </div>
@@ -332,16 +332,16 @@
 
     <dialog id="backgroundDialog">
       <form method="dialog" class="dialog-card compact-settings">
-        <h2>±³¾°</h2>
+        <h2>èƒŒæ™¯</h2>
         <div class="background-grid">
-          <button class="bg-choice" type="button" data-bg="white">´¿°×</button>
-          <button class="bg-choice" type="button" data-bg="light">Ç³»Ò</button>
-          <button class="bg-choice" type="button" data-bg="medium">ÖÐ»Ò</button>
-          <button class="bg-choice" type="button" data-bg="darkgray">Éî»Ò</button>
-          <button class="bg-choice" type="button" data-bg="black">´¿ºÚ</button>
+          <button class="bg-choice" type="button" data-bg="white">çº¯ç™½</button>
+          <button class="bg-choice" type="button" data-bg="light">æµ…ç°</button>
+          <button class="bg-choice" type="button" data-bg="medium">ä¸­ç°</button>
+          <button class="bg-choice" type="button" data-bg="darkgray">æ·±ç°</button>
+          <button class="bg-choice" type="button" data-bg="black">çº¯é»‘</button>
         </div>
         <menu>
-          <button value="close">Íê³É</button>
+          <button value="close">å®Œæˆ</button>
         </menu>
       </form>
     </dialog>
@@ -349,18 +349,18 @@
     <dialog id="chapterDialog">
       <div class="dialog-card chapter-dialog-card">
         <div class="dialog-head">
-          <h2>ÔÄ¶Áµ¼º½</h2>
+          <h2>é˜…è¯»å¯¼èˆª</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" id="chapterSettingsButton" type="button">ÉèÖÃ</button>
-            <button class="ghost-button" id="closeChapterDialog" type="button">¹Ø±Õ</button>
+            <button class="ghost-button" id="chapterSettingsButton" type="button">è®¾ç½®</button>
+            <button class="ghost-button" id="closeChapterDialog" type="button">å…³é—­</button>
           </div>
         </div>
         <p class="chapter-progress" id="chapterProgressText"></p>
         <section class="chapter-work-info" id="chapterWorkInfo"></section>
         <div class="reader-nav-tabs" id="readerNavTabs">
-          <button type="button" data-reader-tab="info">ÐÅÏ¢</button>
-          <button type="button" data-reader-tab="chapters">ÕÂ½Ú</button>
-          <button type="button" data-reader-tab="highlights">¸ßÁÁ</button>
+          <button type="button" data-reader-tab="info">ä¿¡æ¯</button>
+          <button type="button" data-reader-tab="chapters">ç« èŠ‚</button>
+          <button type="button" data-reader-tab="highlights">é«˜äº®</button>
         </div>
         <section class="reader-nav-section" data-reader-section="info">
           <div class="reader-info-panel" id="readerInfoPanel"></div>
@@ -380,13 +380,13 @@
     <dialog id="highlightLibraryDialog">
       <div class="dialog-card highlight-library-card">
         <div class="dialog-head">
-          <h2 id="highlightLibraryTitle">¸ßÁÁ¿â</h2>
+          <h2 id="highlightLibraryTitle">é«˜äº®åº“</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" id="highlightLibraryBack" type="button" hidden>·µ»Ø</button>
-            <button class="ghost-button" id="closeHighlightLibrary" type="button">¹Ø±Õ</button>
+            <button class="ghost-button" id="highlightLibraryBack" type="button" hidden>è¿”å›ž</button>
+            <button class="ghost-button" id="closeHighlightLibrary" type="button">å…³é—­</button>
           </div>
         </div>
-        <p class="helper-text" id="highlightLibraryHint">°´×÷Æ·ÊÕÄÉÄã»®¹ýµÄ¾ä×Ó¡£</p>
+        <p class="helper-text" id="highlightLibraryHint">æŒ‰ä½œå“æ”¶çº³ä½ åˆ’è¿‡çš„å¥å­ã€‚</p>
         <div class="highlight-library-list" id="highlightLibraryList"></div>
       </div>
     </dialog>
@@ -394,70 +394,70 @@
     <dialog id="progressColorDialog">
       <form method="dialog" class="dialog-card progress-color-card">
         <div class="dialog-head">
-          <h2>½ø¶ÈÑÕÉ«</h2>
+          <h2>è¿›åº¦é¢œè‰²</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" value="cancel" type="submit" formnovalidate>¹Ø±Õ</button>
+            <button class="ghost-button" value="cancel" type="submit" formnovalidate>å…³é—­</button>
           </div>
         </div>
-        <p class="helper-text">³¤°´ÎÄÕÂ¿¨Æ¬µ×²¿µÄÏ¸Ïß¿ÉÒÔÖØÐÂ´ò¿ªÕâÀï¡£</p>
+        <p class="helper-text">é•¿æŒ‰æ–‡ç« å¡ç‰‡åº•éƒ¨çš„ç»†çº¿å¯ä»¥é‡æ–°æ‰“å¼€è¿™é‡Œã€‚</p>
         <div class="progress-color-groups" id="progressColorGroups"></div>
       </form>
     </dialog>
 
     <div class="portrait-lock hidden" id="portraitLock">
-      <div>ÇëÊúÆÁÔÄ¶Á</div>
-      <p>ºáÆÁ»áµ²×¡ÅÅ°æ£¬ÎÒÏÈ°ïÄãÀ¹×¡¡£</p>
+      <div>è¯·ç«–å±é˜…è¯»</div>
+      <p>æ¨ªå±ä¼šæŒ¡ä½æŽ’ç‰ˆï¼Œæˆ‘å…ˆå¸®ä½ æ‹¦ä½ã€‚</p>
     </div>
 
     <dialog id="folderDialog">
       <form method="dialog" class="dialog-card" id="folderForm">
-        <h2>ÐÂ½¨ÎÄ¼þ¼Ð</h2>
-        <label for="folderName">Ãû³Æ</label>
-        <input id="folderName" required maxlength="40" placeholder="ÀýÈç£ºÊÚ·­¡¢Steve/Bucky¡¢Î´¶Á" />
+        <h2>æ–°å»ºæ–‡ä»¶å¤¹</h2>
+        <label for="folderName">åç§°</label>
+        <input id="folderName" required maxlength="40" placeholder="ä¾‹å¦‚ï¼šæŽˆç¿»ã€Steve/Buckyã€æœªè¯»" />
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>È¡Ïû</button>
-          <button value="save">±£´æ</button>
+          <button value="cancel" class="ghost-button" formnovalidate>å–æ¶ˆ</button>
+          <button value="save">ä¿å­˜</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="metaDialog">
       <form method="dialog" class="dialog-card" id="metaForm">
-        <h2>ÕûÀí×÷Æ·</h2>
-        <label for="metaFolder">ÎÄ¼þ¼Ð</label>
+        <h2>æ•´ç†ä½œå“</h2>
+        <label for="metaFolder">æ–‡ä»¶å¤¹</label>
         <select id="metaFolder"></select>
-        <label for="metaCustomTags">×Ô¶¨Òå±êÇ©</label>
-        <input id="metaCustomTags" placeholder="ÓÃ¶ººÅ·Ö¸ô£¬±ÈÈç HE, ³¤Æª, ÒÑ¶Á" />
+        <label for="metaCustomTags">è‡ªå®šä¹‰æ ‡ç­¾</label>
+        <input id="metaCustomTags" placeholder="ç”¨é€—å·åˆ†éš”ï¼Œæ¯”å¦‚ HE, é•¿ç¯‡, å·²è¯»" />
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>È¡Ïû</button>
-          <button value="save">±£´æ</button>
+          <button value="cancel" class="ghost-button" formnovalidate>å–æ¶ˆ</button>
+          <button value="save">ä¿å­˜</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="workManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="workManageForm">
-        <h2 id="manageWorkTitle">ÕûÀí</h2>
-        <label for="manageFolderSelect">ÎÄ¼þ¼Ð</label>
+        <h2 id="manageWorkTitle">æ•´ç†</h2>
+        <label for="manageFolderSelect">æ–‡ä»¶å¤¹</label>
         <select id="manageFolderSelect"></select>
-        <label>ÒÑ¼ÓÈëÎÄ¼þ¼Ð</label>
+        <label>å·²åŠ å…¥æ–‡ä»¶å¤¹</label>
         <div class="folder-tag-row" id="manageFolderTagList"></div>
-        <label for="manageTagInput">Ð¡ tag</label>
+        <label for="manageTagInput">å° tag</label>
         <div class="mini-tag-row editable-tags" id="manageTagList"></div>
         <div class="inline-action-row">
-          <input id="manageTagInput" maxlength="28" placeholder="ÀýÈç£ºÒÑ¶Á¡¢³¤Æª¡¢HE" />
-          <button class="ghost-button" id="manageAddTagButton" type="button">Ìí¼Ó</button>
+          <input id="manageTagInput" maxlength="28" placeholder="ä¾‹å¦‚ï¼šå·²è¯»ã€é•¿ç¯‡ã€HE" />
+          <button class="ghost-button" id="manageAddTagButton" type="button">æ·»åŠ </button>
         </div>
         <div class="manage-actions">
           <button class="ghost-button manage-progress-color" id="manageProgressColorButton" type="button">
             <span id="manageProgressColorSwatch" aria-hidden="true"></span>
-            <b>½ø¶ÈÑÕÉ«</b>
+            <b>è¿›åº¦é¢œè‰²</b>
           </button>
-          <button class="ghost-button" id="manageDownloadButton" type="button">ÏÂÔØ</button>
-          <button class="danger-button" id="manageDeleteWorkButton" type="button">É¾³ý</button>
+          <button class="ghost-button" id="manageDownloadButton" type="button">ä¸‹è½½</button>
+          <button class="danger-button" id="manageDeleteWorkButton" type="button">åˆ é™¤</button>
         </div>
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>¹Ø±Õ</button>
+          <button value="cancel" class="ghost-button" formnovalidate>å…³é—­</button>
         </menu>
       </form>
     </dialog>
@@ -466,66 +466,66 @@
       <form method="dialog" class="dialog-card batch-card" id="batchGroupForm">
         <div class="batch-head">
           <div>
-            <h2>ÅúÁ¿ÕûÀí</h2>
-            <p id="batchCountText">ÒÑÑ¡ 0 Æª</p>
+            <h2>æ‰¹é‡æ•´ç†</h2>
+            <p id="batchCountText">å·²é€‰ 0 ç¯‡</p>
           </div>
-          <button value="cancel" class="ghost-button batch-close" formnovalidate>¹Ø±Õ</button>
+          <button value="cancel" class="ghost-button batch-close" formnovalidate>å…³é—­</button>
         </div>
         <div class="batch-search-wrap">
-          <input id="batchSearchInput" type="search" placeholder="ËÑË÷±êÌâ¡¢×÷Õß¡¢CP¡¢±¸×¢" />
+          <input id="batchSearchInput" type="search" placeholder="æœç´¢æ ‡é¢˜ã€ä½œè€…ã€CPã€å¤‡æ³¨" />
         </div>
         <div class="batch-toolbar">
-          <button class="ghost-button" id="batchSelectAllButton" type="button">È«Ñ¡µ±Ç°</button>
-          <button class="ghost-button" id="batchClearButton" type="button">Çå¿Õ</button>
+          <button class="ghost-button" id="batchSelectAllButton" type="button">å…¨é€‰å½“å‰</button>
+          <button class="ghost-button" id="batchClearButton" type="button">æ¸…ç©º</button>
         </div>
         <div class="batch-work-list" id="batchWorkList"></div>
         <div class="batch-footer">
-          <label>¼ÓÈë·Ö×é</label>
+          <label>åŠ å…¥åˆ†ç»„</label>
           <div class="batch-folder-list" id="batchFolderList"></div>
-          <button value="save" id="batchSubmitButton">È·ÈÏÒÆ¶¯</button>
+          <button value="save" id="batchSubmitButton">ç¡®è®¤ç§»åŠ¨</button>
         </div>
       </form>
     </dialog>
 
     <dialog id="folderManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="folderManageForm">
-        <h2 id="manageFolderTitle">ÎÄ¼þ¼Ð</h2>
+        <h2 id="manageFolderTitle">æ–‡ä»¶å¤¹</h2>
         <div class="manage-section">
-          <span>Î»ÖÃ</span>
+          <span>ä½ç½®</span>
           <div class="manage-actions">
-            <button class="ghost-button" id="manageFolderLeftButton" type="button">×óÒÆ</button>
-            <button class="ghost-button" id="manageFolderRightButton" type="button">ÓÒÒÆ</button>
+            <button class="ghost-button" id="manageFolderLeftButton" type="button">å·¦ç§»</button>
+            <button class="ghost-button" id="manageFolderRightButton" type="button">å³ç§»</button>
           </div>
         </div>
         <div class="manage-section danger-zone">
-          <span>Î£ÏÕ²Ù×÷</span>
-          <button class="danger-button" id="manageDeleteFolderButton" type="button">É¾³ýÎÄ¼þ¼Ð</button>
+          <span>å±é™©æ“ä½œ</span>
+          <button class="danger-button" id="manageDeleteFolderButton" type="button">åˆ é™¤æ–‡ä»¶å¤¹</button>
         </div>
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>¹Ø±Õ</button>
+          <button value="cancel" class="ghost-button" formnovalidate>å…³é—­</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="manualDialog">
       <form method="dialog" class="dialog-card manual-card" id="manualForm">
-        <h2>ÊÖ¶¯µ¼Èë</h2>
-        <label for="manualTitle">±êÌâ</label>
+        <h2>æ‰‹åŠ¨å¯¼å…¥</h2>
+        <label for="manualTitle">æ ‡é¢˜</label>
         <input id="manualTitle" required />
-        <label for="manualAuthor">×÷Õß</label>
+        <label for="manualAuthor">ä½œè€…</label>
         <input id="manualAuthor" />
-        <label for="manualUrl">Ô­Á´½Ó</label>
+        <label for="manualUrl">åŽŸé“¾æŽ¥</label>
         <input id="manualUrl" type="url" />
-        <label for="manualContent">ÕýÎÄ</label>
-        <textarea id="manualContent" required placeholder="Èç¹ûÔÚÏßÍøÒ³²»ÄÜÖ±½Ó¶ÁÈ¡Ô­Õ¾£¬¿ÉÒÔÏÈ°ÑÕýÎÄÕ³Ìù½øÀ´¡£"></textarea>
+        <label for="manualContent">æ­£æ–‡</label>
+        <textarea id="manualContent" required placeholder="å¦‚æžœåœ¨çº¿ç½‘é¡µä¸èƒ½ç›´æŽ¥è¯»å–åŽŸç«™ï¼Œå¯ä»¥å…ˆæŠŠæ­£æ–‡ç²˜è´´è¿›æ¥ã€‚"></textarea>
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>È¡Ïû</button>
-          <button value="save">±£´æ</button>
+          <button value="cancel" class="ghost-button" formnovalidate>å–æ¶ˆ</button>
+          <button value="save">ä¿å­˜</button>
         </menu>
       </form>
     </dialog>
 
-    <script src="./app.js?v=150-cloud-bilingual-polish-20260624" type="module"></script>
+    <script src="./app.js?v=151-utf8-sync-bilingual-20260624" type="module"></script>
   </body>
 </html>
 
