@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./vellum-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="./vellum-logo.png" />
-    <link rel="stylesheet" href="./styles.css?v=158-account-merge-mobile-reader-20260625" />
+    <link rel="stylesheet" href="./styles.css?v=160-app-icons-utf8-20260625" />
   </head>
   <body>
     <div class="app-shell">
@@ -20,42 +20,67 @@
         <div class="brand-lockup">
           <img class="brand-logo" src="./vellum-logo.png" alt="" aria-hidden="true" />
           <div>
-            <p class="eyebrow">绉佷汉鏂囧簱</p>
+            <p class="eyebrow">私人文库</p>
             <h1>Vellum</h1>
           </div>
         </div>
         <div class="top-actions">
-          <button class="cloud-mini highlight-library-mini" id="highlightLibraryButton" type="button" title="鎽樺綍" aria-label="鎽樺綍"><span class="highlight-library-icon" aria-hidden="true"></span></button>
-          <button class="cloud-mini" id="cloudPanelButton" type="button" title="浜戠鍚屾" aria-label="浜戠鍚屾"><span class="cloud-sync-icon" aria-hidden="true"></span></button>
-          <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="瀵煎叆浣滃搧" aria-label="瀵煎叆浣滃搧"><span class="import-plus-icon" aria-hidden="true"></span></button>
-          <button class="icon-button" id="themeToggle" title="鍒囨崲鏄庢殫" aria-label="鍒囨崲鏄庢殫"><span class="theme-mode-icon" aria-hidden="true"></span></button>
+          <button class="cloud-mini highlight-library-mini" id="highlightLibraryButton" type="button" title="摘录" aria-label="摘录">
+            <svg class="app-top-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7.5 4.5H16.5C17.6046 4.5 18.5 5.39543 18.5 6.5V20L12 16.25L5.5 20V6.5C5.5 5.39543 6.39543 4.5 7.5 4.5Z" />
+              <path d="M9 8.5H15M9 11.5H14" />
+            </svg>
+          </button>
+          <button class="cloud-mini" id="cloudPanelButton" type="button" title="云端同步" aria-label="云端同步">
+            <svg class="app-top-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7.2 17.5H6.8C4.7 17.5 3 15.86 3 13.82C3 11.96 4.45 10.4 6.32 10.18C6.95 7.45 9.27 5.5 12 5.5C15.05 5.5 17.57 7.83 17.88 10.82C19.65 11.22 21 12.7 21 14.48C21 16.6 19.2 18.3 17 18.3H16.6" />
+              <path d="M14.8 13.2C14.2 12.3 13.2 11.75 12.1 11.75C10.95 11.75 9.95 12.35 9.4 13.25" />
+              <path d="M9.35 13.25H7.8V11.7" />
+              <path d="M9.2 15.8C9.8 16.7 10.8 17.25 11.9 17.25C13.05 17.25 14.05 16.65 14.6 15.75" />
+              <path d="M14.65 15.75H16.2V17.3" />
+            </svg>
+          </button>
+          <button class="cloud-mini import-mini" id="importDrawerButton" type="button" title="导入作品" aria-label="导入作品">
+            <svg class="app-top-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4.5V13.2" />
+              <path d="M8.8 10.1L12 13.3L15.2 10.1" />
+              <path d="M5.5 11.5V17.5C5.5 18.6046 6.39543 19.5 7.5 19.5H16.5C17.6046 19.5 18.5 18.6046 18.5 17.5V11.5" />
+              <path d="M8 15.5H16" />
+            </svg>
+          </button>
+          <button class="icon-button" id="themeToggle" title="切换明暗" aria-label="切换明暗">
+            <svg class="app-top-icon theme-icon-solid" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="7" />
+              <path d="M12 5A7 7 0 0 1 12 19V5Z" />
+            </svg>
+          </button>
         </div>
       </header>
 
       <main class="layout">
-        <aside class="panel library-panel" aria-label="涔︽灦">
+        <aside class="panel library-panel" aria-label="书架">
           <form class="import-box import-drawer" id="importForm">
-            <label for="sourceUrl">鍘熺珯閾炬帴</label>
+            <label for="sourceUrl">原站链接</label>
             <div class="url-row">
-              <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://浣滃搧绔欑偣/works/..." autocomplete="off" />
-              <button type="submit">淇濆瓨</button>
+              <input id="sourceUrl" name="sourceUrl" type="url" placeholder="https://作品站点/works/..." autocomplete="off" />
+              <button type="submit">保存</button>
             </div>
-            <button class="ghost-button" type="button" id="manualOpen">鎵嬪姩瀵煎叆</button>
-            <button class="ghost-button" type="button" id="copyCollectorButton">澶囩敤閲囬泦</button>
+            <button class="ghost-button" type="button" id="manualOpen">手动导入</button>
+            <button class="ghost-button" type="button" id="copyCollectorButton">备用采集</button>
             <label class="file-import">
-              <span>瀵煎叆 HTML / 閲囬泦鏂囦欢</span>
+              <span>导入 HTML / 采集文件</span>
               <input id="htmlFileInput" type="file" accept=".html,.htm,.json,text/html,application/json" />
             </label>
-            <p class="helper-text">璐撮摼鎺ヤ細浼樺厛鑷姩瀵煎叆锛涜嫢鍘熺珯涓存椂鎷掔粷锛屼細鍦ㄥ悗鍙扮户缁噸璇曘€?/p>
+            <p class="helper-text">贴链接会优先自动导入；若原站临时拒绝，会在后台继续重试。</p>
             <p class="status" id="importStatus" role="status"></p>
           </form>
 
           <section class="folder-tools shelf-directory">
             <div class="section-title">
-              <h2>鏂囧簱</h2>
+              <h2>文库</h2>
               <div class="section-actions">
-                <button class="tiny-button" id="batchManageButton" title="鎵归噺鏁寸悊" aria-label="鎵归噺鏁寸悊" type="button">锛?/button>
-                <button class="tiny-button" id="newFolderButton" title="鏂板缓鍒嗙粍" aria-label="鏂板缓鍒嗙粍">鏂板缓</button>
+                <button class="tiny-button" id="batchManageButton" title="批量整理" aria-label="批量整理" type="button">＋</button>
+                <button class="tiny-button" id="newFolderButton" title="新建分组" aria-label="新建分组">新建</button>
               </div>
             </div>
             <div class="folder-list" id="folderList"></div>
@@ -65,59 +90,59 @@
             <div class="cloud-box">
               <div class="cloud-card-head">
                 <div>
-                  <h2>浜戠鍚屾</h2>
-                  <p id="cloudUser">鏈繛鎺ュ悓姝ョ爜</p>
+                  <h2>云端同步</h2>
+                  <p id="cloudUser">未连接同步码</p>
                 </div>
-                <button class="cloud-close-button" type="button" id="cloudPanelCloseButton" aria-label="鍏抽棴浜戠鍚屾">脳</button>
+                <button class="cloud-close-button" type="button" id="cloudPanelCloseButton" aria-label="关闭云端同步">×</button>
               </div>
               <input id="cloudEndpoint" class="hidden" type="url" autocomplete="off" />
-              <label class="cloud-code-label" for="cloudCode">鍚屾鐮?/label>
-              <input id="cloudCode" type="text" placeholder="杈撳叆鍚屾鐮侊紝鎴栫偣鐢熸垚" autocomplete="off" />
-              <div class="cloud-history" id="cloudHistoryList" aria-label="鍘嗗彶鍚屾鐮?></div>
+              <label class="cloud-code-label" for="cloudCode">同步码</label>
+              <input id="cloudCode" type="text" placeholder="输入同步码，或点生成" autocomplete="off" />
+              <div class="cloud-history" id="cloudHistoryList" aria-label="历史同步码"></div>
               <div class="cloud-actions" id="cloudConnectActions">
-                <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">杩炴帴</button>
-                <button class="ghost-button" type="button" id="cloudGenerateButton">鐢熸垚</button>
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudStartButton">连接</button>
+                <button class="ghost-button" type="button" id="cloudGenerateButton">生成</button>
               </div>
               <div class="backup-actions cloud-sync-actions" id="cloudSyncActions">
-                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>鍚屾</button>
-                <button class="ghost-button" type="button" id="cloudUploadButton" disabled>涓婁紶</button>
-                <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>涓嬭浇</button>
-                <button class="ghost-button" type="button" id="cloudLogoutButton">鏂紑</button>
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>同步</button>
+                <button class="ghost-button" type="button" id="cloudUploadButton" disabled>上传</button>
+                <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>下载</button>
+                <button class="ghost-button" type="button" id="cloudLogoutButton">断开</button>
               </div>
-              <p class="status" id="cloudStatus">濉悓涓€涓悓姝ョ爜锛屾墜鏈哄拰鐢佃剳灏辨槸鍚屼竴涓簯绔功鏋躲€?/p>
+              <p class="status" id="cloudStatus">填同一个同步码，手机和电脑就是同一个云端书架。</p>
               <details class="cloud-account-details hidden" id="cloudAccountDetails">
-                <summary>楂樼骇</summary>
-                <input class="hidden" id="cloudEmail" type="email" placeholder="閭" autocomplete="email" />
-                <input class="hidden" id="cloudPassword" type="password" placeholder="瀵嗙爜锛岃嚦灏?6 浣? autocomplete="current-password" />
-                <button class="hidden" type="button" id="cloudPasswordLoginButton">瀵嗙爜鐧诲綍</button>
-                <button class="hidden" type="button" id="cloudSignupButton">鏂板缓璐﹀彿</button>
-                <button class="hidden" type="button" id="cloudSetPasswordButton">璁剧疆瀵嗙爜</button>
-                <button class="hidden" type="button" id="cloudLoginButton">閭欢鐧诲綍锛堝鐢級</button>
+                <summary>高级</summary>
+                <input class="hidden" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
+                <input class="hidden" id="cloudPassword" type="password" placeholder="密码，至少 6 位" autocomplete="current-password" />
+                <button class="hidden" type="button" id="cloudPasswordLoginButton">密码登录</button>
+                <button class="hidden" type="button" id="cloudSignupButton">新建账号</button>
+                <button class="hidden" type="button" id="cloudSetPasswordButton">设置密码</button>
+                <button class="hidden" type="button" id="cloudLoginButton">邮件登录（备用）</button>
               </details>
             </div>
           </section>
 
           <section class="sync-tools backup-section">
             <div class="section-title">
-              <h2>澶囦唤</h2>
+              <h2>备份</h2>
             </div>
             <div class="backup-actions">
-              <button class="ghost-button primary-cloud-action" type="button" id="loadLocalLibraryButton">鎭㈠鏈満涔︽灦</button>
-              <button class="ghost-button" type="button" id="exportLibraryButton">瀵煎嚭涔︽灦</button>
+              <button class="ghost-button primary-cloud-action" type="button" id="loadLocalLibraryButton">恢复本机书架</button>
+              <button class="ghost-button" type="button" id="exportLibraryButton">导出书架</button>
               <label class="file-import compact-file-import">
-                <span>瀵煎叆涔︽灦</span>
+                <span>导入书架</span>
                 <input id="libraryFileInput" type="file" accept=".json,application/json" />
               </label>
             </div>
-            <p class="helper-text">鐢佃剳鎶撳彇鍚庡鍑轰功鏋讹紝鎶?JSON 鏂囦欢鍙戝埌鎵嬫満瀵煎叆銆?/p>
+            <p class="helper-text">电脑抓取后导出书架，把 JSON 文件发到手机导入。</p>
           </section>
 
           <section class="search-tools">
-            <label for="searchInput">鎼滅储</label>
-            <input id="searchInput" type="search" placeholder="鏍囬銆佷綔鑰呫€丆P銆佸娉? />
+            <label for="searchInput">搜索</label>
+            <input id="searchInput" type="search" placeholder="标题、作者、CP、备注" />
           </section>
 
-          <section class="work-list" id="workList" aria-label="浣滃搧鍒楄〃"></section>
+          <section class="work-list" id="workList" aria-label="作品列表"></section>
         </aside>
 
         <article class="reader-panel" id="readerPanel">
@@ -129,24 +154,24 @@
               <span class="archive-halo"></span>
               <span class="archive-ring ring-outer"></span>
               <span class="archive-ring ring-inner"></span>
-              <span class="empty-mark">鍘熺珯</span>
+              <span class="empty-mark">原站</span>
             </div>
             <div class="empty-copy">
-              <h2>鎶婃兂璇荤殑浣滃搧鏀惰繘鏉?/h2>
-              <p>浣滃搧浼氫繚瀛樺湪杩欏彴璁惧鐨勬祻瑙堝櫒閲岋紝鏂綉鍚庝篃鑳芥墦寮€銆備綘鍙互鎸?CP銆佸潙浣嶃€侀槄璇荤姸鎬佹垨浠讳綍涔犳儻寤虹珛鏂囦欢澶广€?/p>
+              <h2>把想读的作品收进来</h2>
+              <p>作品会保存在这台设备的浏览器里，断网后也能打开。你可以按 CP、坑位、阅读状态或任何习惯建立文件夹。</p>
             </div>
           </div>
 
           <div class="reader hidden" id="reader">
             <div class="reader-actions">
-              <button class="ghost-button" id="backToList">涔︽灦</button>
+              <button class="ghost-button" id="backToList">书架</button>
               <div>
-                <button class="ghost-button square-button" id="fontDecrease" title="缂╁皬瀛楀彿" aria-label="缂╁皬瀛楀彿">A-</button>
-                <button class="ghost-button square-button" id="fontIncrease" title="鏀惧ぇ瀛楀彿" aria-label="鏀惧ぇ瀛楀彿">A+</button>
-                <button class="ghost-button hidden" id="languageToggleButton" type="button">鍙岃</button>
-                <button class="ghost-button" id="highlightButton">楂樹寒</button>
-                <button class="ghost-button" id="editMetaButton">鏁寸悊</button>
-                <button class="danger-button" id="deleteWorkButton">鍒犻櫎</button>
+                <button class="ghost-button square-button" id="fontDecrease" title="缩小字号" aria-label="缩小字号">A-</button>
+                <button class="ghost-button square-button" id="fontIncrease" title="放大字号" aria-label="放大字号">A+</button>
+                <button class="ghost-button hidden" id="languageToggleButton" type="button">双语</button>
+                <button class="ghost-button" id="highlightButton">高亮</button>
+                <button class="ghost-button" id="editMetaButton">整理</button>
+                <button class="danger-button" id="deleteWorkButton">删除</button>
               </div>
             </div>
 
@@ -158,15 +183,15 @@
             </header>
 
             <section class="chapter-strip">
-              <button class="ghost-button" id="prevChapter">涓婁竴绔?/button>
-              <button class="ghost-button chapter-current" id="openChapterDialog">鐩綍</button>
-              <button class="ghost-button" id="nextChapter">涓嬩竴绔?/button>
+              <button class="ghost-button" id="prevChapter">上一章</button>
+              <button class="ghost-button chapter-current" id="openChapterDialog">目录</button>
+              <button class="ghost-button" id="nextChapter">下一章</button>
             </section>
 
             <section class="metadata-block" id="metadataBlock"></section>
             <section class="notes-block">
-              <label for="noteInput">鎴戠殑澶囨敞</label>
-              <textarea id="noteInput" placeholder="璇诲悗鎰熴€侀浄鐐规彁閱掋€佸悕鍦洪潰銆佽繘搴︹€︹€?></textarea>
+              <label for="noteInput">我的备注</label>
+              <textarea id="noteInput" placeholder="读后感、雷点提醒、名场面、进度……"></textarea>
             </section>
             <section class="summary-block" id="summaryBlock"></section>
             <section class="summary-block source-notes-block" id="sourceNotesBlock"></section>
@@ -177,11 +202,11 @@
       </main>
     </div>
 
-    <nav class="reading-bar hidden" id="readingBar" aria-label="闃呰杩涘害">
-      <button class="ghost-button" id="barTocButton">鐩綍</button>
+    <nav class="reading-bar hidden" id="readingBar" aria-label="阅读进度">
+      <button class="ghost-button" id="barTocButton">目录</button>
       <input id="progressRange" type="range" min="0" max="1000" value="0" />
       <span id="progressText">0%</span>
-      <button class="ghost-button" id="bookmarkButton" hidden>涔︾</button>
+      <button class="ghost-button" id="bookmarkButton" hidden>书签</button>
     </nav>
 
     <div class="reader-page-count hidden" id="readerPageCount">1 / 1</div>
@@ -189,43 +214,43 @@
     <div class="reader-console hidden" id="readerConsole">
       <div class="reader-console-top">
         <button class="console-text-button" id="consoleBackButton" type="button">&larr;</button>
-        <button class="console-text-button" id="consoleTopBookmarkButton" type="button" hidden>涔︾</button>
+        <button class="console-text-button" id="consoleTopBookmarkButton" type="button" hidden>书签</button>
       </div>
       <div class="reader-console-bottom">
         <div class="console-progress-row">
           <button class="console-text-button chapter-jump" id="consolePrevChapter" type="button" hidden>&lsaquo;</button>
           <button class="console-main-pill" id="consoleLibraryButton" type="button">
-            <span id="consoleMenuProgress">鐩綍 路 0%</span>
+            <span id="consoleMenuProgress">目录 · 0%</span>
             <b>&equiv;</b>
           </button>
           <button class="console-text-button chapter-jump" id="consoleNextChapter" type="button" hidden>&rsaquo;</button>
         </div>
         <div class="console-action-row">
-          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>楂樹寒</span><b id="consoleBookmarkCount">0</b></button>
-          <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>鎼滅储</span><b>鈱?/b></button>
-          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>璁剧疆</span><b>Aa</b></button>
-          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>鍔犲叆涔︾</span><b>鈾?/b></button>
-          <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>鑳屾櫙</span><b>鈼?/b></button>
+          <button class="console-icon-button" id="consoleBookmarkPanelButton" type="button" hidden><span>高亮</span><b id="consoleBookmarkCount">0</b></button>
+          <button class="console-icon-button" id="consoleSearchButton" type="button" hidden><span>搜索</span><b>⌕</b></button>
+          <button class="console-icon-button" id="consoleSettingsButton" type="button"><span>设置</span><b>Aa</b></button>
+          <button class="console-icon-button" id="consoleAddBookmarkButton" type="button" hidden><span>加入书签</span><b>♡</b></button>
+          <button class="console-icon-button" id="consoleBackgroundButton" type="button" hidden><span>背景</span><b>◐</b></button>
         </div>
       </div>
     </div>
 
-    <div class="selection-toolbar hidden" id="selectionToolbar" aria-label="楂樹寒宸ュ叿">
-      <button class="highlight-dot yellow" type="button" data-highlight-color="yellow" aria-label="娣￠粍楂樹寒"></button>
-      <button class="highlight-dot green" type="button" data-highlight-color="green" aria-label="娣＄豢楂樹寒"></button>
-      <button class="highlight-dot blue" type="button" data-highlight-color="blue" aria-label="娣¤摑楂樹寒"></button>
-      <button class="highlight-dot pink" type="button" data-highlight-color="pink" aria-label="娣＄矇楂樹寒"></button>
-      <button type="button" data-highlight-action="note">澶囨敞</button>
-      <button type="button" data-highlight-action="copy">澶嶅埗</button>
-      <button type="button" data-highlight-action="delete">鍒犻櫎</button>
+    <div class="selection-toolbar hidden" id="selectionToolbar" aria-label="高亮工具">
+      <button class="highlight-dot yellow" type="button" data-highlight-color="yellow" aria-label="淡黄高亮"></button>
+      <button class="highlight-dot green" type="button" data-highlight-color="green" aria-label="淡绿高亮"></button>
+      <button class="highlight-dot blue" type="button" data-highlight-color="blue" aria-label="淡蓝高亮"></button>
+      <button class="highlight-dot pink" type="button" data-highlight-color="pink" aria-label="淡粉高亮"></button>
+      <button type="button" data-highlight-action="note">备注</button>
+      <button type="button" data-highlight-action="copy">复制</button>
+      <button type="button" data-highlight-action="delete">删除</button>
     </div>
 
     <dialog id="imagePreviewDialog" class="image-preview-dialog">
       <div class="image-preview-card">
-        <img id="imagePreview" alt="棰勮鍥剧墖" />
+        <img id="imagePreview" alt="预览图片" />
         <div class="image-preview-actions">
-          <button class="ghost-button" id="downloadPreviewImage" type="button">涓嬭浇</button>
-          <button class="ghost-button" id="closeImagePreview" type="button">鍏抽棴</button>
+          <button class="ghost-button" id="downloadPreviewImage" type="button">下载</button>
+          <button class="ghost-button" id="closeImagePreview" type="button">关闭</button>
         </div>
       </div>
     </dialog>
@@ -238,7 +263,7 @@
               <input id="settingsBrightness" type="range" min="45" max="100" step="1" value="100" />
               <span class="brightness-icon" aria-hidden="true"></span>
             </label>
-            <button class="rs-v59-card rs-v59-toggle" id="settingsNightButton" type="button"><span>鎶ょ溂</span><b></b></button>
+            <button class="rs-v59-card rs-v59-toggle" id="settingsNightButton" type="button"><span>护眼</span><b></b></button>
           </div>
 
           <div class="rs-v59-row">
@@ -252,25 +277,25 @@
               </div>
             </div>
             <details class="rs-v59-card rs-v59-font-details">
-              <summary>绯荤粺瀛椾綋 &rsaquo;</summary>
+              <summary>系统字体 &rsaquo;</summary>
               <div class="rs-v59-font-menu" id="fontChoiceGrid">
-                <button type="button" data-font-family="original"><b>Aa</b><span>鍘熺珯</span></button>
-                <button type="button" data-font-family="serif"><b>Aa</b><span>瀹嬩綋</span></button>
-                <button type="button" data-font-family="system"><b>Aa</b><span>榛戜綋</span></button>
-                <button type="button" data-font-family="kaiti"><b>Aa</b><span>妤蜂綋</span></button>
-                <button type="button" data-font-family="wenkai"><b>Aa</b><span>鏂囨シ</span></button>
+                <button type="button" data-font-family="original"><b>Aa</b><span>原站</span></button>
+                <button type="button" data-font-family="serif"><b>Aa</b><span>宋体</span></button>
+                <button type="button" data-font-family="system"><b>Aa</b><span>黑体</span></button>
+                <button type="button" data-font-family="kaiti"><b>Aa</b><span>楷体</span></button>
+                <button type="button" data-font-family="wenkai"><b>Aa</b><span>文楷</span></button>
               </div>
             </details>
           </div>
 
           <div class="rs-v59-row rs-v59-language-row">
             <div class="rs-v59-card rs-v59-language-mode" id="settingsLanguageMode">
-              <button type="button" data-language-mode="both">鍙岃</button>
-              <button type="button" data-language-mode="zh">涓枃</button>
-              <button type="button" data-language-mode="en">鑻辨枃</button>
+              <button type="button" data-language-mode="both">双语</button>
+              <button type="button" data-language-mode="zh">中文</button>
+              <button type="button" data-language-mode="en">英文</button>
             </div>
             <details class="rs-v59-card rs-v59-font-details rs-v59-english-font-details">
-              <summary>鑻辨枃瀛椾綋 &rsaquo;</summary>
+              <summary>英文字体 &rsaquo;</summary>
               <div class="rs-v59-font-menu" id="englishFontChoiceGrid">
                 <button type="button" data-english-font-family="georgia"><b>Aa</b><span>Georgia</span></button>
                 <button type="button" data-english-font-family="iowan"><b>Aa</b><span>Iowan</span></button>
@@ -283,48 +308,48 @@
 
           <div class="rs-v59-row">
             <div class="rs-v59-bg-dots">
-              <button type="button" data-bg="white">绾櫧</button>
-              <button type="button" data-bg="light">娴呯伆</button>
-              <button type="button" data-bg="medium">鎶ょ溂</button>
-              <button type="button" data-bg="black">绾粦</button>
+              <button type="button" data-bg="white">纯白</button>
+              <button type="button" data-bg="light">浅灰</button>
+              <button type="button" data-bg="medium">护眼</button>
+              <button type="button" data-bg="black">纯黑</button>
             </div>
-            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>鑳屾櫙</span><b>&rsaquo;</b></button>
+            <button class="rs-v59-card rs-v59-jump" id="settingsBackgroundShortcut" type="button"><span>背景</span><b>&rsaquo;</b></button>
           </div>
 
           <div class="rs-v59-row">
             <div class="rs-v59-card rs-v59-turn">
               <div>
-                <button type="button" data-turn-mode="tap">瑕嗙洊</button>
-                <button type="button" data-turn-mode="swipe">浠跨湡</button>
-                <button type="button" data-turn-mode="scroll">涓婁笅</button>
+                <button type="button" data-turn-mode="tap">覆盖</button>
+                <button type="button" data-turn-mode="swipe">仿真</button>
+                <button type="button" data-turn-mode="scroll">上下</button>
               </div>
-              <select id="settingsTurnMode" aria-label="缈婚〉鏂瑰紡" hidden>
-                <option value="tap">瑕嗙洊</option>
-                <option value="swipe">浠跨湡</option>
-                <option value="scroll">涓婁笅</option>
+              <select id="settingsTurnMode" aria-label="翻页方式" hidden>
+                <option value="tap">覆盖</option>
+                <option value="swipe">仿真</option>
+                <option value="scroll">上下</option>
               </select>
             </div>
             <button class="rs-v59-card rs-v59-jump rs-v59-margin" id="settingsSpacingButton" type="button">
-              <span>闂磋窛</span>
+              <span>间距</span>
               <output id="settingsSideMargin">&rsaquo;</output>
             </button>
           </div>
 
           <div class="rs-v59-spacing-panel" id="settingsSpacingPanel" hidden>
             <div>
-              <span>琛岃窛</span>
+              <span>行距</span>
               <button type="button" data-stepper="line" data-delta="-1">-</button>
               <output id="settingsLineHeight">1.8</output>
               <button type="button" data-stepper="line" data-delta="1">+</button>
             </div>
             <div>
-              <span>宸﹀彸</span>
+              <span>左右</span>
               <button type="button" data-stepper="margin" data-delta="-1">-</button>
               <output id="settingsSideMarginValue">20px</output>
               <button type="button" data-stepper="margin" data-delta="1">+</button>
             </div>
             <div>
-              <span>涓婁笅</span>
+              <span>上下</span>
               <button type="button" data-stepper="verticalMargin" data-delta="-1">-</button>
               <output id="settingsVerticalMargin">42px</output>
               <button type="button" data-stepper="verticalMargin" data-delta="1">+</button>
@@ -336,16 +361,16 @@
 
     <dialog id="backgroundDialog">
       <form method="dialog" class="dialog-card compact-settings">
-        <h2>鑳屾櫙</h2>
+        <h2>背景</h2>
         <div class="background-grid">
-          <button class="bg-choice" type="button" data-bg="white">绾櫧</button>
-          <button class="bg-choice" type="button" data-bg="light">娴呯伆</button>
-          <button class="bg-choice" type="button" data-bg="medium">涓伆</button>
-          <button class="bg-choice" type="button" data-bg="darkgray">娣辩伆</button>
-          <button class="bg-choice" type="button" data-bg="black">绾粦</button>
+          <button class="bg-choice" type="button" data-bg="white">纯白</button>
+          <button class="bg-choice" type="button" data-bg="light">浅灰</button>
+          <button class="bg-choice" type="button" data-bg="medium">中灰</button>
+          <button class="bg-choice" type="button" data-bg="darkgray">深灰</button>
+          <button class="bg-choice" type="button" data-bg="black">纯黑</button>
         </div>
         <menu>
-          <button value="close">瀹屾垚</button>
+          <button value="close">完成</button>
         </menu>
       </form>
     </dialog>
@@ -353,18 +378,18 @@
     <dialog id="chapterDialog">
       <div class="dialog-card chapter-dialog-card">
         <div class="dialog-head">
-          <h2>闃呰瀵艰埅</h2>
+          <h2>阅读导航</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" id="chapterSettingsButton" type="button">璁剧疆</button>
-            <button class="ghost-button" id="closeChapterDialog" type="button">鍏抽棴</button>
+            <button class="ghost-button" id="chapterSettingsButton" type="button">设置</button>
+            <button class="ghost-button" id="closeChapterDialog" type="button">关闭</button>
           </div>
         </div>
         <p class="chapter-progress" id="chapterProgressText"></p>
         <section class="chapter-work-info" id="chapterWorkInfo"></section>
         <div class="reader-nav-tabs" id="readerNavTabs">
-          <button type="button" data-reader-tab="info">淇℃伅</button>
-          <button type="button" data-reader-tab="chapters">绔犺妭</button>
-          <button type="button" data-reader-tab="highlights">楂樹寒</button>
+          <button type="button" data-reader-tab="info">信息</button>
+          <button type="button" data-reader-tab="chapters">章节</button>
+          <button type="button" data-reader-tab="highlights">高亮</button>
         </div>
         <section class="reader-nav-section" data-reader-section="info">
           <div class="reader-info-panel" id="readerInfoPanel"></div>
@@ -384,13 +409,13 @@
     <dialog id="highlightLibraryDialog">
       <div class="dialog-card highlight-library-card">
         <div class="dialog-head">
-          <h2 id="highlightLibraryTitle">楂樹寒搴?/h2>
+          <h2 id="highlightLibraryTitle">高亮库</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" id="highlightLibraryBack" type="button" hidden>杩斿洖</button>
-            <button class="ghost-button" id="closeHighlightLibrary" type="button">鍏抽棴</button>
+            <button class="ghost-button" id="highlightLibraryBack" type="button" hidden>返回</button>
+            <button class="ghost-button" id="closeHighlightLibrary" type="button">关闭</button>
           </div>
         </div>
-        <p class="helper-text" id="highlightLibraryHint">鎸変綔鍝佹敹绾充綘鍒掕繃鐨勫彞瀛愩€?/p>
+        <p class="helper-text" id="highlightLibraryHint">按作品收纳你划过的句子。</p>
         <div class="highlight-library-list" id="highlightLibraryList"></div>
       </div>
     </dialog>
@@ -398,70 +423,70 @@
     <dialog id="progressColorDialog">
       <form method="dialog" class="dialog-card progress-color-card">
         <div class="dialog-head">
-          <h2>杩涘害棰滆壊</h2>
+          <h2>进度颜色</h2>
           <div class="dialog-actions">
-            <button class="ghost-button" value="cancel" type="submit" formnovalidate>鍏抽棴</button>
+            <button class="ghost-button" value="cancel" type="submit" formnovalidate>关闭</button>
           </div>
         </div>
-        <p class="helper-text">闀挎寜鏂囩珷鍗＄墖搴曢儴鐨勭粏绾垮彲浠ラ噸鏂版墦寮€杩欓噷銆?/p>
+        <p class="helper-text">长按文章卡片底部的细线可以重新打开这里。</p>
         <div class="progress-color-groups" id="progressColorGroups"></div>
       </form>
     </dialog>
 
     <div class="portrait-lock hidden" id="portraitLock">
-      <div>璇风珫灞忛槄璇?/div>
-      <p>妯睆浼氭尅浣忔帓鐗堬紝鎴戝厛甯綘鎷︿綇銆?/p>
+      <div>请竖屏阅读</div>
+      <p>横屏会挡住排版，我先帮你拦住。</p>
     </div>
 
     <dialog id="folderDialog">
       <form method="dialog" class="dialog-card" id="folderForm">
-        <h2>鏂板缓鏂囦欢澶?/h2>
-        <label for="folderName">鍚嶇О</label>
-        <input id="folderName" required maxlength="40" placeholder="渚嬪锛氭巿缈汇€丼teve/Bucky銆佹湭璇? />
+        <h2>新建文件夹</h2>
+        <label for="folderName">名称</label>
+        <input id="folderName" required maxlength="40" placeholder="例如：授翻、Steve/Bucky、未读" />
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>鍙栨秷</button>
-          <button value="save">淇濆瓨</button>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
+          <button value="save">保存</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="metaDialog">
       <form method="dialog" class="dialog-card" id="metaForm">
-        <h2>鏁寸悊浣滃搧</h2>
-        <label for="metaFolder">鏂囦欢澶?/label>
+        <h2>整理作品</h2>
+        <label for="metaFolder">文件夹</label>
         <select id="metaFolder"></select>
-        <label for="metaCustomTags">鑷畾涔夋爣绛?/label>
-        <input id="metaCustomTags" placeholder="鐢ㄩ€楀彿鍒嗛殧锛屾瘮濡?HE, 闀跨瘒, 宸茶" />
+        <label for="metaCustomTags">自定义标签</label>
+        <input id="metaCustomTags" placeholder="用逗号分隔，比如 HE, 长篇, 已读" />
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>鍙栨秷</button>
-          <button value="save">淇濆瓨</button>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
+          <button value="save">保存</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="workManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="workManageForm">
-        <h2 id="manageWorkTitle">鏁寸悊</h2>
-        <label for="manageFolderSelect">鏂囦欢澶?/label>
+        <h2 id="manageWorkTitle">整理</h2>
+        <label for="manageFolderSelect">文件夹</label>
         <select id="manageFolderSelect"></select>
-        <label>宸插姞鍏ユ枃浠跺す</label>
+        <label>已加入文件夹</label>
         <div class="folder-tag-row" id="manageFolderTagList"></div>
-        <label for="manageTagInput">灏?tag</label>
+        <label for="manageTagInput">小 tag</label>
         <div class="mini-tag-row editable-tags" id="manageTagList"></div>
         <div class="inline-action-row">
-          <input id="manageTagInput" maxlength="28" placeholder="渚嬪锛氬凡璇汇€侀暱绡囥€丠E" />
-          <button class="ghost-button" id="manageAddTagButton" type="button">娣诲姞</button>
+          <input id="manageTagInput" maxlength="28" placeholder="例如：已读、长篇、HE" />
+          <button class="ghost-button" id="manageAddTagButton" type="button">添加</button>
         </div>
         <div class="manage-actions">
           <button class="ghost-button manage-progress-color" id="manageProgressColorButton" type="button">
             <span id="manageProgressColorSwatch" aria-hidden="true"></span>
-            <b>杩涘害棰滆壊</b>
+            <b>进度颜色</b>
           </button>
-          <button class="ghost-button" id="manageDownloadButton" type="button">涓嬭浇</button>
-          <button class="danger-button" id="manageDeleteWorkButton" type="button">鍒犻櫎</button>
+          <button class="ghost-button" id="manageDownloadButton" type="button">下载</button>
+          <button class="danger-button" id="manageDeleteWorkButton" type="button">删除</button>
         </div>
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>鍏抽棴</button>
+          <button value="cancel" class="ghost-button" formnovalidate>关闭</button>
         </menu>
       </form>
     </dialog>
@@ -470,66 +495,66 @@
       <form method="dialog" class="dialog-card batch-card" id="batchGroupForm">
         <div class="batch-head">
           <div>
-            <h2>鎵归噺鏁寸悊</h2>
-            <p id="batchCountText">宸查€?0 绡?/p>
+            <h2>批量整理</h2>
+            <p id="batchCountText">已选 0 篇</p>
           </div>
-          <button value="cancel" class="ghost-button batch-close" formnovalidate>鍏抽棴</button>
+          <button value="cancel" class="ghost-button batch-close" formnovalidate>关闭</button>
         </div>
         <div class="batch-search-wrap">
-          <input id="batchSearchInput" type="search" placeholder="鎼滅储鏍囬銆佷綔鑰呫€丆P銆佸娉? />
+          <input id="batchSearchInput" type="search" placeholder="搜索标题、作者、CP、备注" />
         </div>
         <div class="batch-toolbar">
-          <button class="ghost-button" id="batchSelectAllButton" type="button">鍏ㄩ€夊綋鍓?/button>
-          <button class="ghost-button" id="batchClearButton" type="button">娓呯┖</button>
+          <button class="ghost-button" id="batchSelectAllButton" type="button">全选当前</button>
+          <button class="ghost-button" id="batchClearButton" type="button">清空</button>
         </div>
         <div class="batch-work-list" id="batchWorkList"></div>
         <div class="batch-footer">
-          <label>鍔犲叆鍒嗙粍</label>
+          <label>加入分组</label>
           <div class="batch-folder-list" id="batchFolderList"></div>
-          <button value="save" id="batchSubmitButton">纭绉诲姩</button>
+          <button value="save" id="batchSubmitButton">确认移动</button>
         </div>
       </form>
     </dialog>
 
     <dialog id="folderManageDialog">
       <form method="dialog" class="dialog-card manage-card" id="folderManageForm">
-        <h2 id="manageFolderTitle">鏂囦欢澶?/h2>
+        <h2 id="manageFolderTitle">文件夹</h2>
         <div class="manage-section">
-          <span>浣嶇疆</span>
+          <span>位置</span>
           <div class="manage-actions">
-            <button class="ghost-button" id="manageFolderLeftButton" type="button">宸︾Щ</button>
-            <button class="ghost-button" id="manageFolderRightButton" type="button">鍙崇Щ</button>
+            <button class="ghost-button" id="manageFolderLeftButton" type="button">左移</button>
+            <button class="ghost-button" id="manageFolderRightButton" type="button">右移</button>
           </div>
         </div>
         <div class="manage-section danger-zone">
-          <span>鍗遍櫓鎿嶄綔</span>
-          <button class="danger-button" id="manageDeleteFolderButton" type="button">鍒犻櫎鏂囦欢澶?/button>
+          <span>危险操作</span>
+          <button class="danger-button" id="manageDeleteFolderButton" type="button">删除文件夹</button>
         </div>
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>鍏抽棴</button>
+          <button value="cancel" class="ghost-button" formnovalidate>关闭</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="manualDialog">
       <form method="dialog" class="dialog-card manual-card" id="manualForm">
-        <h2>鎵嬪姩瀵煎叆</h2>
-        <label for="manualTitle">鏍囬</label>
+        <h2>手动导入</h2>
+        <label for="manualTitle">标题</label>
         <input id="manualTitle" required />
-        <label for="manualAuthor">浣滆€?/label>
+        <label for="manualAuthor">作者</label>
         <input id="manualAuthor" />
-        <label for="manualUrl">鍘熼摼鎺?/label>
+        <label for="manualUrl">原链接</label>
         <input id="manualUrl" type="url" />
-        <label for="manualContent">姝ｆ枃</label>
-        <textarea id="manualContent" required placeholder="濡傛灉鍦ㄧ嚎缃戦〉涓嶈兘鐩存帴璇诲彇鍘熺珯锛屽彲浠ュ厛鎶婃鏂囩矘璐磋繘鏉ャ€?></textarea>
+        <label for="manualContent">正文</label>
+        <textarea id="manualContent" required placeholder="如果在线网页不能直接读取原站，可以先把正文粘贴进来。"></textarea>
         <menu>
-          <button value="cancel" class="ghost-button" formnovalidate>鍙栨秷</button>
-          <button value="save">淇濆瓨</button>
+          <button value="cancel" class="ghost-button" formnovalidate>取消</button>
+          <button value="save">保存</button>
         </menu>
       </form>
     </dialog>
 
-    <script src="./app.js?v=158-account-merge-mobile-reader-20260625" type="module"></script>
+    <script src="./app.js?v=160-app-icons-utf8-20260625" type="module"></script>
   </body>
 </html>
 

@@ -9548,3 +9548,30 @@ body.reading .work-content {
     margin-top: 1.38em !important;
   }
 }
+
+/* v160: stable app-provided top icons */
+.top-actions .app-top-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  flex: 0 0 auto;
+  color: currentColor;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.top-actions .theme-icon-solid path {
+  fill: currentColor;
+  stroke: none;
+}
+
+.top-actions .cloud-mini,
+.top-actions .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
