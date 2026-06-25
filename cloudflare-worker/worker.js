@@ -152,8 +152,13 @@ function readingRatioValue(reading = {}) {
 function pickProgressEntry(existing = {}, incoming = {}) {
   const existingTime = new Date(existing.reading?.updatedAt || existing.updatedAt || 0).getTime() || 0;
   const incomingTime = new Date(incoming.reading?.updatedAt || incoming.updatedAt || 0).getTime() || 0;
+  const existingRatio = readingRatioValue(existing.reading);
+  const incomingRatio = readingRatioValue(incoming.reading);
+  if (Math.abs(incomingRatio - existingRatio) > 0.02) {
+    return incomingRatio > existingRatio ? { ...existing, ...incoming } : { ...incoming, ...existing };
+  }
   if (existingTime || incomingTime) return incomingTime >= existingTime ? { ...existing, ...incoming } : { ...incoming, ...existing };
-  return readingRatioValue(incoming.reading) >= readingRatioValue(existing.reading)
+  return incomingRatio >= existingRatio
     ? { ...existing, ...incoming }
     : { ...incoming, ...existing };
 }
@@ -176,7 +181,9 @@ function applyProgressToWork(work = {}, progress = {}) {
   if (!entry) return work;
   const workTime = new Date(work.reading?.updatedAt || work.updatedAt || 0).getTime() || 0;
   const entryTime = new Date(entry.reading?.updatedAt || entry.updatedAt || 0).getTime() || 0;
-  if (entryTime >= workTime) {
+  const workRatio = readingRatioValue(work.reading);
+  const entryRatio = readingRatioValue(entry.reading);
+  if (entryTime >= workTime || entryRatio > workRatio + 0.02) {
     work.reading = entry.reading || work.reading || {};
     if (entry.sortOrder !== undefined) work.sortOrder = entry.sortOrder;
     if (entry.folderId) work.folderId = entry.folderId;
@@ -453,15 +460,11 @@ async function writeProgress(env, syncCode, body = {}) {
   for (const [workId, entry] of Object.entries(incoming)) {
     if (!workId) continue;
     const existing = current.works[workId] || {};
-    const existingTime = new Date(existing.reading?.updatedAt || existing.updatedAt || 0).getTime() || 0;
-    const nextTime = new Date(entry.reading?.updatedAt || entry.updatedAt || now).getTime() || 0;
-    if (nextTime >= existingTime) {
-      current.works[workId] = {
-        ...existing,
-        ...entry,
-        updatedAt: entry.updatedAt || entry.reading?.updatedAt || now
-      };
-    }
+    const normalizedEntry = {
+      ...entry,
+      updatedAt: entry.updatedAt || entry.reading?.updatedAt || now
+    };
+    current.works[workId] = pickProgressEntry(existing, normalizedEntry);
   }
 
   current.updated_at = now;

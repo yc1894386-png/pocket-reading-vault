@@ -9575,3 +9575,77 @@ body.reading .work-content {
   align-items: center;
   justify-content: center;
 }
+
+/* v162: final reader safety overrides */
+.reader-source-notes h2 {
+  text-align: center !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel[hidden] {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel > div {
+  display: grid !important;
+  grid-template-columns: 52px 42px minmax(64px, 1fr) 42px !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 42px !important;
+  padding: 0 10px !important;
+  box-sizing: border-box !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel button,
+#readerSettingsDialog .rs-v59-spacing-panel output,
+#readerSettingsDialog .rs-v59-spacing-panel span {
+  min-width: 0 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+
+body .portrait-lock,
+body.mobile-landscape .portrait-lock,
+body.reading .portrait-lock {
+  display: none !important;
+}
+
+@media (orientation: landscape) and (max-width: 879px) {
+  body .app-shell,
+  body.reading .app-shell {
+    display: block !important;
+  }
+
+  body .reading-bar:not(.hidden),
+  body.reading .reading-bar:not(.hidden) {
+    display: grid !important;
+  }
+
+  body .reader-console:not(.hidden),
+  body.reading .reader-console:not(.hidden) {
+    display: flex !important;
+  }
+
+  body .reader-page-count:not(.hidden),
+  body.reading .reader-page-count:not(.hidden) {
+    display: block !important;
+  }
+
+  body dialog[open],
+  body.reading dialog[open] {
+    display: block !important;
+  }
+
+  body .portrait-lock,
+  body.reading .portrait-lock {
+    display: none !important;
+  }
+}

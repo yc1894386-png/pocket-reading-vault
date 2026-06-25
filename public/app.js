@@ -159,11 +159,11 @@ function lockPortraitMode() {
 }
 
 function isMobileLandscape() {
-  return window.matchMedia?.("(max-width: 879px) and (orientation: landscape)")?.matches;
+  return false;
 }
 
 function updatePortraitLockState() {
-  document.body.classList.toggle("mobile-landscape", Boolean(isMobileLandscape()));
+  document.body.classList.remove("mobile-landscape");
 }
 
 function openDb() {
@@ -915,8 +915,53 @@ function renderLanguageControls() {
   });
 }
 
+function captureReaderAnchor() {
+  const work = activeWork();
+  const content = $("#workContent");
+  if (!work || !content || content.classList.contains("hidden")) return null;
+  const sections = [...content.querySelectorAll("[data-reader-chapter]")];
+  if (!sections.length) return { ratio: chapterScrollRatio() };
+  const contentBox = content.getBoundingClientRect();
+  const panel = !isPagedMode() ? content.closest(".reader-panel") : null;
+  const viewBox = panel && panel.scrollHeight > panel.clientHeight + 4 ? panel.getBoundingClientRect() : contentBox;
+  const targetY = viewBox.top + viewBox.height * 0.45;
+  let fallback = null;
+  for (const section of sections) {
+    const index = Number(section.dataset.readerChapter || 0);
+    const rects = [...section.getClientRects()].filter((rect) => rect.width > 1 && rect.height > 1);
+    for (const rect of rects) {
+      const distance = targetY < rect.top ? rect.top - targetY : targetY > rect.bottom ? targetY - rect.bottom : 0;
+      if (!fallback || distance < fallback.distance) {
+        fallback = {
+          index,
+          ratio: Math.max(0, Math.min(1, (targetY - rect.top) / Math.max(1, rect.height))),
+          distance
+        };
+      }
+      if (targetY >= rect.top && targetY <= rect.bottom) {
+        return {
+          index,
+          ratio: Math.max(0, Math.min(1, (targetY - rect.top) / Math.max(1, rect.height)))
+        };
+      }
+    }
+  }
+  return fallback || { ratio: chapterScrollRatio() };
+}
+
+function restoreReaderAnchor(anchor) {
+  if (!anchor) return;
+  if (Number.isFinite(anchor.index)) {
+    jumpToChapterElement(anchor.index, anchor.ratio || 0);
+  } else if (Number.isFinite(anchor.ratio)) {
+    scrollToChapterRatio(anchor.ratio);
+  }
+  updateProgressBar();
+  updatePageCount();
+}
+
 function applyReaderVisualSettings({ keepPosition = true } = {}) {
-  const ratio = keepPosition && activeWork() ? chapterScrollRatio() : null;
+  const anchor = keepPosition && activeWork() ? captureReaderAnchor() : null;
   document.documentElement.classList.remove(
     "reader-bg-white",
     "reader-bg-light",
@@ -956,11 +1001,11 @@ function applyReaderVisualSettings({ keepPosition = true } = {}) {
   renderBackgroundChoices();
   renderLanguageControls();
   resetPageCache();
-  if (ratio !== null && !isMobileLandscape()) {
-    requestAnimationFrame(() => {
-      scrollToChapterRatio(ratio);
+  if (anchor) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      restoreReaderAnchor(anchor);
       updateProgressBar();
-    });
+    }));
   }
 }
 
@@ -1618,7 +1663,7 @@ function renderSettingsLabels() {
   const marginValue = $("#settingsSideMarginValue");
   const verticalMargin = $("#settingsVerticalMargin");
   const brightness = $("#settingsBrightness");
-  if (font) font.textContent = "54";
+  if (font) font.textContent = `${state.readerFontSize || 18}px`;
   if (line) line.textContent = Number(state.readerLineHeight || 1.8).toFixed(1);
   if (margin) margin.textContent = "›";
   if (marginValue) marginValue.textContent = `${state.readerSideMargin || 20}px`;
@@ -2517,10 +2562,15 @@ function readingRatioValue(reading = {}) {
 function mergeReadingRecord(localReading = {}, cloudReading = {}) {
   const local = normalizeReading(localReading || {});
   const cloud = normalizeReading(cloudReading || {});
+  const localRatio = readingRatioValue(local);
+  const cloudRatio = readingRatioValue(cloud);
+  if (Math.abs(cloudRatio - localRatio) > 0.02) {
+    return cloudRatio > localRatio ? cloud : local;
+  }
   const localTime = new Date(local.updatedAt || 0).getTime() || 0;
   const cloudTime = new Date(cloud.updatedAt || 0).getTime() || 0;
   if (localTime || cloudTime) return cloudTime >= localTime ? cloud : local;
-  return readingRatioValue(cloud) >= readingRatioValue(local) ? cloud : local;
+  return cloudRatio >= localRatio ? cloud : local;
 }
 
 function canonicalSourceUrl(value = "") {
@@ -2621,9 +2671,8 @@ function applyCloudProgressToLocalWork(work = {}, progress = {}) {
   if (!entry) return work;
   const currentTime = readingTime(work);
   const nextTime = new Date(entry.reading?.updatedAt || entry.updatedAt || 0).getTime() || 0;
-  const mergedReading = nextTime >= currentTime
-    ? normalizeReading(entry.reading || {}, work.reading || {})
-    : mergeReadingRecord(work.reading || {}, entry.reading || {});
+  const mergedReading = mergeReadingRecord(work.reading || {}, entry.reading || {});
+  const mergedTime = new Date(mergedReading.updatedAt || 0).getTime() || 0;
   return {
     ...work,
     reading: mergedReading,
@@ -2632,7 +2681,7 @@ function applyCloudProgressToLocalWork(work = {}, progress = {}) {
     folderIds: Array.isArray(entry.folderIds)
       ? uniqueValues([...(work.folderIds || []), ...entry.folderIds]).filter((id) => id !== "all" && id !== "unfiled")
       : work.folderIds,
-    updatedAt: nextTime >= currentTime ? (entry.updatedAt || work.updatedAt) : work.updatedAt
+    updatedAt: nextTime >= currentTime || mergedTime >= currentTime ? (entry.updatedAt || mergedReading.updatedAt || work.updatedAt) : work.updatedAt
   };
 }
 
