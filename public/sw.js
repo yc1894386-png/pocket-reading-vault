@@ -1,4 +1,4 @@
-const CACHE_NAME = "vellum-v160-app-icons-utf8-20260625";
+const CACHE_NAME = "vellum-v161-fast-cloud-sync-20260625";
 const ASSETS = [
   "./",
   "./index.html",

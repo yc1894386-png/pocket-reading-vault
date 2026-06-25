@@ -6,12 +6,11 @@ const DIRECT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev
 const DEFAULT_CLOUDFLARE_WORKER_BASE = `${IMPORT_API_BASE}/api/sync`;
 const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
-const CLOUD_DESKTOP_WORK_BATCH_SIZE = 3;
-const CLOUD_MOBILE_WORK_BATCH_SIZE = 2;
+const CLOUD_DESKTOP_WORK_BATCH_SIZE = 6;
+const CLOUD_MOBILE_WORK_BATCH_SIZE = 4;
 const CLOUD_REQUEST_RETRIES = 2;
-const CLOUD_INITIAL_WORK_BATCH_LIMIT = 4;
-const CLOUD_BACKGROUND_WORK_BATCH_SIZE = 1;
-const CLOUD_BACKGROUND_PREFETCH_DELAY = 900;
+const CLOUD_INITIAL_WORK_BATCH_LIMIT = 0;
+const CLOUD_BACKGROUND_PREFETCH_DELAY = 180;
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -134,6 +133,10 @@ let cloudProgressTimer = null;
 let cloudBackfillTimer = null;
 let cloudBackfillRunning = false;
 let cloudBackfillQueue = [];
+let cloudBodyUploadTimer = null;
+let cloudBodyUploadRunning = false;
+let cloudBodyUploadQueue = new Set();
+let lastCloudManifestState = null;
 let pendingCloudProgressIds = new Set();
 let syncingCloudProgress = false;
 let supabase;
@@ -294,6 +297,8 @@ async function saveState() {
   await saveShellState();
   if (hasCustomCloudEndpoint()) {
     queueCloudLightSave();
+    const current = activeWork();
+    if (current?.id) queueCloudBodyUpload([current.id], 1200);
   } else {
     queueCloudSave();
   }
@@ -2249,6 +2254,62 @@ function cloudMissingWorkIds(limit = 0) {
   return limit > 0 ? ids.slice(0, limit) : ids;
 }
 
+function queueCloudBodyUpload(ids = [], delay = 700) {
+  if (!state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return;
+  for (const id of ids.filter(Boolean)) cloudBodyUploadQueue.add(id);
+  if (!cloudBodyUploadQueue.size || cloudBodyUploadRunning) return;
+  clearTimeout(cloudBodyUploadTimer);
+  cloudBodyUploadTimer = setTimeout(() => uploadCloudBodyQueue(), delay);
+}
+
+async function uploadCloudBodyQueue() {
+  if (!state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE || cloudBodyUploadRunning) return;
+  if (isCloudPaused()) {
+    scheduleCloudRetryAfterPause();
+    return;
+  }
+  const ids = [...cloudBodyUploadQueue].slice(0, cloudWorkBatchSize());
+  if (!ids.length) return;
+  ids.forEach((id) => cloudBodyUploadQueue.delete(id));
+  cloudBodyUploadRunning = true;
+  try {
+    const signatures = loadCloudUploadSignatures();
+    const works = ids
+      .map((id) => state.works.find((work) => work.id === id))
+      .filter((work) => work?.id && (work.contentHtml || "").trim())
+      .map(cloudSafeWork)
+      .filter((work) => signatures[work.id] !== cloudUploadSignature(work));
+    if (works.length) {
+      await cloudWorkerJson("/api/v2/works", {
+        method: "POST",
+        timeoutMs: 30000,
+        retries: 1,
+        body: {
+          syncCode: state.syncCode,
+          works,
+          writer: CLIENT_ID
+        }
+      });
+      for (const work of works) signatures[work.id] = cloudUploadSignature(work);
+      saveCloudUploadSignatures(signatures);
+      setCloudStatus(`正文已后台上传 ${works.length} 篇。`);
+    }
+  } catch (error) {
+    ids.forEach((id) => cloudBodyUploadQueue.add(id));
+    markCloudPendingSave();
+    if (isCloudOfflineError(error)) pauseCloudSync(cloudRestErrorText(error), 2);
+    setCloudStatus(`正文后台上传暂时慢：${cloudRestErrorText(error)}。会继续重试。`);
+  } finally {
+    cloudBodyUploadRunning = false;
+    if (cloudBodyUploadQueue.size) {
+      clearTimeout(cloudBodyUploadTimer);
+      cloudBodyUploadTimer = setTimeout(() => uploadCloudBodyQueue(), 900);
+    } else if (cloudPendingSave) {
+      saveCloudLightNow({ silent: true }).catch(() => {});
+    }
+  }
+}
+
 function isRetryableCloudError(error) {
   return /timeout|failed to fetch|network|load failed|502|503|504|连接已经关闭|响应超时/i.test(error?.message || "");
 }
@@ -2844,7 +2905,7 @@ async function getCloudState() {
 
 async function getCloudflareManifestState() {
   let data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}`, {
-    timeoutMs: 14000,
+    timeoutMs: 9000,
     retries: 1
   }).catch(() => null);
   if (data?.state) {
@@ -2861,17 +2922,20 @@ async function getCloudflareManifestState() {
   }
   if (!data?.state) {
     data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 18000,
+      timeoutMs: 12000,
       retries: 1
     });
   }
-  return data?.state ? cloneLibraryState(data.state) : null;
+  const nextState = data?.state ? cloneLibraryState(data.state) : null;
+  if (nextState) lastCloudManifestState = nextState;
+  return nextState;
 }
 
 async function getCloudflareWorkBatch(batchIds) {
   if (!batchIds.length) return [];
   const batch = await cloudWorkerJson(`/api/v2/works?syncCode=${encodeURIComponent(state.syncCode)}&ids=${batchIds.map(encodeURIComponent).join(",")}`, {
-    timeoutMs: 60000
+    timeoutMs: 22000,
+    retries: 1
   });
   return (batch?.works || []).map(normalizeWork);
 }
@@ -2893,9 +2957,9 @@ async function backfillCloudWorks({ immediate = false } = {}) {
   }
   cloudBackfillRunning = true;
   try {
-    const batchIds = cloudBackfillQueue.splice(0, CLOUD_BACKGROUND_WORK_BATCH_SIZE);
+    const batchIds = cloudBackfillQueue.splice(0, cloudWorkBatchSize());
     if (!batchIds.length) return;
-    if (immediate) setCloudStatus("正在后台缓存正文……");
+    if (immediate) setCloudStatus("正在后台自动下载正文……");
     const works = await getCloudflareWorkBatch(batchIds);
     if (works.length) {
       const signatures = loadCloudUploadSignatures();
@@ -2908,10 +2972,10 @@ async function backfillCloudWorks({ immediate = false } = {}) {
       renderWorks();
       renderCloudPanel();
       const left = cloudMissingWorkIds().length;
-      setCloudStatus(left ? `已后台缓存 ${works.length} 篇正文，还剩 ${left} 篇会继续补。` : "云端正文已缓存完成。");
+      setCloudStatus(left ? `已自动下载 ${works.length} 篇正文，还剩 ${left} 篇继续补。` : "云端正文已全部下载到本机。");
     }
   } catch (error) {
-    for (const id of cloudMissingWorkIds(CLOUD_BACKGROUND_WORK_BATCH_SIZE)) {
+    for (const id of cloudMissingWorkIds(cloudWorkBatchSize())) {
       if (!cloudBackfillQueue.includes(id)) cloudBackfillQueue.push(id);
     }
     setCloudStatus(`后台缓存暂时慢：${cloudRestErrorText(error)}。会继续重试。`);
@@ -3044,7 +3108,9 @@ async function saveCloudLightNow({ silent = true } = {}) {
     let payload = createCloudLibraryState(state);
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
-    payload = await mergeWithRemoteManifest(payload);
+    if (lastCloudManifestState?.works?.length) {
+      payload = mergeLibraryState(lastCloudManifestState, payload);
+    }
     payload._lastWriter = CLIENT_ID;
     payload._lastWriterAt = new Date().toISOString();
     const manifestPayload = {
@@ -3194,18 +3260,20 @@ function stopCloudRealtime() {
   clearTimeout(cloudProgressTimer);
   clearTimeout(cloudLightTimer);
   clearTimeout(cloudBackfillTimer);
+  clearTimeout(cloudBodyUploadTimer);
   cloudRealtimeTimer = null;
   cloudPullTimer = null;
   cloudProgressTimer = null;
   cloudLightTimer = null;
   cloudBackfillTimer = null;
+  cloudBodyUploadTimer = null;
   cloudRealtimeChannel = null;
 }
 
 async function pullCloudInBackground({ initial = false } = {}) {
   if ((!supabase && !hasCustomCloudEndpoint()) || !state.syncCode || syncingCloud || SAFE_MODE || isCloudPaused()) return;
-  if (activeWork()) return;
   if (document.visibilityState && document.visibilityState !== "visible") return;
+  const readingNow = Boolean(activeWork());
   syncingCloud = true;
   try {
     const remoteState = hasCustomCloudEndpoint()
@@ -3218,6 +3286,7 @@ async function pullCloudInBackground({ initial = false } = {}) {
     }
     if (remoteState._lastWriter === CLIENT_ID) {
       syncingCloud = false;
+      if (hasCustomCloudEndpoint()) scheduleCloudBackfill();
       return;
     }
     const cloudCount = remoteState.works?.length || 0;
@@ -3225,13 +3294,20 @@ async function pullCloudInBackground({ initial = false } = {}) {
     state = mergeLibraryState(state, remoteState);
     if (cloudCount || localLibraryLoaded) await dbSet("library", state);
     syncingCloud = false;
-    renderAll();
+    if (readingNow) {
+      renderWorks();
+      renderFolders();
+      renderCloudPanel();
+    } else {
+      renderAll();
+    }
     setCloudStatus(`已后台同步：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇 · ${new Date().toLocaleTimeString()}`);
     if (hasCustomCloudEndpoint()) scheduleCloudBackfill();
     if (hasCustomCloudEndpoint()) {
       if (state.works.length > cloudCount) {
         setCloudStatus(`本机比云端多 ${state.works.length - cloudCount} 篇，正在自动补上传……`);
-        queueCloudFullSave(900);
+        queueCloudLightSave();
+        queueCloudBodyUpload(state.works.map((work) => work.id), 900);
       }
     } else if (beforeCount !== state.works.length && state.syncCode) {
       queueCloudSave();
@@ -3383,7 +3459,7 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
     setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇，没有缺正文。`);
     return;
   }
-  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。正文点开文章时再下载。`);
+  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。正文正在后台自动下载。`);
   for (let index = 0; index < idsToLoadNow.length; index += batchSize) {
     const batchIds = idsToLoadNow.slice(index, index + batchSize);
     const batchNumber = Math.floor(index / batchSize) + 1;
@@ -3408,12 +3484,13 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
   }
   setCloudStatus(
     failed
-      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇点开时再重试。`
+      ? `已保存云端目录和 ${loaded} 篇正文，${failed} 篇会后台重试。`
       : (merge
-        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文会在点开时下载。` : ""}`
-        : `已下载云端书架：${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文会在点开时下载。` : ""}`)
+        ? `已合并云端书架：本机 ${localCount} 篇，云端 ${cloudCount} 篇，现在 ${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文后台自动下载。` : ""}`
+        : `已下载云端书架：${state.works.length} 篇。${remainingForBackground ? `${remainingForBackground} 篇正文后台自动下载。` : ""}`)
   );
   scheduleCloudBackfill();
+  setTimeout(() => backfillCloudWorks({ immediate: true }), 80);
 }
 
 async function refreshCloudSession({ initial = false } = {}) {
@@ -3447,8 +3524,8 @@ async function addWork(work) {
   state.selectedWorkId = next.id;
   await saveState();
   if (hasCustomCloudEndpoint()) {
-    setCloudStatus("已保存到本机，正在把新增文章同步到云端……");
-    queueCloudFullSave(900);
+    setCloudStatus("已保存到本机，正在后台同步新增文章……");
+    queueCloudBodyUpload([next.id], 250);
   }
   renderAll();
 }
@@ -4582,7 +4659,7 @@ async function boot() {
     } else {
       renderCloudPanel();
     }
-  }, 8500);
+  }, 1200);
 }
 
 async function loadLocalLibrary({ auto = false, shell = null } = {}) {
@@ -4790,7 +4867,7 @@ $("#cloudStartButton").addEventListener("click", async () => {
     renderCloudPanel();
     startCloudRealtime();
     if (hasCustomCloudEndpoint()) {
-      await pullCloudInBackground({ initial: true });
+      setTimeout(() => pullCloudInBackground({ initial: true }), 80);
     } else {
       try {
         await loadCloudIntoLocal({ merge: true });
@@ -4801,10 +4878,10 @@ $("#cloudStartButton").addEventListener("click", async () => {
       }
     }
     if (cloudPendingSave) {
-      if (hasCustomCloudEndpoint()) await saveCloudLightNow({ silent: true });
+      if (hasCustomCloudEndpoint()) setTimeout(() => saveCloudLightNow({ silent: true }), 500);
       else await saveCloudNow({ silent: true });
     }
-    setCloudStatus("同步码已连接。手机电脑填同一个码就会同步。");
+    setCloudStatus("同步码已连接。目录和正文会在后台自动同步。");
   } catch (error) {
     await saveState();
     renderCloudPanel();
@@ -4876,8 +4953,9 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
   try {
     setCloudStatus("正在同步……");
     if (hasCustomCloudEndpoint()) {
-      await pullCloudInBackground({ initial: true });
+      await loadCloudflareIntoLocalIncremental({ merge: true });
       if (cloudPendingSave || pendingCloudProgressIds.size) await saveCloudLightNow({ silent: false });
+      scheduleCloudBackfill();
     } else {
       try {
         await loadCloudIntoLocal({ merge: true });

@@ -114,6 +114,63 @@ function makeProgressState(state = {}, writer = "") {
   };
 }
 
+function mergeManifestStates(existingState = {}, incomingState = {}) {
+  const deletedFolderIds = [...new Set([
+    ...(existingState.deletedFolderIds || []),
+    ...(incomingState.deletedFolderIds || [])
+  ].filter((id) => id && id !== "all" && id !== "unfiled"))];
+  const deletedSet = new Set(deletedFolderIds);
+  const folders = new Map();
+  for (const folder of [...(existingState.folders || []), ...(incomingState.folders || [])]) {
+    if (folder?.id && !deletedSet.has(folder.id)) folders.set(folder.id, folder);
+  }
+  const works = new Map();
+  for (const work of [...(existingState.works || []), ...(incomingState.works || [])]) {
+    if (!work?.id) continue;
+    const old = works.get(work.id) || {};
+    works.set(work.id, {
+      ...old,
+      ...work,
+      folderIds: [...new Set([...(old.folderIds || []), ...(work.folderIds || [])])].filter((id) => !deletedSet.has(id)),
+      updatedAt: work.updatedAt || old.updatedAt
+    });
+  }
+  return {
+    ...existingState,
+    ...incomingState,
+    folders: [...folders.values()],
+    deletedFolderIds,
+    works: [...works.values()]
+  };
+}
+
+function readingRatioValue(reading = {}) {
+  const value = Number(reading.wholeRatio ?? reading.ratio ?? 0);
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+}
+
+function pickProgressEntry(existing = {}, incoming = {}) {
+  const existingTime = new Date(existing.reading?.updatedAt || existing.updatedAt || 0).getTime() || 0;
+  const incomingTime = new Date(incoming.reading?.updatedAt || incoming.updatedAt || 0).getTime() || 0;
+  if (existingTime || incomingTime) return incomingTime >= existingTime ? { ...existing, ...incoming } : { ...incoming, ...existing };
+  return readingRatioValue(incoming.reading) >= readingRatioValue(existing.reading)
+    ? { ...existing, ...incoming }
+    : { ...incoming, ...existing };
+}
+
+function mergeProgressStates(existing = {}, incoming = {}) {
+  const works = { ...(existing.works || {}) };
+  for (const [workId, entry] of Object.entries(incoming.works || {})) {
+    works[workId] = pickProgressEntry(works[workId] || {}, entry || {});
+  }
+  return {
+    ...existing,
+    ...incoming,
+    works,
+    updated_at: incoming.updated_at || existing.updated_at || new Date().toISOString()
+  };
+}
+
 function applyProgressToWork(work = {}, progress = {}) {
   const entry = progress.works?.[work.id];
   if (!entry) return work;
@@ -144,15 +201,18 @@ async function putWorkShard(env, syncCode, work = {}, updatedAt = new Date().toI
 
 async function writeShardedManifest(env, syncCode, state = {}) {
   const updatedAt = new Date().toISOString();
-  const works = Array.isArray(state.works) ? state.works : [];
+  const existing = await env.VELLUM_SYNC.get(manifestKey(syncCode), { type: "json" }).catch(() => null);
+  const mergedState = existing?.state ? mergeManifestStates(existing.state, state) : state;
+  const works = Array.isArray(mergedState.works) ? mergedState.works : [];
   const manifest = {
-    state: makeManifestState(state, syncCode),
+    state: makeManifestState(mergedState, syncCode),
     updated_at: updatedAt,
     provider: "cloudflare-r2-v2",
     sharded: true,
     works: works.length
   };
-  const progress = makeProgressState(state, state._lastWriter || "");
+  const existingProgress = await env.VELLUM_SYNC.get(progressKey(syncCode), { type: "json" }).catch(() => null);
+  const progress = mergeProgressStates(existingProgress || {}, makeProgressState(mergedState, mergedState._lastWriter || ""));
 
   await env.VELLUM_SYNC.put(manifestKey(syncCode), JSON.stringify(manifest), {
     metadata: { updated_at: updatedAt, provider: "cloudflare-r2-v2" }
