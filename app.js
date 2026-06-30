@@ -8,7 +8,7 @@ const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
 const CLOUD_DESKTOP_WORK_BATCH_SIZE = 6;
 const CLOUD_MOBILE_WORK_BATCH_SIZE = 4;
-const CLOUD_REQUEST_RETRIES = 2;
+const CLOUD_REQUEST_RETRIES = 3;
 const CLOUD_INITIAL_WORK_BATCH_LIMIT = 0;
 const CLOUD_BACKGROUND_PREFETCH_DELAY = 180;
 
@@ -2592,7 +2592,7 @@ async function supabaseProxyRest(path, { method = "GET", query = "", body = null
   }
 }
 
-async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 12000, retries = CLOUD_REQUEST_RETRIES } = {}) {
+async function cloudWorkerJson(path, { method = "GET", body = null, timeoutMs = 16000, retries = CLOUD_REQUEST_RETRIES } = {}) {
   const preferredBase = getCustomCloudEndpoint();
   const bases = [preferredBase, DIRECT_CLOUDFLARE_WORKER_BASE].filter(Boolean).filter((base, index, list) => list.indexOf(base) === index);
   if (!bases.length) throw new Error("Cloudflare Worker 地址还没填写。");
@@ -3148,10 +3148,16 @@ async function getCloudState() {
 }
 
 async function getCloudflareManifestState() {
-  let data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}`, {
-    timeoutMs: 9000,
-    retries: 1
+  let data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}&lite=1`, {
+    timeoutMs: 20000,
+    retries: 2
   }).catch(() => null);
+  if (!data?.state) {
+    data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}`, {
+      timeoutMs: 24000,
+      retries: 1
+    }).catch(() => null);
+  }
   if (data?.state) {
     if (!data.progressIncluded) {
       const progress = await cloudWorkerJson(`/api/v2/progress?syncCode=${encodeURIComponent(state.syncCode)}`, {
@@ -3166,7 +3172,7 @@ async function getCloudflareManifestState() {
   }
   if (!data?.state) {
     data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 12000,
+      timeoutMs: 24000,
       retries: 1
     });
   }
@@ -3459,7 +3465,7 @@ async function saveCloudNow({ silent = false } = {}) {
     if (isCloudOfflineError(error)) {
       const reason = cloudRestErrorText(error);
       markCloudPendingSave();
-      pauseCloudSync(reason, 8);
+      pauseCloudSync(reason, 1.5);
       setCloudStatus(silent ? reason : `云端保存失败：${reason}`);
       return;
     }
@@ -3567,7 +3573,7 @@ async function pullCloudInBackground({ initial = false } = {}) {
     }
     if (isCloudOfflineError(error)) {
       const reason = cloudRestErrorText(error);
-      pauseCloudSync(reason, 8);
+      pauseCloudSync(reason, 1.5);
       setCloudStatus(initial ? reason : `自动同步暂停：${reason}`);
       return;
     }
