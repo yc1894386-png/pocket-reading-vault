@@ -3,7 +3,7 @@ const DB_VERSION = 1;
 const STORE = "state";
 const IMPORT_API_BASE = "https://pocket-reading-vault.onrender.com";
 const DIRECT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev";
-const DEFAULT_CLOUDFLARE_WORKER_BASE = `${IMPORT_API_BASE}/api/sync`;
+const DEFAULT_CLOUDFLARE_WORKER_BASE = DIRECT_CLOUDFLARE_WORKER_BASE;
 const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
 const CLOUD_DESKTOP_WORK_BATCH_SIZE = 6;
@@ -2329,7 +2329,7 @@ function getCloudProxyBase() {
 
 function getCustomCloudEndpoint() {
   const saved = normalizeCloudEndpoint(localStorage.getItem("vellum-cloud-worker-url") || "");
-  if (!saved || /vellum-sync\.yc1894386\.workers\.dev/i.test(saved)) {
+  if (!saved || /vellum-sync\.yc1894386\.workers\.dev|pocket-reading-vault\.onrender\.com/i.test(saved)) {
     if (saved) localStorage.removeItem("vellum-cloud-worker-url");
     return DEFAULT_CLOUDFLARE_WORKER_BASE;
   }
