@@ -1,32 +1,41 @@
-Vellum step7 restore old UI
+Vellum step8 - keep functions, restore old UI
 
-1. This round restores the old UI.
+1. This round keeps the new functions and restores the old visual style.
 
-2. Restored baseline:
-- public/styles.css restored from:
-  C:\Users\Administrator\AppData\Local\Temp\vellum-backups\step5-visual-20260630-075407\styles.css
-- public/app.js restored from:
-  C:\Users\Administrator\AppData\Local\Temp\vellum-backups\step5-visual-20260630-075407\app.js
+2. Old UI reference:
+   C:\Users\Administrator\AppData\Local\Temp\vellum-backups\step4-shell-20260629-234655
 
-3. PWA repair is preserved:
-- unregisterServiceWorkers() is still available as an emergency/debug helper.
-- boot() no longer calls unregisterServiceWorkers() by default.
-- registerServiceWorker() registers ./sw.js only on https or localhost.
-- Service Worker registration failure only logs console.warn and does not block the app.
-- public/sw.js remains the step6 conservative PWA version.
+3. Kept functions:
+   - Cloud sync panel: 立即同步 / 断开 / 高级选项.
+   - Advanced cloud actions: 用本机覆盖云端 / 从云端恢复到本机.
+   - Upload/download confirm prompts.
+   - reading.lastReadAt progress logic.
+   - Reader chapter/html performance cache.
+   - Landscape no longer covers the page.
+   - Notes / author preface centering.
+   - Spacing secondary panel.
+   - Eink mode switch.
+   - Global dark mode and reader background split.
+   - Reader background options.
+   - Chinese / English word statistics.
+   - Bilingual reading mode.
+   - PWA / Service Worker registration repair.
 
-4. cloudflare-worker/worker.js:
-- Kept current project version.
-- Not rolled back.
+4. Visual changes:
+   - Restored old bookshelf / reader / settings visual baseline from step4-shell.
+   - Kept only minimal old-style CSS for new controls.
+   - Scoped eink styles to body.eink-mode so normal mode is not affected.
+   - Kept word statistics inside existing metadata/progress text instead of adding a large new layout block.
+   - Kept cloud advanced actions collapsed and quiet.
 
 5. GitHub upload:
-Upload and overwrite these paths:
-- public/index.html
-- public/app.js
-- public/styles.css
-- public/sw.js
-- public/manifest.webmanifest
-- cloudflare-worker/worker.js
+   Upload and overwrite these paths:
+   - public/index.html
+   - public/app.js
+   - public/styles.css
+   - public/sw.js
+   - public/manifest.webmanifest
+   - cloudflare-worker/worker.js
 
 6. After GitHub Pages deploys, visit:
-?v=step7-restore-old-ui
+   ?v=step8-keep-functions-restore-ui

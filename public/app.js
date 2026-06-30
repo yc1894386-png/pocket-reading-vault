@@ -381,6 +381,89 @@ function textFromHtml(html = "") {
   return div.textContent || "";
 }
 
+const wordStatsCache = new Map();
+
+function normalizeReaderBg(value = state.readerBg) {
+  const bg = String(value || "white").toLowerCase();
+  if (["paper", "light", "green", "gray", "medium"].includes(bg)) return "paper";
+  if (["night", "dark", "darkgray"].includes(bg)) return "night";
+  if (bg === "black") return "black";
+  return "white";
+}
+
+function hydrateReaderBackgroundControls() {
+  const options = [
+    ["white", "纯白"],
+    ["paper", "纸张"],
+    ["night", "暖夜"],
+    ["black", "高黑"]
+  ];
+  const dotButtons = Array.from(document.querySelectorAll(".rs-v59-bg-dots [data-bg]"));
+  dotButtons.forEach((button, index) => {
+    const option = options[index];
+    if (!option) return;
+    button.dataset.bg = option[0];
+    button.textContent = option[1];
+    button.hidden = false;
+  });
+  const dialogButtons = Array.from(document.querySelectorAll("#backgroundDialog [data-bg]"));
+  dialogButtons.forEach((button, index) => {
+    const option = options[index];
+    if (!option) {
+      button.hidden = true;
+      return;
+    }
+    button.dataset.bg = option[0];
+    button.textContent = index === 3 ? "高对比黑" : option[1];
+    button.hidden = false;
+  });
+}
+
+function plainTextFromHtml(html = "") {
+  return textFromHtml(html || "").replace(/\s+/g, " ").trim();
+}
+
+function countChineseChars(text = "") {
+  return (String(text).match(/\p{Script=Han}/gu) || []).length;
+}
+
+function countEnglishWords(text = "") {
+  return (String(text).match(/[A-Za-z]+(?:['’][A-Za-z]+)*/g) || []).length;
+}
+
+function getWorkWordStats(work) {
+  const html = work?.contentHtml || "";
+  const signature = contentSignature(html);
+  if (work?.wordStats?.signature === signature) return work.wordStats;
+  const cacheKey = `${work?.id || "work"}:${signature}`;
+  if (wordStatsCache.has(cacheKey)) return wordStatsCache.get(cacheKey);
+  const text = plainTextFromHtml(html);
+  const stats = {
+    signature,
+    englishWords: countEnglishWords(text),
+    chineseChars: countChineseChars(text),
+    fallbackLabel: work?.metadata?.words && work.metadata.words !== "字数未知"
+      ? work.metadata.words
+      : (Number(work?.wordCount || work?.metadata?.wordCount || 0)
+        ? `约 ${Number(work?.wordCount || work?.metadata?.wordCount || 0).toLocaleString("en-US")} 字`
+        : "")
+  };
+  wordStatsCache.set(cacheKey, stats);
+  if (work) work.wordStats = stats;
+  return stats;
+}
+
+function formatWorkWordStats(stats = {}) {
+  const englishWords = Number(stats.englishWords || 0);
+  const chineseChars = Number(stats.chineseChars || 0);
+  const format = (value) => Number(value || 0).toLocaleString("en-US");
+  if (englishWords > 0 && chineseChars > 0) return `约 ${format(englishWords)} words / ${format(chineseChars)} 字`;
+  if (englishWords > 0) return `约 ${format(englishWords)} words`;
+  if (chineseChars > 0) return `约 ${format(chineseChars)} 字`;
+  if (stats.fallbackLabel) return stats.fallbackLabel;
+  return "字数待统计";
+}
+
 function titleFromImportFilename(filename = "") {
   const base = String(filename)
     .replace(/\.[^.\\/]+$/i, "")
@@ -767,10 +850,7 @@ function lightweightChapterCount(work) {
 }
 
 function lightweightWordText(work) {
-  if (work?.metadata?.words && work.metadata.words !== "字数未知") return work.metadata.words;
-  const cached = Number(work?.wordCount || work?.metadata?.wordCount || 0);
-  if (cached) return `${cached} 字`;
-  return "字数待统计";
+  return formatWorkWordStats(getWorkWordStats(work));
 }
 
 function lightweightReadingRatio(work) {
@@ -1052,6 +1132,7 @@ function restoreReaderAnchor(anchor) {
 
 function applyReaderVisualSettings({ keepPosition = true } = {}) {
   const anchor = keepPosition && activeWork() ? captureReaderAnchor() : null;
+  state.readerBg = normalizeReaderBg();
   document.documentElement.classList.remove(
     "reader-bg-white",
     "reader-bg-light",
@@ -1059,11 +1140,12 @@ function applyReaderVisualSettings({ keepPosition = true } = {}) {
     "reader-bg-darkgray",
     "reader-bg-black",
     "reader-bg-paper",
+    "reader-bg-night",
     "reader-bg-green",
     "reader-bg-gray",
     "reader-bg-dark"
   );
-  document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
+  document.documentElement.classList.add(`reader-bg-${state.readerBg}`);
   document.documentElement.classList.remove("reader-language-both", "reader-language-zh", "reader-language-en");
   document.documentElement.classList.add(`reader-language-${readerLanguageMode()}`);
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
@@ -1348,7 +1430,7 @@ function renderReader() {
 }
 
 function renderMetadata(work) {
-  const estimatedWords = work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`;
+  const estimatedWords = formatWorkWordStats(getWorkWordStats(work));
   const groups = [
     ["分级", work.metadata?.rating],
     ["警告", work.metadata?.warnings],
@@ -1683,6 +1765,7 @@ function renderChapterDialog() {
 
 function renderAll() {
   state.readerTurnMode = normalizedTurnMode();
+  state.readerBg = normalizeReaderBg();
   document.documentElement.classList.toggle("dark", state.theme === "dark");
   document.documentElement.classList.remove(
     "reader-bg-white",
@@ -1691,11 +1774,12 @@ function renderAll() {
     "reader-bg-darkgray",
     "reader-bg-black",
     "reader-bg-paper",
+    "reader-bg-night",
     "reader-bg-green",
     "reader-bg-gray",
     "reader-bg-dark"
   );
-  document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
+  document.documentElement.classList.add(`reader-bg-${state.readerBg}`);
   document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
   document.body.classList.toggle("eink-mode", Boolean(state.readerEinkMode));
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
@@ -1739,10 +1823,10 @@ function readerFontFamilyValue() {
 
 function readerEnglishFontFamilyValue() {
   const map = {
-    georgia: `Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif`,
-    iowan: `"Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif`,
-    baskerville: `Baskerville, "Libre Baskerville", "Times New Roman", Georgia, serif`,
-    times: `"Times New Roman", Times, Georgia, serif`,
+    georgia: `Georgia, "Iowan Old Style", Baskerville, "Palatino Linotype", Palatino, serif`,
+    iowan: `"Iowan Old Style", Georgia, Baskerville, "Palatino Linotype", Palatino, serif`,
+    baskerville: `Baskerville, "Iowan Old Style", Georgia, "Palatino Linotype", Palatino, serif`,
+    times: `"Iowan Old Style", Georgia, "Times New Roman", Times, serif`,
     system: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, sans-serif`
   };
   return map[state.readerEnglishFontFamily || "iowan"] || map.iowan;
@@ -1767,7 +1851,7 @@ function renderSettingsLabels() {
   if (marginValue) marginValue.textContent = `${state.readerSideMargin || 20}px`;
   if (verticalMargin) verticalMargin.textContent = `${state.readerVerticalMargin || 42}px`;
   if (brightness) brightness.value = state.readerBrightness || 100;
-  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare || (state.readerBg || "white") === "medium"));
+  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare));
   $("#settingsEinkButton")?.classList.toggle("active", Boolean(state.readerEinkMode));
   const mode = normalizedTurnMode();
   document.querySelectorAll("[data-turn-mode]").forEach((button) => {
@@ -1776,8 +1860,10 @@ function renderSettingsLabels() {
 }
 
 function renderBackgroundChoices() {
+  hydrateReaderBackgroundControls();
+  const activeBg = normalizeReaderBg();
   document.querySelectorAll("[data-bg]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.bg === (state.readerBg || "white"));
+    button.classList.toggle("active", normalizeReaderBg(button.dataset.bg) === activeBg);
   });
 }
 
@@ -4853,11 +4939,10 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
   if (!state.readerEnglishFontFamily || state.readerEnglishFontFamily === "georgia") state.readerEnglishFontFamily = defaultState.readerEnglishFontFamily;
   state.readerLanguageMode ||= defaultState.readerLanguageMode;
   state.readerBg ||= defaultState.readerBg;
+  state.readerBg = normalizeReaderBg(state.readerBg);
   state.readerBrightness ||= defaultState.readerBrightness;
   state.readerEyeCare ??= defaultState.readerEyeCare;
   state.readerEinkMode ??= defaultState.readerEinkMode;
-  if (["paper", "green", "gray"].includes(state.readerBg)) state.readerBg = "light";
-  if (state.readerBg === "dark") state.readerBg = "black";
   state.readerFontSize = Math.max(12, Math.min(32, Number(state.readerFontSize || defaultState.readerFontSize)));
   state.readerLineHeight = Math.max(1.4, Math.min(2.4, Number(state.readerLineHeight || defaultState.readerLineHeight)));
   state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
@@ -5667,7 +5752,7 @@ $("#readerSettingsDialog")?.addEventListener("pointerdown", (event) => {
 
 document.querySelectorAll("[data-bg]").forEach((button) => {
   button.addEventListener("click", async () => {
-    state.readerBg = button.dataset.bg;
+    state.readerBg = normalizeReaderBg(button.dataset.bg);
     applyReaderVisualSettings();
     queueSettingsSave();
   });

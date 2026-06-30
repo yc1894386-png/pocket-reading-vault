@@ -450,7 +450,7 @@ body.cloud-open .cloud-section {
 }
 
 .cloud-sync-actions {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .cloud-sync-actions .hidden {
@@ -9678,172 +9678,52 @@ body.reading .portrait-lock {
   }
 }
 
-/* step4 shell repair: landscape stays usable, notes center, spacing subpage, eink mode */
-body .portrait-lock,
-body.mobile-landscape .portrait-lock,
-body.reading .portrait-lock {
-  display: none !important;
-  pointer-events: none !important;
+/* step8: keep new reader functions, but let them inherit the old quiet UI */
+:root.reader-bg-night {
+  --reader-bg: #000000 !important;
+  --reader-ink: #6f6a62 !important;
 }
 
-body.mobile-landscape {
-  pointer-events: auto !important;
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="paper"] {
+  background: #efe6dd !important;
+  border: 1px solid #eadfd4 !important;
 }
 
-@media (orientation: landscape) and (max-width: 879px) {
-  body .app-shell,
-  body.mobile-landscape .app-shell,
-  body.reading .app-shell {
-    display: block !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
-  body .reader,
-  body.mobile-landscape .reader,
-  body.reading .reader {
-    display: block !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
-  body .reading-bar:not(.hidden),
-  body.mobile-landscape .reading-bar:not(.hidden),
-  body.reading .reading-bar:not(.hidden) {
-    display: grid !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
-  body .reader-console:not(.hidden),
-  body.mobile-landscape .reader-console:not(.hidden),
-  body.reading .reader-console:not(.hidden) {
-    display: flex !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
-  body .reader-page-count:not(.hidden),
-  body.mobile-landscape .reader-page-count:not(.hidden),
-  body.reading .reader-page-count:not(.hidden) {
-    display: block !important;
-    visibility: visible !important;
-  }
-
-  body dialog[open],
-  body.mobile-landscape dialog[open],
-  body.reading dialog[open] {
-    display: block !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
-  body .portrait-lock,
-  body.mobile-landscape .portrait-lock,
-  body.reading .portrait-lock {
-    display: none !important;
-  }
-}
-
-.work-content .reader-source-notes,
-.reader .reader-source-notes,
-.work-content .reader-mobile-preface,
-.reader .reader-mobile-preface {
-  width: min(88%, 680px) !important;
-  max-width: min(680px, calc(100% - 24px)) !important;
-  margin: 0 auto 1.5em !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  display: grid !important;
-  justify-items: center !important;
-  text-align: center !important;
-}
-
-.work-content .reader-source-notes h2,
-.work-content .reader-source-notes p,
-.work-content .reader-source-notes div,
-.work-content .reader-mobile-preface h2,
-.work-content .reader-mobile-preface p,
-.work-content .reader-mobile-preface div {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  text-align: center !important;
-  text-indent: 0 !important;
-}
-
-#readerSettingsDialog .rs-v59-eink-row {
-  grid-template-columns: minmax(0, 1fr) !important;
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="night"] {
+  background: #2a2a2a !important;
+  border: 1px solid #1f1f1f !important;
 }
 
 #readerSettingsDialog #settingsEinkButton {
-  width: 100% !important;
   justify-content: space-between !important;
-}
-
-#readerSettingsDialog #settingsEinkButton.active b {
-  background: #111 !important;
 }
 
 #readerSettingsDialog #settingsEinkButton.active b::after {
   content: "✓";
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  color: #fff;
-  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  margin-left: 8px;
+  border-radius: 8px;
+  background: #d8d8d8;
+  color: #ffffff;
+  font-size: 15px;
   line-height: 1;
 }
 
-#readerSettingsDialog.spacing-open .rs-v59-grid > .rs-v59-row {
-  display: none !important;
+body.eink-mode .reader,
+body.eink-mode .work-content {
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: none !important;
 }
 
-#readerSettingsDialog.spacing-open .rs-v59-spacing-panel {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 9px !important;
-  width: 100% !important;
-  max-height: min(30dvh, 300px) !important;
-  overflow: auto !important;
-  padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
-}
-
-#readerSettingsDialog .rs-v59-spacing-back {
-  display: inline-grid !important;
-  place-items: center !important;
-  justify-self: start !important;
-  min-height: 38px !important;
-  padding: 0 16px !important;
-  border: 0 !important;
-  border-radius: 999px !important;
-  background: #f2f2f2 !important;
-  color: #666 !important;
-  font-weight: 800 !important;
-}
-
-#readerSettingsDialog .rs-v59-spacing-panel > div {
-  background: #f2f2f2 !important;
-}
-
-@media (max-width: 430px) {
-  #readerSettingsDialog.spacing-open .reader-settings-v59 {
-    max-height: min(42dvh, 360px) !important;
-    overflow: hidden !important;
-  }
-
-  #readerSettingsDialog.spacing-open .rs-v59-spacing-panel {
-    max-height: min(34dvh, 280px) !important;
-  }
-}
-
-body.eink-mode {
-  --reader-bg: #ffffff;
-  --reader-ink: #111111;
-  --reader-muted: #333333;
+body.eink-mode .reading-bar,
+body.eink-mode .reader-console,
+body.eink-mode #readerSettingsDialog .reader-settings-v59 {
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
 body.eink-mode .reader,
@@ -9851,39 +9731,7 @@ body.eink-mode .work-content,
 body.eink-mode .reading-bar,
 body.eink-mode .reader-console,
 body.eink-mode #readerSettingsDialog,
-body.eink-mode #readerSettingsDialog *,
-body.eink-mode .reader-source-notes,
-body.eink-mode button {
+body.eink-mode #readerSettingsDialog * {
   transition: none !important;
   animation: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-
-body.eink-mode .reader,
-body.eink-mode .work-content {
-  background: #ffffff !important;
-  color: #111111 !important;
-  text-shadow: none !important;
-}
-
-body.eink-mode .reading-bar,
-body.eink-mode .reader-console,
-body.eink-mode #readerSettingsDialog .reader-settings-v59 {
-  background: #ffffff !important;
-  border: 1px solid #d6d6d6 !important;
-}
-
-body.eink-mode button,
-body.eink-mode #readerSettingsDialog .rs-v59-card,
-body.eink-mode #readerSettingsDialog .rs-v59-bg-dots button {
-  border: 1px solid #bdbdbd !important;
-  background: #ffffff !important;
-  color: #111111 !important;
-}
-
-body.eink-mode .reader-source-notes {
-  background: transparent !important;
-  border: 0 !important;
 }
