@@ -1,0 +1,35 @@
+Vellum step6 PWA upload notes
+
+1. This round actually changed:
+- public/app.js
+- public/sw.js
+
+2. This zip contains:
+- public/index.html
+- public/app.js
+- public/styles.css
+- public/sw.js
+- public/manifest.webmanifest
+- cloudflare-worker/worker.js
+- UPDATE_NOTES.txt
+
+3. Upload and overwrite these GitHub paths:
+- public/index.html
+- public/app.js
+- public/styles.css
+- public/sw.js
+- public/manifest.webmanifest
+- cloudflare-worker/worker.js
+
+4. After GitHub Pages deploys, visit with this cache-refresh suffix:
+?v=step6-pwa-20260630
+
+5. If the phone still opens an old version:
+- First force refresh the page.
+- Or clear this site's cache in browser site settings.
+- Or in DevTools > Application > Service Workers, unregister the old service worker and refresh.
+
+Notes:
+- Service Worker now registers safely instead of being unregistered by default.
+- The cache only stores the lightweight app shell.
+- Cloud sync APIs, imported external pages, cross-origin requests, non-GET requests, blob/data/chrome-extension URLs, and user library data are not cached by sw.js.

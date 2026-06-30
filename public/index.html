@@ -104,12 +104,17 @@
                 <button class="ghost-button" type="button" id="cloudGenerateButton">生成</button>
               </div>
               <div class="backup-actions cloud-sync-actions" id="cloudSyncActions">
-                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>同步</button>
-                <button class="ghost-button" type="button" id="cloudUploadButton" disabled>上传</button>
-                <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>下载</button>
+                <button class="ghost-button primary-cloud-action" type="button" id="cloudQuickSyncButton" disabled>立即同步</button>
                 <button class="ghost-button" type="button" id="cloudLogoutButton">断开</button>
               </div>
-              <p class="status" id="cloudStatus">填同一个同步码，手机和电脑就是同一个云端书架。</p>
+              <details class="cloud-advanced-actions" id="cloudAdvancedActions">
+                <summary>高级选项</summary>
+                <div class="cloud-advanced-grid">
+                  <button class="ghost-button" type="button" id="cloudUploadButton" disabled>用本机覆盖云端</button>
+                  <button class="ghost-button" type="button" id="cloudDownloadButton" disabled>从云端恢复到本机</button>
+                </div>
+              </details>
+              <p class="status" id="cloudStatus">输入同步码后，设备会加入同一个云端文库。</p>
               <details class="cloud-account-details hidden" id="cloudAccountDetails">
                 <summary>高级</summary>
                 <input class="hidden" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="email" />
@@ -335,7 +340,14 @@
             </button>
           </div>
 
+          <div class="rs-v59-row rs-v59-eink-row">
+            <button class="rs-v59-card rs-v59-toggle" id="settingsEinkButton" type="button">
+              <span>&#22696;&#27700;&#23631;&#27169;&#24335;</span><b></b>
+            </button>
+          </div>
+
           <div class="rs-v59-spacing-panel" id="settingsSpacingPanel" hidden>
+            <button class="rs-v59-spacing-back" id="settingsSpacingBackButton" type="button">&#36820;&#22238;</button>
             <div>
               <span>行距</span>
               <button type="button" data-stepper="line" data-delta="-1">-</button>
@@ -434,8 +446,7 @@
     </dialog>
 
     <div class="portrait-lock hidden" id="portraitLock">
-      <div>请竖屏阅读</div>
-      <p>横屏会挡住排版，我先帮你拦住。</p>
+      <div>&#24314;&#35758;&#31446;&#23631;&#38405;&#35835;&#65292;&#25490;&#29256;&#20250;&#26356;&#33298;&#26381;&#12290;</div>
     </div>
 
     <dialog id="folderDialog">

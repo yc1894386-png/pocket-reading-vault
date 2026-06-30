@@ -37,6 +37,7 @@ const defaultState = {
   readerVerticalMargin: 42,
   readerBrightness: 100,
   readerEyeCare: false,
+  readerEinkMode: false,
   readerTurnMode: "tap",
   readerLanguageMode: "both",
   readerBg: "white",
@@ -98,6 +99,7 @@ let persistTimer;
 let settingsSaveTimer;
 let pageCache = { key: "", step: 1, max: 0, total: 1, current: 1 };
 let readerHtmlCache = { key: "", html: "" };
+let chaptersCache = { key: "", chapters: [] };
 let scrollRaf = 0;
 let touchStart = null;
 let suppressNextClick = false;
@@ -139,6 +141,7 @@ let cloudBodyUploadQueue = new Set();
 let lastCloudManifestState = null;
 let pendingCloudProgressIds = new Set();
 let syncingCloudProgress = false;
+let readingProgressSaveTimer = null;
 let supabase;
 let cloudPausedUntil = Number(localStorage.getItem("vellum-cloud-paused-until") || 0);
 let cloudPausedReason = localStorage.getItem("vellum-cloud-paused-reason") || "";
@@ -184,6 +187,16 @@ function unregisterServiceWorkers() {
   navigator.serviceWorker.getRegistrations?.()
     .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
     .catch(() => {});
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
+  const canRegister = location.protocol === "https:" || isLocalhost;
+  if (!canRegister) return;
+  navigator.serviceWorker.register("./sw.js").catch((error) => {
+    console.warn("Service Worker 注册失败，应用会继续运行：", error);
+  });
 }
 
 function shellWork(work = {}) {
@@ -236,22 +249,39 @@ async function saveShellState() {
 }
 
 function readingTime(value) {
+  return new Date(value?.reading?.lastReadAt || value?.reading?.updatedAt || value?.updatedAt || value?.importedAt || 0).getTime() || 0;
+}
+
+function readingUpdatedTime(value = {}) {
   return new Date(value?.reading?.updatedAt || value?.updatedAt || value?.importedAt || 0).getTime() || 0;
+}
+
+function readingLastReadTime(work = {}) {
+  return new Date(work?.reading?.lastReadAt || 0).getTime()
+    || Number(work?.sortOrder || 0)
+    || new Date(work?.reading?.updatedAt || work?.updatedAt || work?.importedAt || 0).getTime()
+    || 0;
 }
 
 function normalizeReading(reading = {}, fallback = {}) {
   const ratio = Math.max(0, Math.min(1, Number(reading.wholeRatio ?? reading.ratio ?? fallback.wholeRatio ?? fallback.ratio ?? 0)));
+  const updatedAt = reading.updatedAt || fallback.updatedAt || new Date().toISOString();
   return {
+    workId: reading.workId || fallback.workId || "",
     chapterIndex: Math.max(0, Number(reading.chapterIndex ?? fallback.chapterIndex ?? 0) || 0),
+    pageIndex: reading.pageIndex ?? fallback.pageIndex,
+    scrollRatio: reading.scrollRatio ?? fallback.scrollRatio,
+    paragraphIndex: reading.paragraphIndex ?? fallback.paragraphIndex,
     ratio,
     wholeRatio: ratio,
-    updatedAt: reading.updatedAt || fallback.updatedAt || new Date().toISOString()
+    updatedAt,
+    lastReadAt: reading.lastReadAt || fallback.lastReadAt || updatedAt
   };
 }
 
 function readingEntryForWork(work) {
   return {
-    ...normalizeReading(work?.reading || {}, { updatedAt: work?.updatedAt || work?.importedAt }),
+    ...normalizeReading(work?.reading || {}, { workId: work?.id || "", updatedAt: work?.updatedAt || work?.importedAt, lastReadAt: work?.reading?.lastReadAt || work?.reading?.updatedAt || work?.updatedAt || work?.importedAt }),
     sortOrder: Number(work?.sortOrder || 0) || undefined
   };
 }
@@ -271,24 +301,44 @@ function applyReadingProgressOverlay(work) {
   const entry = readingProgressCache.works?.[work.id];
   if (!entry) return work;
   const entryTime = new Date(entry.updatedAt || 0).getTime() || 0;
-  const currentTime = readingTime(work);
-  if (entryTime >= currentTime) {
+  const currentTime = readingUpdatedTime(work);
+  const entryRatio = readingRatioValue(entry);
+  const currentRatio = readingRatioValue(work.reading || {});
+  if (entryTime > currentTime || (!entryTime && !currentTime && entryRatio >= currentRatio) || (entryTime === currentTime && entryRatio >= currentRatio)) {
     work.reading = normalizeReading(entry, work.reading || {});
     if (entry.sortOrder !== undefined) work.sortOrder = Number(entry.sortOrder || work.sortOrder || 0);
   }
   return work;
 }
 
-async function saveReadingProgress(work) {
+function scheduleReadingProgressWrite(delay = 1200) {
+  clearTimeout(readingProgressSaveTimer);
+  readingProgressSaveTimer = setTimeout(() => {
+    flushReadingProgress().catch(() => {});
+  }, delay);
+}
+
+async function flushReadingProgress() {
+  clearTimeout(readingProgressSaveTimer);
+  readingProgressSaveTimer = null;
+  if (!db) return;
+  await dbSet("reading-progress", readingProgressCache);
+  await saveShellState();
+}
+
+async function saveReadingProgress(work, options = {}) {
   if (!db || !work?.id) return;
   const entry = readingEntryForWork(work);
   readingProgressCache.works ||= {};
   readingProgressCache.works[work.id] = entry;
   readingProgressCache.updatedAt = entry.updatedAt;
   readingProgressLoaded = true;
-  await dbSet("reading-progress", readingProgressCache);
-  await saveShellState();
-  if (!queueCloudProgressSave(work)) queueCloudSave();
+  if (options.flush) {
+    await flushReadingProgress();
+  } else {
+    scheduleReadingProgressWrite();
+  }
+  queueCloudProgressSave(work);
 }
 
 async function saveState() {
@@ -329,6 +379,89 @@ function textFromHtml(html = "") {
   const div = document.createElement("div");
   div.innerHTML = html;
   return div.textContent || "";
+}
+
+const wordStatsCache = new Map();
+
+function normalizeReaderBg(value = state.readerBg) {
+  const bg = String(value || "white").toLowerCase();
+  if (["paper", "light", "green", "gray", "medium"].includes(bg)) return "paper";
+  if (["night", "dark", "darkgray"].includes(bg)) return "night";
+  if (bg === "black") return "black";
+  return "white";
+}
+
+function hydrateReaderBackgroundControls() {
+  const options = [
+    ["white", "纯白"],
+    ["paper", "纸张"],
+    ["night", "暖夜"],
+    ["black", "高黑"]
+  ];
+  const dotButtons = Array.from(document.querySelectorAll(".rs-v59-bg-dots [data-bg]"));
+  dotButtons.forEach((button, index) => {
+    const option = options[index];
+    if (!option) return;
+    button.dataset.bg = option[0];
+    button.textContent = option[1];
+    button.hidden = false;
+  });
+  const dialogButtons = Array.from(document.querySelectorAll("#backgroundDialog [data-bg]"));
+  dialogButtons.forEach((button, index) => {
+    const option = options[index];
+    if (!option) {
+      button.hidden = true;
+      return;
+    }
+    button.dataset.bg = option[0];
+    button.textContent = index === 3 ? "高对比黑" : option[1];
+    button.hidden = false;
+  });
+}
+
+function plainTextFromHtml(html = "") {
+  return textFromHtml(html || "").replace(/\s+/g, " ").trim();
+}
+
+function countChineseChars(text = "") {
+  return (String(text).match(/\p{Script=Han}/gu) || []).length;
+}
+
+function countEnglishWords(text = "") {
+  return (String(text).match(/[A-Za-z]+(?:['’][A-Za-z]+)*/g) || []).length;
+}
+
+function getWorkWordStats(work) {
+  const html = work?.contentHtml || "";
+  const signature = contentSignature(html);
+  if (work?.wordStats?.signature === signature) return work.wordStats;
+  const cacheKey = `${work?.id || "work"}:${signature}`;
+  if (wordStatsCache.has(cacheKey)) return wordStatsCache.get(cacheKey);
+  const text = plainTextFromHtml(html);
+  const stats = {
+    signature,
+    englishWords: countEnglishWords(text),
+    chineseChars: countChineseChars(text),
+    fallbackLabel: work?.metadata?.words && work.metadata.words !== "字数未知"
+      ? work.metadata.words
+      : (Number(work?.wordCount || work?.metadata?.wordCount || 0)
+        ? `约 ${Number(work?.wordCount || work?.metadata?.wordCount || 0).toLocaleString("en-US")} 字`
+        : "")
+  };
+  wordStatsCache.set(cacheKey, stats);
+  if (work) work.wordStats = stats;
+  return stats;
+}
+
+function formatWorkWordStats(stats = {}) {
+  const englishWords = Number(stats.englishWords || 0);
+  const chineseChars = Number(stats.chineseChars || 0);
+  const format = (value) => Number(value || 0).toLocaleString("en-US");
+  if (englishWords > 0 && chineseChars > 0) return `约 ${format(englishWords)} words / ${format(chineseChars)} 字`;
+  if (englishWords > 0) return `约 ${format(englishWords)} words`;
+  if (chineseChars > 0) return `约 ${format(chineseChars)} 字`;
+  if (stats.fallbackLabel) return stats.fallbackLabel;
+  return "字数待统计";
 }
 
 function titleFromImportFilename(filename = "") {
@@ -461,9 +594,13 @@ function normalizeImages(root, baseUrl = "") {
 
 function prepareReaderImages() {
   const work = activeWork();
-  normalizeImages($("#workContent"), work?.sourceUrl || "");
-  const images = [...$("#workContent").querySelectorAll("img")];
+  const content = $("#workContent");
+  if (!content) return;
+  normalizeImages(content, work?.sourceUrl || "");
+  const images = [...content.querySelectorAll("img")];
   images.forEach((img, index) => {
+    if (img.dataset.readerImagePrepared === "1") return;
+    img.dataset.readerImagePrepared = "1";
     const original = img.getAttribute("data-original-src") || originalImageUrlFromProxy(img.getAttribute("src") || "") || img.getAttribute("src") || "";
     if (original) {
       img.setAttribute("data-original-src", original);
@@ -474,6 +611,7 @@ function prepareReaderImages() {
     img.setAttribute("role", "button");
     img.setAttribute("tabindex", "0");
     img.setAttribute("title", "点开查看图片");
+    img.loading ||= "lazy";
     img.addEventListener("error", () => {
       const next = retryImageUrl(img, work);
       if (next && next !== img.src) {
@@ -576,7 +714,11 @@ function normalizeWork(work, options = {}) {
     note: item.note || "",
     createdAt: item.createdAt || new Date().toISOString()
   })).filter((item) => item.text);
-  work.reading = normalizeReading(work.reading || {}, { updatedAt: work.updatedAt || work.importedAt });
+  work.reading = normalizeReading(work.reading || {}, {
+    workId: work.id,
+    updatedAt: work.updatedAt || work.importedAt,
+    lastReadAt: work.reading?.lastReadAt || work.reading?.updatedAt || work.updatedAt || work.importedAt
+  });
   work.sortOrder ??= Date.parse(work.importedAt || work.updatedAt || "") || Date.now();
   return work;
 }
@@ -593,7 +735,27 @@ function normalizePendingImports() {
     }));
 }
 
+function fastStringHash(value = "") {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function contentSignature(value = "") {
+  const text = String(value || "");
+  return `${text.length}:${fastStringHash(text)}`;
+}
+
+function chaptersCacheKey(work = {}) {
+  return contentSignature(work.contentHtml || "");
+}
+
 function getChapters(work) {
+  const key = chaptersCacheKey(work);
+  if (chaptersCache.key === key) return chaptersCache.chapters;
   const host = document.createElement("div");
   host.innerHTML = work.contentHtml || "";
   const root = host.querySelector("#chapters") || host;
@@ -604,15 +766,19 @@ function getChapters(work) {
     const title = heading?.textContent?.replace(/\s+/g, " ").trim() || `第 ${index + 1} 章`;
     return { title, html: node.outerHTML };
   });
-  if (chapters.length > 1) return chapters;
+  const save = (items) => {
+    chaptersCache = { key, chapters: items };
+    return items;
+  };
+  if (chapters.length > 1) return save(chapters);
 
   const loose = splitLooseChapters(root);
-  if (loose.length > chapters.length) return loose;
+  if (loose.length > chapters.length) return save(loose);
   if (nodes.length === 1) {
     const nestedLoose = splitLooseChapters(nodes[0]);
-    if (nestedLoose.length > chapters.length) return nestedLoose;
+    if (nestedLoose.length > chapters.length) return save(nestedLoose);
   }
-  return chapters.length ? chapters : [{ title: "全文", html: root.innerHTML || work.contentHtml || "" }];
+  return save(chapters.length ? chapters : [{ title: "全文", html: root.innerHTML || work.contentHtml || "" }]);
 }
 
 function isLooseChapterStart(node) {
@@ -684,10 +850,7 @@ function lightweightChapterCount(work) {
 }
 
 function lightweightWordText(work) {
-  if (work?.metadata?.words && work.metadata.words !== "字数未知") return work.metadata.words;
-  const cached = Number(work?.wordCount || work?.metadata?.wordCount || 0);
-  if (cached) return `${cached} 字`;
-  return "字数待统计";
+  return formatWorkWordStats(getWorkWordStats(work));
 }
 
 function lightweightReadingRatio(work) {
@@ -872,18 +1035,25 @@ function decorateBilingualContent(root) {
   });
 }
 
+function highlightRenderSignature(work = {}) {
+  return contentSignature((work.highlights || [])
+    .map((item) => [item.id, item.chapterIndex, item.text, item.color, item.note, item.createdAt, item.updatedAt].join(":"))
+    .join("|"));
+}
+
 function readerHtmlCacheKey(work, chapters = []) {
   return [
     work?.id || "",
-    work?.updatedAt || "",
-    work?.notesHtml?.length || 0,
+    contentSignature(work?.contentHtml || ""),
+    contentSignature(work?.notesHtml || ""),
+    readerLanguageMode(),
+    highlightRenderSignature(work),
     chapters.length,
-    chapters.map((chapter) => `${chapter.title || ""}:${(chapter.html || "").length}`).join(";")
+    contentSignature(chapters.map((chapter) => `${chapter.title || ""}:${contentSignature(chapter.html || "")}`).join(";"))
   ].join("|");
 }
 
-function renderReaderContentHtml(work, chapters) {
-  const key = readerHtmlCacheKey(work, chapters);
+function renderReaderContentHtml(work, chapters, key = readerHtmlCacheKey(work, chapters)) {
   if (readerHtmlCache.key === key) return readerHtmlCache.html;
   const root = document.createElement("div");
   root.innerHTML = renderContinuousChapters(chapters, work);
@@ -962,6 +1132,7 @@ function restoreReaderAnchor(anchor) {
 
 function applyReaderVisualSettings({ keepPosition = true } = {}) {
   const anchor = keepPosition && activeWork() ? captureReaderAnchor() : null;
+  state.readerBg = normalizeReaderBg();
   document.documentElement.classList.remove(
     "reader-bg-white",
     "reader-bg-light",
@@ -969,16 +1140,18 @@ function applyReaderVisualSettings({ keepPosition = true } = {}) {
     "reader-bg-darkgray",
     "reader-bg-black",
     "reader-bg-paper",
+    "reader-bg-night",
     "reader-bg-green",
     "reader-bg-gray",
     "reader-bg-dark"
   );
-  document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
+  document.documentElement.classList.add(`reader-bg-${state.readerBg}`);
   document.documentElement.classList.remove("reader-language-both", "reader-language-zh", "reader-language-en");
   document.documentElement.classList.add(`reader-language-${readerLanguageMode()}`);
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${normalizedTurnMode()}`);
   document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
+  document.body.classList.toggle("eink-mode", Boolean(state.readerEinkMode));
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   document.documentElement.style.setProperty("--reader-font-family", readerFontFamilyValue());
   document.documentElement.style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
@@ -1024,19 +1197,14 @@ function filteredWorks() {
       ].join(" ").toLowerCase();
       return haystack.includes(query);
     })
-    .sort((a, b) => (Number(b.sortOrder || 0) - Number(a.sortOrder || 0)) || (new Date(b.importedAt) - new Date(a.importedAt)));
+    .sort((a, b) => (readingLastReadTime(b) - readingLastReadTime(a)) || (new Date(b.importedAt) - new Date(a.importedAt)));
 }
 
 function promoteWorkToRecent(work, now = new Date().toISOString()) {
   if (!work) return false;
-  const nextOrder = Math.max(
-    Date.now(),
-    ...state.works.map((item) => Number(item.sortOrder || 0)).filter(Number.isFinite)
-  ) + 1;
-  work.sortOrder = nextOrder;
   normalizeWork(work, { light: true });
-  work.reading.updatedAt = now;
-  work.updatedAt = now;
+  work.reading.lastReadAt = now;
+  work.sortOrder = new Date(now).getTime() || Date.now();
   return true;
 }
 
@@ -1168,9 +1336,9 @@ function syncWorkCardProgress(work, ratio = lightweightReadingRatio(work)) {
   }
 }
 
-function updateReaderChapterLabels(work = activeWork(), chapters = work ? getChapters(work) : []) {
+function updateReaderChapterLabels(work = activeWork(), chapters = work ? getChapters(work) : [], forcedIndex) {
   if (!work || !chapters.length) return;
-  const index = currentChapterIndex(work, chapters);
+  const index = forcedIndex === undefined ? currentChapterIndex(work, chapters) : Math.max(0, Math.min(Number(forcedIndex || 0), chapters.length - 1));
   const chapter = chapters[index] || chapters[0];
   $("#chapterTitle").textContent = `${index + 1}/${chapters.length} ${chapter.title}`;
   $("#openChapterDialog").textContent = `${index + 1}/${chapters.length}`;
@@ -1203,16 +1371,24 @@ function renderReader() {
   $("#sourceNotesBlock").innerHTML = work.notesHtml ? `<label>作者的话 / NOTES</label><div>${work.notesHtml}</div>` : "";
   updateReaderChapterLabels(work, chapters);
 
-  $("#workContent").innerHTML = renderReaderContentHtml(work, chapters);
-  $("#workContent").style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
-  $("#workContent").style.setProperty("--reader-font-family", readerFontFamilyValue());
-  $("#workContent").style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
-  $("#workContent").style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
-  $("#workContent").style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
-  $("#workContent").style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
-  prepareReaderImages();
-  resetPageCache();
-  applyHighlights(work);
+  const content = $("#workContent");
+  const htmlKey = readerHtmlCacheKey(work, chapters);
+  const shouldRebuildContent = content.dataset.readerHtmlKey !== htmlKey;
+  const rebuildAnchor = shouldRebuildContent && content.dataset.readerWorkId === work.id ? captureReaderAnchor() : null;
+  if (shouldRebuildContent) {
+    content.innerHTML = renderReaderContentHtml(work, chapters, htmlKey);
+    content.dataset.readerHtmlKey = htmlKey;
+    content.dataset.readerWorkId = work.id;
+    prepareReaderImages();
+    resetPageCache();
+    applyHighlights(work);
+  }
+  content.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
+  content.style.setProperty("--reader-font-family", readerFontFamilyValue());
+  content.style.setProperty("--reader-english-font-family", readerEnglishFontFamilyValue());
+  content.style.setProperty("--reader-line-height", `${state.readerLineHeight || 1.8}`);
+  content.style.setProperty("--reader-side-margin", `${state.readerSideMargin || 34}px`);
+  content.style.setProperty("--reader-vertical-margin", `${state.readerVerticalMargin || 42}px`);
 
   const tags = [
     work.metadata?.rating,
@@ -1231,6 +1407,9 @@ function renderReader() {
   if (!shouldRestorePosition) {
     updateProgressBar();
     updatePageCount();
+  }
+  if (rebuildAnchor && !shouldRestorePosition) {
+    requestAnimationFrame(() => requestAnimationFrame(() => restoreReaderAnchor(rebuildAnchor)));
   }
 
   if (pendingJump !== null) {
@@ -1251,7 +1430,7 @@ function renderReader() {
 }
 
 function renderMetadata(work) {
-  const estimatedWords = work.metadata?.words || `${textFromHtml(work.contentHtml || "").replace(/\s/g, "").length} 字`;
+  const estimatedWords = formatWorkWordStats(getWorkWordStats(work));
   const groups = [
     ["分级", work.metadata?.rating],
     ["警告", work.metadata?.warnings],
@@ -1586,6 +1765,7 @@ function renderChapterDialog() {
 
 function renderAll() {
   state.readerTurnMode = normalizedTurnMode();
+  state.readerBg = normalizeReaderBg();
   document.documentElement.classList.toggle("dark", state.theme === "dark");
   document.documentElement.classList.remove(
     "reader-bg-white",
@@ -1594,12 +1774,14 @@ function renderAll() {
     "reader-bg-darkgray",
     "reader-bg-black",
     "reader-bg-paper",
+    "reader-bg-night",
     "reader-bg-green",
     "reader-bg-gray",
     "reader-bg-dark"
   );
-  document.documentElement.classList.add(`reader-bg-${state.readerBg || "white"}`);
+  document.documentElement.classList.add(`reader-bg-${state.readerBg}`);
   document.documentElement.classList.toggle("eye-care", Boolean(state.readerEyeCare));
+  document.body.classList.toggle("eink-mode", Boolean(state.readerEinkMode));
   document.documentElement.classList.remove("turn-tap", "turn-swipe", "turn-both", "turn-scroll");
   document.documentElement.classList.add(`turn-${normalizedTurnMode()}`);
   document.documentElement.classList.remove("reader-language-both", "reader-language-zh", "reader-language-en");
@@ -1641,10 +1823,10 @@ function readerFontFamilyValue() {
 
 function readerEnglishFontFamilyValue() {
   const map = {
-    georgia: `Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif`,
-    iowan: `"Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif`,
-    baskerville: `Baskerville, "Libre Baskerville", "Times New Roman", Georgia, serif`,
-    times: `"Times New Roman", Times, Georgia, serif`,
+    georgia: `Georgia, "Iowan Old Style", Baskerville, "Palatino Linotype", Palatino, serif`,
+    iowan: `"Iowan Old Style", Georgia, Baskerville, "Palatino Linotype", Palatino, serif`,
+    baskerville: `Baskerville, "Iowan Old Style", Georgia, "Palatino Linotype", Palatino, serif`,
+    times: `"Iowan Old Style", Georgia, "Times New Roman", Times, serif`,
     system: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, sans-serif`
   };
   return map[state.readerEnglishFontFamily || "iowan"] || map.iowan;
@@ -1669,7 +1851,8 @@ function renderSettingsLabels() {
   if (marginValue) marginValue.textContent = `${state.readerSideMargin || 20}px`;
   if (verticalMargin) verticalMargin.textContent = `${state.readerVerticalMargin || 42}px`;
   if (brightness) brightness.value = state.readerBrightness || 100;
-  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare || (state.readerBg || "white") === "medium"));
+  $("#settingsNightButton")?.classList.toggle("active", Boolean(state.readerEyeCare));
+  $("#settingsEinkButton")?.classList.toggle("active", Boolean(state.readerEinkMode));
   const mode = normalizedTurnMode();
   document.querySelectorAll("[data-turn-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.turnMode === mode);
@@ -1677,8 +1860,10 @@ function renderSettingsLabels() {
 }
 
 function renderBackgroundChoices() {
+  hydrateReaderBackgroundControls();
+  const activeBg = normalizeReaderBg();
   document.querySelectorAll("[data-bg]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.bg === (state.readerBg || "white"));
+    button.classList.toggle("active", normalizeReaderBg(button.dataset.bg) === activeBg);
   });
 }
 
@@ -1865,7 +2050,7 @@ function batchSearchWorks() {
       ].join(" ").toLowerCase();
       return haystack.includes(query);
     })
-    .sort((a, b) => (Number(b.sortOrder || 0) - Number(a.sortOrder || 0)) || (new Date(b.importedAt) - new Date(a.importedAt)));
+    .sort((a, b) => (readingLastReadTime(b) - readingLastReadTime(a)) || (new Date(b.importedAt) - new Date(a.importedAt)));
 }
 
 function renderBatchGroupDialog() {
@@ -2113,6 +2298,7 @@ async function importLibraryFile(file) {
   state.progressAccent = normalizeHexColor(nextState.progressAccent || state.progressAccent || defaultState.progressAccent);
   state.readerBrightness = nextState.readerBrightness || state.readerBrightness;
   state.readerEyeCare = nextState.readerEyeCare ?? state.readerEyeCare;
+  state.readerEinkMode = nextState.readerEinkMode ?? state.readerEinkMode;
   state.theme = nextState.theme || state.theme;
   await saveState();
   renderAll();
@@ -2497,6 +2683,7 @@ function renderCloudPanel() {
   $("#cloudSetPasswordButton").classList.add("hidden");
   $("#cloudLogoutButton").classList.toggle("hidden", !connected);
   $("#cloudSyncActions")?.classList.toggle("hidden", !connected);
+  $("#cloudAdvancedActions")?.classList.toggle("hidden", !connected);
   $("#cloudQuickSyncButton").disabled = !connected;
   $("#cloudUploadButton").disabled = !connected;
   $("#cloudDownloadButton").disabled = !connected;
@@ -2564,13 +2751,19 @@ function mergeReadingRecord(localReading = {}, cloudReading = {}) {
   const cloud = normalizeReading(cloudReading || {});
   const localRatio = readingRatioValue(local);
   const cloudRatio = readingRatioValue(cloud);
-  if (Math.abs(cloudRatio - localRatio) > 0.02) {
-    return cloudRatio > localRatio ? cloud : local;
-  }
   const localTime = new Date(local.updatedAt || 0).getTime() || 0;
   const cloudTime = new Date(cloud.updatedAt || 0).getTime() || 0;
-  if (localTime || cloudTime) return cloudTime >= localTime ? cloud : local;
-  return cloudRatio >= localRatio ? cloud : local;
+  let merged;
+  if (localTime || cloudTime) {
+    merged = cloudTime > localTime ? cloud : local;
+  } else {
+    merged = cloudRatio >= localRatio ? cloud : local;
+  }
+  const lastReadAt = new Date(Math.max(
+    new Date(local.lastReadAt || 0).getTime() || 0,
+    new Date(cloud.lastReadAt || 0).getTime() || 0
+  ) || Date.now()).toISOString();
+  return { ...merged, lastReadAt };
 }
 
 function canonicalSourceUrl(value = "") {
@@ -2655,7 +2848,9 @@ function mergeWorkRecords(localWork, cloudWork) {
     bookmarks: mergeAnnotationList(local.bookmarks, cloud.bookmarks),
     highlights: mergeAnnotationList(local.highlights, cloud.highlights),
     reading,
-    sortOrder: Math.min(Number(local.sortOrder || Date.now()), Number(cloud.sortOrder || Date.now())),
+    sortOrder: new Date(reading.lastReadAt || 0).getTime()
+      || Math.max(Number(local.sortOrder || 0), Number(cloud.sortOrder || 0))
+      || Date.now(),
     importedAt: local.importedAt && cloud.importedAt
       ? (new Date(local.importedAt).getTime() <= new Date(cloud.importedAt).getTime() ? local.importedAt : cloud.importedAt)
       : (local.importedAt || cloud.importedAt || new Date().toISOString()),
@@ -2669,19 +2864,19 @@ function mergeWorkRecords(localWork, cloudWork) {
 function applyCloudProgressToLocalWork(work = {}, progress = {}) {
   const entry = progress?.works?.[work.id];
   if (!entry) return work;
-  const currentTime = readingTime(work);
+  const currentTime = readingUpdatedTime(work);
   const nextTime = new Date(entry.reading?.updatedAt || entry.updatedAt || 0).getTime() || 0;
   const mergedReading = mergeReadingRecord(work.reading || {}, entry.reading || {});
   const mergedTime = new Date(mergedReading.updatedAt || 0).getTime() || 0;
+  const mergedSortOrder = new Date(mergedReading.lastReadAt || 0).getTime() || entry.sortOrder || work.sortOrder;
   return {
     ...work,
     reading: mergedReading,
-    sortOrder: entry.sortOrder !== undefined ? entry.sortOrder : work.sortOrder,
+    sortOrder: mergedSortOrder,
     folderId: entry.folderId || work.folderId,
     folderIds: Array.isArray(entry.folderIds)
       ? uniqueValues([...(work.folderIds || []), ...entry.folderIds]).filter((id) => id !== "all" && id !== "unfiled")
-      : work.folderIds,
-    updatedAt: nextTime >= currentTime || mergedTime >= currentTime ? (entry.updatedAt || mergedReading.updatedAt || work.updatedAt) : work.updatedAt
+      : work.folderIds
   };
 }
 
@@ -3101,12 +3296,13 @@ async function saveCloudLibraryV2(payload, { silent = false } = {}) {
 }
 
 function cloudProgressEntry(work) {
+  const reading = readingEntryForWork(work);
   return {
-    reading: readingEntryForWork(work),
+    reading,
     sortOrder: Number(work?.sortOrder || 0) || undefined,
     folderId: work?.folderId || "unfiled",
     folderIds: workFolderIds(work),
-    updatedAt: work?.updatedAt || work?.reading?.updatedAt || new Date().toISOString()
+    updatedAt: reading.updatedAt || new Date().toISOString()
   };
 }
 
@@ -3114,7 +3310,7 @@ async function saveCloudProgressNow({ silent = true } = {}) {
   if (!state.syncCode || !hasCustomCloudEndpoint() || syncingCloudProgress || SAFE_MODE) return;
   if (syncingCloud) {
     clearTimeout(cloudProgressTimer);
-    cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 1500);
+    cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 5000);
     return;
   }
   const ids = [...pendingCloudProgressIds];
@@ -3203,7 +3399,7 @@ function queueCloudProgressSave(work) {
   if (!work?.id || !state.syncCode || !hasCustomCloudEndpoint() || SAFE_MODE) return false;
   pendingCloudProgressIds.add(work.id);
   clearTimeout(cloudProgressTimer);
-  cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 900);
+  cloudProgressTimer = setTimeout(() => saveCloudProgressNow({ silent: true }), 5000);
   return true;
 }
 
@@ -3549,7 +3745,7 @@ async function refreshCloudSession({ initial = false } = {}) {
     startCloudRealtime();
   } else {
     stopCloudRealtime();
-    setCloudStatus("输入同一个同步码，手机和电脑会自动同步。");
+    setCloudStatus("输入同步码后，设备会加入同一个云端文库。");
   }
 }
 
@@ -4292,27 +4488,25 @@ function updateProgressBar() {
   if (!work) return;
   const ratio = chapterScrollRatio();
   const chapters = getChapters(work);
-  normalizeWork(work);
-  work.reading.wholeRatio = ratio;
-  work.reading.ratio = ratio;
-  work.reading.chapterIndex = visibleReaderChapterIndex();
+  const chapterIndex = visibleReaderChapterIndex();
   $("#progressRange").value = Math.round(ratio * 1000);
   $("#progressText").textContent = `${Math.round(ratio * 100)}%`;
   $("#consoleMenuProgress").textContent = `目录 · ${Math.round(ratio * 100)}%`;
   const bookmarkCount = (work.highlights || []).length;
   $("#consoleBookmarkCount").textContent = String(bookmarkCount);
-  updateReaderChapterLabels(work, chapters);
-  updatePageCount();
+  updateReaderChapterLabels(work, chapters, chapterIndex);
+  updatePageCount(ratio);
   syncWorkCardProgress(work, ratio);
 }
 
-function updatePageCount() {
+function updatePageCount(ratioOverride) {
   const work = activeWork();
   const count = $("#readerPageCount");
   if (!work || !count) return;
   const content = $("#workContent");
   if (isPagedMode() && normalizedTurnMode() === "scroll") {
-    count.textContent = `${Math.round(chapterScrollRatio() * 100)}%`;
+    const ratio = ratioOverride === undefined ? chapterScrollRatio() : ratioOverride;
+    count.textContent = `${Math.round(ratio * 100)}%`;
     return;
   }
   const metrics = isPagedMode() ? refreshPageCache() : { current: 1, total: 1 };
@@ -4331,7 +4525,7 @@ function exitReadingFullscreen() {
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 }
 
-async function persistProgress() {
+async function persistProgress(options = {}) {
   const work = activeWork();
   if (!work) return;
   normalizeWork(work);
@@ -4340,9 +4534,9 @@ async function persistProgress() {
   work.reading.ratio = work.reading.wholeRatio;
   work.reading.chapterIndex = visibleReaderChapterIndex();
   work.reading.updatedAt = now;
-  work.updatedAt = now;
+  work.reading.lastReadAt = now;
   promoteWorkToRecent(work, now);
-  await saveReadingProgress(work);
+  await saveReadingProgress(work, { flush: options?.flush === true });
   updateProgressBar();
 }
 
@@ -4357,10 +4551,11 @@ function changeChapter(delta) {
   work.reading.wholeRatio = nextRatio;
   work.reading.ratio = nextRatio;
   work.reading.updatedAt = now;
-  work.updatedAt = now;
+  work.reading.lastReadAt = now;
+  promoteWorkToRecent(work, now);
   pendingJump = nextRatio;
   pendingChapterJump = { index: nextIndex, ratio: 0 };
-  saveState().then(renderAll);
+  saveReadingProgress(work, { flush: true }).then(renderAll);
 }
 
 function goToChapter(index, ratio = 0) {
@@ -4374,10 +4569,11 @@ function goToChapter(index, ratio = 0) {
   work.reading.wholeRatio = nextRatio;
   work.reading.ratio = nextRatio;
   work.reading.updatedAt = now;
-  work.updatedAt = now;
+  work.reading.lastReadAt = now;
+  promoteWorkToRecent(work, now);
   pendingJump = nextRatio;
   pendingChapterJump = { index: nextIndex, ratio };
-  saveState().then(renderAll);
+  saveReadingProgress(work, { flush: true }).then(renderAll);
 }
 
 function goToHighlight(highlight) {
@@ -4392,11 +4588,12 @@ function goToHighlight(highlight) {
   work.reading.wholeRatio = nextRatio;
   work.reading.ratio = nextRatio;
   work.reading.updatedAt = now;
-  work.updatedAt = now;
+  work.reading.lastReadAt = now;
+  promoteWorkToRecent(work, now);
   pendingJump = nextRatio;
   pendingChapterJump = { index, ratio: 0 };
   pendingHighlightJumpId = highlight.id;
-  saveState().then(renderAll);
+  saveReadingProgress(work, { flush: true }).then(renderAll);
 }
 
 function jumpToHighlightMark(id) {
@@ -4667,7 +4864,7 @@ async function boot() {
   normalizePendingImports();
   renderAll();
   setCloudStatus("页面已打开。本机书架和云端会在后台准备，不会挡住进入。");
-  unregisterServiceWorkers();
+  registerServiceWorker();
   await nextPaint();
 
   try {
@@ -4742,10 +4939,10 @@ async function loadLocalLibrary({ auto = false, shell = null } = {}) {
   if (!state.readerEnglishFontFamily || state.readerEnglishFontFamily === "georgia") state.readerEnglishFontFamily = defaultState.readerEnglishFontFamily;
   state.readerLanguageMode ||= defaultState.readerLanguageMode;
   state.readerBg ||= defaultState.readerBg;
+  state.readerBg = normalizeReaderBg(state.readerBg);
   state.readerBrightness ||= defaultState.readerBrightness;
   state.readerEyeCare ??= defaultState.readerEyeCare;
-  if (["paper", "green", "gray"].includes(state.readerBg)) state.readerBg = "light";
-  if (state.readerBg === "dark") state.readerBg = "black";
+  state.readerEinkMode ??= defaultState.readerEinkMode;
   state.readerFontSize = Math.max(12, Math.min(32, Number(state.readerFontSize || defaultState.readerFontSize)));
   state.readerLineHeight = Math.max(1.4, Math.min(2.4, Number(state.readerLineHeight || defaultState.readerLineHeight)));
   state.readerSideMargin = Math.max(12, Math.min(32, Number(state.readerSideMargin || defaultState.readerSideMargin)));
@@ -4988,6 +5185,7 @@ $("#cloudLogoutButton").addEventListener("click", async () => {
 });
 
 $("#cloudUploadButton").addEventListener("click", () => {
+  if (!confirm("这会用本机当前书架覆盖云端数据。其他设备稍后会以这份数据为准。确定继续吗？")) return;
   resumeCloudSync();
   saveCloudNow();
 });
@@ -5022,7 +5220,7 @@ $("#cloudQuickSyncButton").addEventListener("click", async () => {
 });
 
 $("#cloudDownloadButton").addEventListener("click", async () => {
-  if (!confirm("用云端书架合并到本机？本机已有作品不会被直接清空。")) return;
+  if (!confirm("这会用云端数据覆盖本机缓存。本机未同步的修改可能丢失。确定继续吗？")) return;
   resumeCloudSync();
   try {
     await loadCloudIntoLocal({ merge: true });
@@ -5287,7 +5485,7 @@ $("#manageFolderLeftButton").addEventListener("click", () => moveFolderInList(ma
 $("#manageFolderRightButton").addEventListener("click", () => moveFolderInList(managedFolderId, 1));
 
 $("#backToList").addEventListener("click", async () => {
-  await persistProgress();
+  await persistProgress({ flush: true });
   state.selectedWorkId = null;
   exitReadingFullscreen();
   await saveState();
@@ -5334,7 +5532,7 @@ $("#consoleProgress")?.addEventListener("change", persistProgress);
 
 $("#consoleBackButton").addEventListener("click", async () => {
   setControlsOpen(false);
-  await persistProgress();
+  await persistProgress({ flush: true });
   state.selectedWorkId = null;
   exitReadingFullscreen();
   await saveState();
@@ -5344,6 +5542,8 @@ $("#consoleBackButton").addEventListener("click", async () => {
 function openSettingsDialog() {
   setControlsOpen(false);
   $("#settingsTurnMode").value = normalizedTurnMode();
+  $("#readerSettingsDialog")?.classList.remove("spacing-open");
+  $("#settingsSpacingPanel")?.setAttribute("hidden", "");
   renderSettingsLabels();
   $("#readerSettingsDialog").showModal();
 }
@@ -5371,7 +5571,13 @@ $("#settingsBackgroundShortcut")?.addEventListener("click", () => {
 });
 
 $("#settingsSpacingButton")?.addEventListener("click", () => {
-  $("#settingsSpacingPanel")?.toggleAttribute("hidden");
+  $("#readerSettingsDialog")?.classList.add("spacing-open");
+  $("#settingsSpacingPanel")?.removeAttribute("hidden");
+});
+
+$("#settingsSpacingBackButton")?.addEventListener("click", () => {
+  $("#readerSettingsDialog")?.classList.remove("spacing-open");
+  $("#settingsSpacingPanel")?.setAttribute("hidden", "");
 });
 
 $("#chapterBookmarkButton")?.addEventListener("pointerdown", async (event) => {
@@ -5524,6 +5730,12 @@ $("#settingsNightButton").addEventListener("click", async () => {
   queueSettingsSave();
 });
 
+$("#settingsEinkButton")?.addEventListener("click", async () => {
+  state.readerEinkMode = !state.readerEinkMode;
+  applyReaderVisualSettings();
+  queueSettingsSave();
+});
+
 $("#settingsBrightness")?.addEventListener("input", (event) => {
   state.readerBrightness = Math.max(45, Math.min(100, Number(event.target.value || 100)));
   document.documentElement.style.setProperty("--reader-dim-opacity", `${Math.max(0, Math.min(0.45, (100 - Number(state.readerBrightness || 100)) / 150))}`);
@@ -5540,7 +5752,7 @@ $("#readerSettingsDialog")?.addEventListener("pointerdown", (event) => {
 
 document.querySelectorAll("[data-bg]").forEach((button) => {
   button.addEventListener("click", async () => {
-    state.readerBg = button.dataset.bg;
+    state.readerBg = normalizeReaderBg(button.dataset.bg);
     applyReaderVisualSettings();
     queueSettingsSave();
   });
@@ -5780,9 +5992,11 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 window.addEventListener("pagehide", () => {
-  if (activeWork()) persistProgress();
+  if (activeWork()) persistProgress({ flush: true });
   if (state.syncCode && !syncingCloud) {
-    if (cloudLightTimer || cloudPendingSave || pendingCloudProgressIds.size) {
+    if (pendingCloudProgressIds.size) {
+      saveCloudProgressNow({ silent: true });
+    } else if (cloudLightTimer || cloudPendingSave) {
       saveCloudLightNow({ silent: true });
     } else if (cloudTimer) {
       saveCloudNow({ silent: true });
@@ -5792,7 +6006,8 @@ window.addEventListener("pagehide", () => {
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && activeWork()) {
-    persistProgress();
+    persistProgress({ flush: true });
+    if (pendingCloudProgressIds.size) saveCloudProgressNow({ silent: true });
     return;
   }
   if (document.visibilityState === "visible") {

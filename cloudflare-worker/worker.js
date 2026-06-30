@@ -154,13 +154,16 @@ function pickProgressEntry(existing = {}, incoming = {}) {
   const incomingTime = new Date(incoming.reading?.updatedAt || incoming.updatedAt || 0).getTime() || 0;
   const existingRatio = readingRatioValue(existing.reading);
   const incomingRatio = readingRatioValue(incoming.reading);
-  if (Math.abs(incomingRatio - existingRatio) > 0.02) {
-    return incomingRatio > existingRatio ? { ...existing, ...incoming } : { ...incoming, ...existing };
-  }
-  if (existingTime || incomingTime) return incomingTime >= existingTime ? { ...existing, ...incoming } : { ...incoming, ...existing };
-  return incomingRatio >= existingRatio
-    ? { ...existing, ...incoming }
-    : { ...incoming, ...existing };
+  const merged = existingTime || incomingTime
+    ? (incomingTime >= existingTime ? { ...existing, ...incoming } : { ...incoming, ...existing })
+    : (incomingRatio >= existingRatio ? { ...existing, ...incoming } : { ...incoming, ...existing });
+  const lastReadAt = new Date(Math.max(
+    new Date(existing.reading?.lastReadAt || existing.lastReadAt || 0).getTime() || 0,
+    new Date(incoming.reading?.lastReadAt || incoming.lastReadAt || 0).getTime() || 0
+  ) || Date.now()).toISOString();
+  merged.reading = { ...(merged.reading || {}), lastReadAt };
+  merged.sortOrder = new Date(lastReadAt).getTime() || merged.sortOrder;
+  return merged;
 }
 
 function mergeProgressStates(existing = {}, incoming = {}) {
@@ -184,11 +187,17 @@ function applyProgressToWork(work = {}, progress = {}) {
   const workRatio = readingRatioValue(work.reading);
   const entryRatio = readingRatioValue(entry.reading);
   if (entryTime >= workTime || entryRatio > workRatio + 0.02) {
+    const previousLastReadAt = work.reading?.lastReadAt;
     work.reading = entry.reading || work.reading || {};
+    if (entry.reading?.lastReadAt || previousLastReadAt) {
+      work.reading.lastReadAt = new Date(Math.max(
+        new Date(entry.reading?.lastReadAt || 0).getTime() || 0,
+        new Date(previousLastReadAt || 0).getTime() || 0
+      ) || Date.now()).toISOString();
+    }
     if (entry.sortOrder !== undefined) work.sortOrder = entry.sortOrder;
     if (entry.folderId) work.folderId = entry.folderId;
     if (Array.isArray(entry.folderIds)) work.folderIds = entry.folderIds;
-    work.updatedAt = entry.updatedAt || work.updatedAt;
   }
   return work;
 }
@@ -462,6 +471,10 @@ async function writeProgress(env, syncCode, body = {}) {
     const existing = current.works[workId] || {};
     const normalizedEntry = {
       ...entry,
+      reading: {
+        ...(entry.reading || {}),
+        lastReadAt: entry.reading?.lastReadAt || entry.lastReadAt || entry.reading?.updatedAt || entry.updatedAt || now
+      },
       updatedAt: entry.updatedAt || entry.reading?.updatedAt || now
     };
     current.works[workId] = pickProgressEntry(existing, normalizedEntry);
