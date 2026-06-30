@@ -450,7 +450,7 @@ body.cloud-open .cloud-section {
 }
 
 .cloud-sync-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .cloud-sync-actions .hidden {
@@ -9678,20 +9678,105 @@ body.reading .portrait-lock {
   }
 }
 
-/* step8: keep new reader functions, but let them inherit the old quiet UI */
-:root.reader-bg-night {
-  --reader-bg: #000000 !important;
-  --reader-ink: #6f6a62 !important;
+/* step9: minimal compatibility patches for restored old UI */
+#cloudAdvancedActions,
+.cloud-advanced-actions {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="paper"] {
-  background: #efe6dd !important;
-  border: 1px solid #eadfd4 !important;
+.cloud-sync-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="night"] {
-  background: #2a2a2a !important;
-  border: 1px solid #1f1f1f !important;
+.cloud-advanced-actions summary {
+  cursor: pointer;
+  list-style: none;
+  width: fit-content;
+}
+
+.cloud-advanced-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.cloud-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cloud-advanced-grid button {
+  min-width: 0;
+  padding: 0 10px;
+}
+
+body .portrait-lock,
+body.mobile-landscape .portrait-lock,
+body.reading .portrait-lock {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+body.mobile-landscape .app-shell,
+body.mobile-landscape .reader,
+body.mobile-landscape .reading-bar,
+body.mobile-landscape .reader-console,
+body.mobile-landscape .reader-page-count,
+body.mobile-landscape dialog {
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.work-content .reader-source-notes,
+.reader .reader-source-notes,
+.work-content .reader-mobile-preface,
+.reader .reader-mobile-preface {
+  display: block !important;
+  width: min(100%, 680px) !important;
+  max-width: calc(100% - 24px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+}
+
+.work-content .reader-source-notes h2,
+.work-content .reader-source-notes p,
+.work-content .reader-source-notes div,
+.work-content .reader-mobile-preface h2,
+.work-content .reader-mobile-preface p,
+.work-content .reader-mobile-preface div {
+  text-align: center !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-height: min(48vh, 360px) !important;
+  overflow-y: auto !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel[hidden] {
+  display: none !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel > div {
+  display: grid !important;
+  grid-template-columns: 64px 44px minmax(0, 1fr) 44px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 44px !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel button,
+#readerSettingsDialog .rs-v59-spacing-panel output,
+#readerSettingsDialog .rs-v59-spacing-panel span {
+  min-width: 0 !important;
+  line-height: 1 !important;
+  text-align: center !important;
 }
 
 #readerSettingsDialog #settingsEinkButton {
@@ -9734,4 +9819,53 @@ body.eink-mode #readerSettingsDialog,
 body.eink-mode #readerSettingsDialog * {
   transition: none !important;
   animation: none !important;
+}
+
+:root.reader-bg-white {
+  --reader-bg: #ffffff !important;
+  --reader-ink: #202020 !important;
+}
+
+:root.reader-bg-paper,
+:root.reader-bg-light,
+:root.reader-bg-medium,
+:root.reader-bg-green,
+:root.reader-bg-gray {
+  --reader-bg: #f7f2e8 !important;
+  --reader-ink: #342f29 !important;
+}
+
+:root.reader-bg-night,
+:root.reader-bg-dark,
+:root.reader-bg-darkgray {
+  --reader-bg: #000000 !important;
+  --reader-ink: #6f6a62 !important;
+}
+
+:root.reader-bg-black {
+  --reader-bg: #000000 !important;
+  --reader-ink: #e8e8e8 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="paper"],
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="light"] {
+  background: #efe6dd !important;
+  border: 1px solid #eadfd4 !important;
+}
+
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="night"],
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="dark"],
+#readerSettingsDialog .rs-v59-bg-dots button[data-bg="darkgray"] {
+  background: #2a2a2a !important;
+  border: 1px solid #1f1f1f !important;
+}
+
+.work-content .reader-block-en,
+.work-content [lang="en"] {
+  font-family: var(--reader-english-font-family, Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif) !important;
+  line-height: calc(var(--reader-line-height) * 0.94) !important;
+  text-align: left !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
 }
