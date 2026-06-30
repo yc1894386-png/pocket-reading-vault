@@ -9678,40 +9678,7 @@ body.reading .portrait-lock {
   }
 }
 
-/* step9: minimal compatibility patches for restored old UI */
-#cloudAdvancedActions,
-.cloud-advanced-actions {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.cloud-sync-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.cloud-advanced-actions summary {
-  cursor: pointer;
-  list-style: none;
-  width: fit-content;
-}
-
-.cloud-advanced-actions summary::-webkit-details-marker {
-  display: none;
-}
-
-.cloud-advanced-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.cloud-advanced-grid button {
-  min-width: 0;
-  padding: 0 10px;
-}
-
+/* step4 shell repair: landscape stays usable, notes center, spacing subpage, eink mode */
 body .portrait-lock,
 body.mobile-landscape .portrait-lock,
 body.reading .portrait-lock {
@@ -9719,25 +9686,79 @@ body.reading .portrait-lock {
   pointer-events: none !important;
 }
 
-body.mobile-landscape .app-shell,
-body.mobile-landscape .reader,
-body.mobile-landscape .reading-bar,
-body.mobile-landscape .reader-console,
-body.mobile-landscape .reader-page-count,
-body.mobile-landscape dialog {
-  visibility: visible !important;
+body.mobile-landscape {
   pointer-events: auto !important;
+}
+
+@media (orientation: landscape) and (max-width: 879px) {
+  body .app-shell,
+  body.mobile-landscape .app-shell,
+  body.reading .app-shell {
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body .reader,
+  body.mobile-landscape .reader,
+  body.reading .reader {
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body .reading-bar:not(.hidden),
+  body.mobile-landscape .reading-bar:not(.hidden),
+  body.reading .reading-bar:not(.hidden) {
+    display: grid !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body .reader-console:not(.hidden),
+  body.mobile-landscape .reader-console:not(.hidden),
+  body.reading .reader-console:not(.hidden) {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body .reader-page-count:not(.hidden),
+  body.mobile-landscape .reader-page-count:not(.hidden),
+  body.reading .reader-page-count:not(.hidden) {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  body dialog[open],
+  body.mobile-landscape dialog[open],
+  body.reading dialog[open] {
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body .portrait-lock,
+  body.mobile-landscape .portrait-lock,
+  body.reading .portrait-lock {
+    display: none !important;
+  }
 }
 
 .work-content .reader-source-notes,
 .reader .reader-source-notes,
 .work-content .reader-mobile-preface,
 .reader .reader-mobile-preface {
-  display: block !important;
-  width: min(100%, 680px) !important;
-  max-width: calc(100% - 24px) !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  width: min(88%, 680px) !important;
+  max-width: min(680px, calc(100% - 24px)) !important;
+  margin: 0 auto 1.5em !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: grid !important;
+  justify-items: center !important;
   text-align: center !important;
 }
 
@@ -9747,68 +9768,82 @@ body.mobile-landscape dialog {
 .work-content .reader-mobile-preface h2,
 .work-content .reader-mobile-preface p,
 .work-content .reader-mobile-preface div {
-  text-align: center !important;
-}
-
-#readerSettingsDialog .rs-v59-spacing-panel {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 8px !important;
   width: 100% !important;
-  max-height: min(48vh, 360px) !important;
-  overflow-y: auto !important;
-}
-
-#readerSettingsDialog .rs-v59-spacing-panel[hidden] {
-  display: none !important;
-}
-
-#readerSettingsDialog .rs-v59-spacing-panel > div {
-  display: grid !important;
-  grid-template-columns: 64px 44px minmax(0, 1fr) 44px !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-height: 44px !important;
-}
-
-#readerSettingsDialog .rs-v59-spacing-panel button,
-#readerSettingsDialog .rs-v59-spacing-panel output,
-#readerSettingsDialog .rs-v59-spacing-panel span {
-  min-width: 0 !important;
-  line-height: 1 !important;
+  max-width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
   text-align: center !important;
+  text-indent: 0 !important;
+}
+
+#readerSettingsDialog .rs-v59-eink-row {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
 #readerSettingsDialog #settingsEinkButton {
+  width: 100% !important;
   justify-content: space-between !important;
+}
+
+#readerSettingsDialog #settingsEinkButton.active b {
+  background: #111 !important;
 }
 
 #readerSettingsDialog #settingsEinkButton.active b::after {
   content: "✓";
-  display: inline-grid;
+  display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  margin-left: 8px;
-  border-radius: 8px;
-  background: #d8d8d8;
-  color: #ffffff;
-  font-size: 15px;
+  color: #fff;
+  font-size: 13px;
   line-height: 1;
 }
 
-body.eink-mode .reader,
-body.eink-mode .work-content {
-  background: #ffffff !important;
-  color: #111111 !important;
-  box-shadow: none !important;
+#readerSettingsDialog.spacing-open .rs-v59-grid > .rs-v59-row {
+  display: none !important;
 }
 
-body.eink-mode .reading-bar,
-body.eink-mode .reader-console,
-body.eink-mode #readerSettingsDialog .reader-settings-v59 {
-  backdrop-filter: none !important;
-  box-shadow: none !important;
+#readerSettingsDialog.spacing-open .rs-v59-spacing-panel {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 9px !important;
+  width: 100% !important;
+  max-height: min(30dvh, 300px) !important;
+  overflow: auto !important;
+  padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-back {
+  display: inline-grid !important;
+  place-items: center !important;
+  justify-self: start !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #f2f2f2 !important;
+  color: #666 !important;
+  font-weight: 800 !important;
+}
+
+#readerSettingsDialog .rs-v59-spacing-panel > div {
+  background: #f2f2f2 !important;
+}
+
+@media (max-width: 430px) {
+  #readerSettingsDialog.spacing-open .reader-settings-v59 {
+    max-height: min(42dvh, 360px) !important;
+    overflow: hidden !important;
+  }
+
+  #readerSettingsDialog.spacing-open .rs-v59-spacing-panel {
+    max-height: min(34dvh, 280px) !important;
+  }
+}
+
+body.eink-mode {
+  --reader-bg: #ffffff;
+  --reader-ink: #111111;
+  --reader-muted: #333333;
 }
 
 body.eink-mode .reader,
@@ -9816,14 +9851,98 @@ body.eink-mode .work-content,
 body.eink-mode .reading-bar,
 body.eink-mode .reader-console,
 body.eink-mode #readerSettingsDialog,
-body.eink-mode #readerSettingsDialog * {
+body.eink-mode #readerSettingsDialog *,
+body.eink-mode .reader-source-notes,
+body.eink-mode button {
   transition: none !important;
   animation: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+body.eink-mode .reader,
+body.eink-mode .work-content {
+  background: #ffffff !important;
+  color: #111111 !important;
+  text-shadow: none !important;
+}
+
+body.eink-mode .reading-bar,
+body.eink-mode .reader-console,
+body.eink-mode #readerSettingsDialog .reader-settings-v59 {
+  background: #ffffff !important;
+  border: 1px solid #d6d6d6 !important;
+}
+
+body.eink-mode button,
+body.eink-mode #readerSettingsDialog .rs-v59-card,
+body.eink-mode #readerSettingsDialog .rs-v59-bg-dots button {
+  border: 1px solid #bdbdbd !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+body.eink-mode .reader-source-notes {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* step5 visual layer: separate app dark theme from reader backgrounds */
+:root {
+  --app-bg-dark: #171615;
+  --app-surface-dark: #211f1c;
+  --app-surface-raised-dark: #2a2723;
+  --app-text-dark: #e6ded0;
+  --app-muted-dark: #b6aa99;
+  --app-border-dark: #3b352e;
+
+  --reader-bg-white: #ffffff;
+  --reader-paper-white: #ffffff;
+  --reader-ink-white: #1f1d1a;
+  --reader-muted-white: #6f675d;
+  --reader-border-white: #e5e0d8;
+
+  --reader-bg-paper: #f3eadc;
+  --reader-paper-paper: #f8f1e7;
+  --reader-ink-paper: #28231c;
+  --reader-muted-paper: #7a6f61;
+  --reader-border-paper: #e2d4c0;
+
+  --reader-bg-night: #1c1a17;
+  --reader-paper-night: #24211d;
+  --reader-ink-night: #d8d0c2;
+  --reader-muted-night: #a99f90;
+  --reader-border-night: #3d372f;
+
+  --reader-bg-black: #101010;
+  --reader-paper-black: #161616;
+  --reader-ink-black: #d6d6d6;
+  --reader-muted-black: #a8a8a8;
+  --reader-border-black: #333333;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --bg: var(--app-bg-dark) !important;
+  --panel: var(--app-surface-dark) !important;
+  --panel-strong: var(--app-surface-raised-dark) !important;
+  --paper: var(--app-surface-dark) !important;
+  --soft: var(--app-surface-raised-dark) !important;
+  --text: var(--app-text-dark) !important;
+  --muted: var(--app-muted-dark) !important;
+  --line: var(--app-border-dark) !important;
+  --accent: var(--app-text-dark) !important;
+  --accent-strong: #f0e8dc !important;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.22) !important;
 }
 
 :root.reader-bg-white {
-  --reader-bg: #ffffff !important;
-  --reader-ink: #202020 !important;
+  --reader-bg: var(--reader-bg-white) !important;
+  --reader-paper: var(--reader-paper-white) !important;
+  --reader-ink: var(--reader-ink-white) !important;
+  --reader-muted: var(--reader-muted-white) !important;
+  --reader-border: var(--reader-border-white) !important;
 }
 
 :root.reader-bg-paper,
@@ -9831,41 +9950,135 @@ body.eink-mode #readerSettingsDialog * {
 :root.reader-bg-medium,
 :root.reader-bg-green,
 :root.reader-bg-gray {
-  --reader-bg: #f7f2e8 !important;
-  --reader-ink: #342f29 !important;
+  --reader-bg: var(--reader-bg-paper) !important;
+  --reader-paper: var(--reader-paper-paper) !important;
+  --reader-ink: var(--reader-ink-paper) !important;
+  --reader-muted: var(--reader-muted-paper) !important;
+  --reader-border: var(--reader-border-paper) !important;
 }
 
 :root.reader-bg-night,
-:root.reader-bg-dark,
-:root.reader-bg-darkgray {
-  --reader-bg: #000000 !important;
-  --reader-ink: #6f6a62 !important;
+:root.reader-bg-darkgray,
+:root.reader-bg-dark {
+  --reader-bg: var(--reader-bg-night) !important;
+  --reader-paper: var(--reader-paper-night) !important;
+  --reader-ink: var(--reader-ink-night) !important;
+  --reader-muted: var(--reader-muted-night) !important;
+  --reader-border: var(--reader-border-night) !important;
 }
 
 :root.reader-bg-black {
-  --reader-bg: #000000 !important;
-  --reader-ink: #e8e8e8 !important;
+  --reader-bg: var(--reader-bg-black) !important;
+  --reader-paper: var(--reader-paper-black) !important;
+  --reader-ink: var(--reader-ink-black) !important;
+  --reader-muted: var(--reader-muted-black) !important;
+  --reader-border: var(--reader-border-black) !important;
 }
 
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="paper"],
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="light"] {
-  background: #efe6dd !important;
-  border: 1px solid #eadfd4 !important;
+:root.dark body,
+:root.dark .app-shell,
+:root.dark .library-panel,
+:root.dark .topbar,
+:root.dark .panel,
+:root.dark .dialog-card,
+:root.dark dialog,
+:root.dark .cloud-panel,
+:root.dark .import-drawer,
+:root.dark .manage-panel {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
 }
 
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="night"],
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="dark"],
-#readerSettingsDialog .rs-v59-bg-dots button[data-bg="darkgray"] {
-  background: #2a2a2a !important;
-  border: 1px solid #1f1f1f !important;
+:root.dark .work-card,
+:root.dark .folder-card,
+:root.dark input,
+:root.dark textarea,
+:root.dark select {
+  background-color: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
 }
 
+.reader {
+  background: var(--reader-bg) !important;
+  color: var(--reader-ink) !important;
+}
+
+.reader .work-content,
+.work-content {
+  background: var(--reader-paper) !important;
+  color: var(--reader-ink) !important;
+}
+
+.reader-source-notes,
+.reader-mobile-preface {
+  color: var(--reader-muted) !important;
+}
+
+.reader-source-notes h2,
+.reader-source-notes p,
+.reader-source-notes div,
+.reader-mobile-preface h2,
+.reader-mobile-preface p,
+.reader-mobile-preface div {
+  text-align: center !important;
+}
+
+/* step5 bilingual rhythm and English reading face */
 .work-content .reader-block-en,
 .work-content [lang="en"] {
-  font-family: var(--reader-english-font-family, Georgia, "Times New Roman", "Iowan Old Style", "Palatino Linotype", serif) !important;
-  line-height: calc(var(--reader-line-height) * 0.94) !important;
+  font-family: var(--reader-english-font-family, "Iowan Old Style", Georgia, Baskerville, "Palatino Linotype", Palatino, serif) !important;
+  font-size: 1em !important;
+  line-height: 1.64 !important;
+  font-weight: 400 !important;
   text-align: left !important;
+  text-indent: 0 !important;
   word-break: normal !important;
   overflow-wrap: normal !important;
   hyphens: none !important;
+  -webkit-hyphens: none !important;
+  letter-spacing: 0 !important;
+}
+
+.work-content .reader-block-zh,
+.work-content .reader-block-mixed {
+  font-size: 0.98em !important;
+  line-height: 1.76 !important;
+  text-align: left !important;
+  text-indent: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+.work-content .reader-split-block {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.work-content .reader-split-block.reader-block-en {
+  margin-top: 0 !important;
+  margin-bottom: 0.4em !important;
+}
+
+.work-content .reader-split-block.reader-block-en + .reader-split-block.reader-block-zh {
+  margin-top: 0 !important;
+  margin-bottom: 1.1em !important;
+}
+
+.work-content .reader-split-block.reader-block-zh + .reader-split-block.reader-block-en {
+  margin-top: 1.1em !important;
+}
+
+body.eink-mode {
+  --reader-bg: #ffffff !important;
+  --reader-paper: #ffffff !important;
+  --reader-ink: #111111 !important;
+  --reader-muted: #333333 !important;
+  --reader-border: #d6d6d6 !important;
+}
+
+body.eink-mode .reader,
+body.eink-mode .work-content {
+  background: #ffffff !important;
+  color: #111111 !important;
 }

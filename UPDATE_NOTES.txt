@@ -1,48 +1,35 @@
-Vellum step9 - hard restore CSS
+Vellum step6 PWA upload notes
 
-1. This round is hard restore CSS:
-   public/styles.css was directly restored from the old backup, then a minimal compatibility patch was appended.
+1. This round actually changed:
+- public/app.js
+- public/sw.js
 
-2. Old UI source:
-   C:\Users\Administrator\AppData\Local\Temp\vellum-backups\step4-shell-20260629-234655\styles.css
+2. This zip contains:
+- public/index.html
+- public/app.js
+- public/styles.css
+- public/sw.js
+- public/manifest.webmanifest
+- cloudflare-worker/worker.js
+- UPDATE_NOTES.txt
 
-3. Kept functions:
-   - Cloud sync panel: 立即同步 / 断开 / 高级选项.
-   - Advanced cloud actions: 用本机覆盖云端 / 从云端恢复到本机.
-   - Upload/download confirm prompts.
-   - reading.lastReadAt progress logic.
-   - Reader performance cache.
-   - Landscape no longer covers the page.
-   - Notes / author preface not left-shifted.
-   - Spacing secondary panel.
-   - Eink mode switch.
-   - Reader background options.
-   - Chinese / English word statistics functions.
-   - Bilingual reading mode.
-   - PWA / Service Worker registration repair.
+3. Upload and overwrite these GitHub paths:
+- public/index.html
+- public/app.js
+- public/styles.css
+- public/sw.js
+- public/manifest.webmanifest
+- cloudflare-worker/worker.js
 
-4. Minimal compatibility selectors appended:
-   - #cloudAdvancedActions
-   - .cloud-advanced-actions
-   - .cloud-advanced-grid
-   - body .portrait-lock / body.mobile-landscape .portrait-lock
-   - body.mobile-landscape .app-shell / .reader / .reading-bar / .reader-console / dialog
-   - .work-content .reader-source-notes
-   - .work-content .reader-mobile-preface
-   - #readerSettingsDialog .rs-v59-spacing-panel
-   - #readerSettingsDialog #settingsEinkButton
-   - body.eink-mode .reader / .work-content / .reading-bar / .reader-console / #readerSettingsDialog
-   - :root.reader-bg-white / paper / night / black
-   - #readerSettingsDialog .rs-v59-bg-dots button[data-bg]
-   - .work-content .reader-block-en
+4. After GitHub Pages deploys, visit with this cache-refresh suffix:
+?v=step6-pwa-20260630
 
-5. Not changed:
-   - cloudflare-worker/worker.js logic.
-   - server.js.
-   - public/sw.js logic.
-   - cloud sync logic.
-   - reading progress logic.
-   - Reader cache strategy.
+5. If the phone still opens an old version:
+- First force refresh the page.
+- Or clear this site's cache in browser site settings.
+- Or in DevTools > Application > Service Workers, unregister the old service worker and refresh.
 
-6. After GitHub Pages deploys, visit:
-   ?v=step9-hard-restore-css
+Notes:
+- Service Worker now registers safely instead of being unregistered by default.
+- The cache only stores the lightweight app shell.
+- Cloud sync APIs, imported external pages, cross-origin requests, non-GET requests, blob/data/chrome-extension URLs, and user library data are not cached by sw.js.
