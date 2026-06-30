@@ -1,0 +1,17 @@
+﻿{
+  "name": "Vellum",
+  "short_name": "Vellum",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#55aee2",
+  "icons": [
+    {
+      "src": "./vellum-logo.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
