@@ -80,6 +80,51 @@ function lightWork(work = {}) {
   };
 }
 
+function compactIndexWork(work = {}, progress = {}, syncCode = "") {
+  const withProgress = applyProgressToWork({ ...work }, progress);
+  const metadata = withProgress.metadata || {};
+  return {
+    id: withProgress.id || "",
+    title: withProgress.title || "",
+    author: withProgress.author || "",
+    sourceUrl: withProgress.sourceUrl || "",
+    folderId: withProgress.folderId || "",
+    folderIds: withProgress.folderIds || [],
+    customTags: withProgress.customTags || [],
+    note: withProgress.note || "",
+    status: withProgress.status || "",
+    reading: withProgress.reading || {},
+    sortOrder: withProgress.sortOrder,
+    updatedAt: withProgress.updatedAt || "",
+    importedAt: withProgress.importedAt || "",
+    createdAt: withProgress.createdAt || "",
+    wordCount: withProgress.wordCount ?? withProgress.stats?.word_count ?? 0,
+    totalChapters: withProgress.totalChapters ?? withProgress.stats?.chapters_total ?? 0,
+    chapterCount: withProgress.chapterCount ?? withProgress.stats?.chapters_current ?? 0,
+    hasCloudShard: true,
+    shardKey: withProgress.shardKey || workObjectKey(syncCode, withProgress.id || withProgress.sourceUrl || withProgress.title || ""),
+    metadata: {
+      rating: metadata.rating || "",
+      warnings: metadata.warnings || [],
+      fandoms: metadata.fandoms || [],
+      relationships: metadata.relationships || [],
+      characters: metadata.characters || [],
+      additionalTags: metadata.additionalTags || metadata.additional_tags || []
+    }
+  };
+}
+
+function compactIndexState(state = {}, progress = {}, syncCode = "") {
+  const { works, ...rest } = state || {};
+  return {
+    ...rest,
+    works: (Array.isArray(works) ? works : []).map((work) => compactIndexWork(work, progress, syncCode)),
+    _vellumSharded: 2,
+    _vellumCloudMode: state._vellumCloudMode || "kv-progress-r2-works-v1",
+    compactIndex: true
+  };
+}
+
 function makeManifestState(state = {}, syncCode = "") {
   const works = Array.isArray(state.works) ? state.works : [];
   return {
@@ -364,10 +409,23 @@ async function readShardedManifest(env, syncCode) {
   };
 }
 
-async function readShardedIndex(env, syncCode) {
+async function readShardedIndex(env, syncCode, { lite = false } = {}) {
   const manifest = await env.VELLUM_SYNC.get(manifestKey(syncCode), { type: "json" });
   if (!manifest) return null;
   const progress = await env.VELLUM_SYNC.get(progressKey(syncCode), { type: "json" }) || {};
+  if (lite) {
+    return {
+      ...manifest,
+      state: compactIndexState(manifest.state || {}, progress, syncCode),
+      updated_at: progress.updated_at || manifest.updated_at,
+      provider: "cloudflare-r2-v2",
+      sharded: true,
+      manifestOnly: true,
+      indexOnly: true,
+      compactIndex: true,
+      progressIncluded: true
+    };
+  }
   return {
     ...manifest,
     state: {
@@ -553,7 +611,7 @@ export default {
     if (request.method === "GET" && isIndexPath) {
       const syncCode = cleanSyncCode(url.searchParams.get("syncCode") || "");
       if (!validSyncCode(syncCode)) return json({ error: "BAD_SYNC_CODE" }, 400);
-      const stored = await readShardedIndex(env, syncCode);
+      const stored = await readShardedIndex(env, syncCode, { lite: url.searchParams.get("lite") === "1" });
       if (stored?.error) return json(stored, 500);
       return json(stored || null);
     }
