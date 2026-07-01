@@ -6,11 +6,11 @@ const DIRECT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev
 const DEFAULT_CLOUDFLARE_WORKER_BASE = DIRECT_CLOUDFLARE_WORKER_BASE;
 const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
-const CLOUD_DESKTOP_WORK_BATCH_SIZE = 6;
-const CLOUD_MOBILE_WORK_BATCH_SIZE = 4;
+const CLOUD_DESKTOP_WORK_BATCH_SIZE = 12;
+const CLOUD_MOBILE_WORK_BATCH_SIZE = 8;
 const CLOUD_REQUEST_RETRIES = 3;
-const CLOUD_INITIAL_WORK_BATCH_LIMIT = 0;
-const CLOUD_BACKGROUND_PREFETCH_DELAY = 180;
+const CLOUD_INITIAL_WORK_BATCH_LIMIT = 24;
+const CLOUD_BACKGROUND_PREFETCH_DELAY = 80;
 
 const $ = (selector) => document.querySelector(selector);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -2473,7 +2473,7 @@ function cloudWorkBatchSize() {
 }
 
 function cloudInitialWorkBatchLimit() {
-  return window.matchMedia?.("(max-width: 879px)")?.matches ? 0 : CLOUD_INITIAL_WORK_BATCH_LIMIT;
+  return CLOUD_INITIAL_WORK_BATCH_LIMIT;
 }
 
 function isCloudStubWork(work = {}) {
