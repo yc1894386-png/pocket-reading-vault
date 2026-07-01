@@ -9000,24 +9000,19 @@ body.reading .work-content {
 
 @media (max-width: 879px) and (orientation: landscape) {
   body.mobile-landscape .app-shell,
+  body.mobile-landscape .reader,
   body.mobile-landscape .reading-bar,
   body.mobile-landscape .reader-console,
-  body.mobile-landscape .reader-page-count,
-  body.mobile-landscape dialog:not(.image-preview-dialog) {
-    display: none !important;
+  body.mobile-landscape .reader-page-count {
+    visibility: visible !important;
+    pointer-events: auto !important;
   }
 
   body.mobile-landscape .portrait-lock {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 999999 !important;
-    display: grid !important;
-    place-content: center !important;
-    gap: 8px !important;
-    padding: 24px !important;
-    background: #ffffff !important;
-    color: #222222 !important;
-    text-align: center !important;
+    display: none !important;
+    position: static !important;
+    inset: auto !important;
+    pointer-events: none !important;
   }
 }
 

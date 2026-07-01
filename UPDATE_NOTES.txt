@@ -1,35 +1,32 @@
-Vellum step6 PWA upload notes
+﻿Vellum 上传说明 - feature retention fix
 
-1. This round actually changed:
-- public/app.js
-- public/sw.js
-
-2. This zip contains:
-- public/index.html
-- public/app.js
+本轮实际修改：
+- styles.css
 - public/styles.css
-- public/sw.js
-- public/manifest.webmanifest
+
+本轮修复：
+- 保留当前功能清单。
+- 修复旧 CSS 中横屏时隐藏 app-shell / reader / reading-bar / reader-console / reader-page-count 的历史规则。
+- portraitLock 不再在 mobile-landscape 下全屏覆盖并阻止操作。
+
+已确认保留：
+- Reader 正文 HTML 缓存和章节解析缓存。
+- 阅读进度 lastReadAt。
+- 云同步高级选项结构。
+- Notes / 作者前言居中规则。
+- 间距二级面板。
+- 墨水屏模式。
+- PWA / Service Worker 注册修复。
+- 中英文/双语、字数统计、图片预览、文件夹/分组/tag 相关功能代码。
+
+GitHub 上传覆盖路径：
+- 根目录：index.html, app.js, styles.css, sw.js, manifest.webmanifest, vellum-logo.png（如果存在）
+- public/：index.html, app.js, styles.css, sw.js, manifest.webmanifest, vellum-logo.png（如果存在）
 - cloudflare-worker/worker.js
-- UPDATE_NOTES.txt
 
-3. Upload and overwrite these GitHub paths:
-- public/index.html
-- public/app.js
-- public/styles.css
-- public/sw.js
-- public/manifest.webmanifest
-- cloudflare-worker/worker.js
+上传后建议访问：
+https://yc1894386-png.github.io/pocket-reading-vault/?v=feature-retention-fix-20260701
 
-4. After GitHub Pages deploys, visit with this cache-refresh suffix:
-?v=step6-pwa-20260630
-
-5. If the phone still opens an old version:
-- First force refresh the page.
-- Or clear this site's cache in browser site settings.
-- Or in DevTools > Application > Service Workers, unregister the old service worker and refresh.
-
-Notes:
-- Service Worker now registers safely instead of being unregistered by default.
-- The cache only stores the lightweight app shell.
-- Cloud sync APIs, imported external pages, cross-origin requests, non-GET requests, blob/data/chrome-extension URLs, and user library data are not cached by sw.js.
+注意：
+- cloudflare-worker/worker.js 上传到 GitHub 不等于已经部署到 Cloudflare Worker。
+- 如果云端读取失败，还需要把 cloudflare-worker/worker.js 的内容复制到 Cloudflare Worker 后点击 Deploy。
