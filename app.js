@@ -6,10 +6,10 @@ const DIRECT_CLOUDFLARE_WORKER_BASE = "https://vellum-sync.yc1894386.workers.dev
 const DEFAULT_CLOUDFLARE_WORKER_BASE = DIRECT_CLOUDFLARE_WORKER_BASE;
 const DEFAULT_CLOUD_PROXY_BASE = DEFAULT_CLOUDFLARE_WORKER_BASE;
 const SAFE_MODE = new URLSearchParams(location.search).has("safe");
-const CLOUD_DESKTOP_WORK_BATCH_SIZE = 12;
-const CLOUD_MOBILE_WORK_BATCH_SIZE = 8;
+const CLOUD_DESKTOP_WORK_BATCH_SIZE = 4;
+const CLOUD_MOBILE_WORK_BATCH_SIZE = 2;
 const CLOUD_REQUEST_RETRIES = 3;
-const CLOUD_INITIAL_WORK_BATCH_LIMIT = 24;
+const CLOUD_INITIAL_WORK_BATCH_LIMIT = 0;
 const CLOUD_BACKGROUND_PREFETCH_DELAY = 80;
 
 const $ = (selector) => document.querySelector(selector);
@@ -3149,13 +3149,13 @@ async function getCloudState() {
 
 async function getCloudflareManifestState() {
   let data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}&lite=1`, {
-    timeoutMs: 20000,
-    retries: 2
+    timeoutMs: 9000,
+    retries: 1
   }).catch(() => null);
   if (!data?.state) {
     data = await cloudWorkerJson(`/api/v2/index?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 24000,
-      retries: 1
+      timeoutMs: 12000,
+      retries: 0
     }).catch(() => null);
   }
   if (data?.state) {
@@ -3172,8 +3172,8 @@ async function getCloudflareManifestState() {
   }
   if (!data?.state) {
     data = await cloudWorkerJson(`/api/v2/manifest?syncCode=${encodeURIComponent(state.syncCode)}`, {
-      timeoutMs: 24000,
-      retries: 1
+      timeoutMs: 12000,
+      retries: 0
     });
   }
   const nextState = data?.state ? cloneLibraryState(data.state) : null;
@@ -3710,7 +3710,12 @@ async function loadCloudflareIntoLocalIncremental({ merge = true } = {}) {
     setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇，没有缺正文。`);
     return;
   }
-  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。正文正在后台自动下载。`);
+  setCloudStatus(`已同步云端目录：云端 ${cloudCount} 篇，本机 ${state.works.length} 篇。${ids.length} 篇正文后台自动下载。`);
+  if (!idsToLoadNow.length) {
+    scheduleCloudBackfill();
+    setTimeout(() => backfillCloudWorks({ immediate: true }), 80);
+    return;
+  }
   for (let index = 0; index < idsToLoadNow.length; index += batchSize) {
     const batchIds = idsToLoadNow.slice(index, index + batchSize);
     const batchNumber = Math.floor(index / batchSize) + 1;

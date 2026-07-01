@@ -1,28 +1,26 @@
-﻿Vellum 上传说明 - cloud worker sync fix
+﻿本轮修复：云端目录读取卡住
 
-本轮实际改动：
-- index.html
-- public/index.html
+实际修改：
+1. app.js / public/app.js
+   - 云端目录读取超时时间缩短，失败更快反馈。
+   - 首次同步不再等待正文下载，目录拿到后立即显示书架。
+   - 正文下载改为后台小批量补齐，避免手机卡在“正在读取云端目录”。
+   - 正文批量大小降低：电脑 4 篇/批，手机 2 篇/批。
 
-修复内容：
-- 把页面加载脚本从旧缓存版本 restore-ui-v162-20260630 改为 cloud-worker-sync-fix-20260701。
-- 目的：让手机/新设备强制加载当前 app.js，而不是继续吃旧同步逻辑。
+2. index.html / public/index.html
+   - app.js 版本号改为：cloud-directory-fast-20260701，避免手机继续缓存旧脚本。
 
-云端检查结果：
-- Cloudflare Worker 根路径可访问。
-- /api/v2/index?syncCode=XU8J-99LY-WKAA&lite=1 可返回目录。
-- /api/v2/progress?syncCode=XU8J-99LY-WKAA 可返回阅读进度。
-- CORS 正常。
+没有改：
+- UI 样式
+- 阅读器渲染
+- 阅读进度 lastReadAt
+- Cloudflare Worker 逻辑
+- Service Worker 逻辑
 
-GitHub 上传覆盖路径：
-- 根目录：index.html, app.js, styles.css, sw.js, manifest.webmanifest, vellum-logo.png（如果存在）
-- public/：index.html, app.js, styles.css, sw.js, manifest.webmanifest, vellum-logo.png（如果存在）
-- cloudflare-worker/worker.js
+GitHub 上传后建议打开：
+https://yc1894386-png.github.io/pocket-reading-vault/?v=cloud-directory-fast-20260701
 
-上传后访问：
-https://yc1894386-png.github.io/pocket-reading-vault/?v=cloud-worker-sync-fix-20260701
-
-如果新设备还是卡在“正在读取云端目录”：
-1. 先确认打开的是上面的新链接。
-2. 手机浏览器清除该站点缓存。
-3. Cloudflare Worker 代码也需要部署到 Worker 后台，GitHub 上传 worker.js 不会自动部署 Worker。
+如果手机仍卡住：
+1. 先用手机直接打开 https://vellum-sync.yc1894386.workers.dev/
+2. 如果这个都打不开，是 workers.dev 网络问题，需要自定义域名。
+3. 如果这个能打开但 Vellum 仍旧卡，请清掉该站点缓存后再打开上面的 v=cloud-directory-fast-20260701 链接。
