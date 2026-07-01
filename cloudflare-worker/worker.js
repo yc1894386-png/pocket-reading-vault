@@ -448,13 +448,12 @@ async function readProgress(env, syncCode) {
 async function readWorkBatch(env, syncCode, ids = []) {
   if (!env.VELLUM_BUCKET) return { error: "R2_BINDING_MISSING" };
   const progress = await env.VELLUM_SYNC.get(progressKey(syncCode), { type: "json" }) || {};
-  const works = [];
-  for (const id of ids.filter(Boolean)) {
+  const works = (await Promise.all(ids.filter(Boolean).map(async (id) => {
     const object = await env.VELLUM_BUCKET.get(workObjectKey(syncCode, id));
-    if (!object) continue;
+    if (!object) return null;
     const work = await object.json();
-    works.push(applyProgressToWork(work, progress));
-  }
+    return applyProgressToWork(work, progress);
+  }))).filter(Boolean);
   return {
     ok: true,
     provider: "cloudflare-r2-v2",
@@ -626,7 +625,7 @@ export default {
       const syncCode = cleanSyncCode(url.searchParams.get("syncCode") || "");
       if (!validSyncCode(syncCode)) return json({ error: "BAD_SYNC_CODE" }, 400);
       const ids = (url.searchParams.get("ids") || "").split(",").map((id) => decodeURIComponent(id)).filter(Boolean);
-      const stored = await readWorkBatch(env, syncCode, ids.slice(0, 12));
+      const stored = await readWorkBatch(env, syncCode, ids.slice(0, 24));
       if (stored?.error) return json(stored, 500);
       return json(stored);
     }
