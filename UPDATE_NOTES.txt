@@ -1,32 +1,28 @@
-﻿Vellum 上传说明 - feature retention fix
+﻿Vellum 上传说明 - cloud worker sync fix
 
-本轮实际修改：
-- styles.css
-- public/styles.css
+本轮实际改动：
+- index.html
+- public/index.html
 
-本轮修复：
-- 保留当前功能清单。
-- 修复旧 CSS 中横屏时隐藏 app-shell / reader / reading-bar / reader-console / reader-page-count 的历史规则。
-- portraitLock 不再在 mobile-landscape 下全屏覆盖并阻止操作。
+修复内容：
+- 把页面加载脚本从旧缓存版本 restore-ui-v162-20260630 改为 cloud-worker-sync-fix-20260701。
+- 目的：让手机/新设备强制加载当前 app.js，而不是继续吃旧同步逻辑。
 
-已确认保留：
-- Reader 正文 HTML 缓存和章节解析缓存。
-- 阅读进度 lastReadAt。
-- 云同步高级选项结构。
-- Notes / 作者前言居中规则。
-- 间距二级面板。
-- 墨水屏模式。
-- PWA / Service Worker 注册修复。
-- 中英文/双语、字数统计、图片预览、文件夹/分组/tag 相关功能代码。
+云端检查结果：
+- Cloudflare Worker 根路径可访问。
+- /api/v2/index?syncCode=XU8J-99LY-WKAA&lite=1 可返回目录。
+- /api/v2/progress?syncCode=XU8J-99LY-WKAA 可返回阅读进度。
+- CORS 正常。
 
 GitHub 上传覆盖路径：
 - 根目录：index.html, app.js, styles.css, sw.js, manifest.webmanifest, vellum-logo.png（如果存在）
 - public/：index.html, app.js, styles.css, sw.js, manifest.webmanifest, vellum-logo.png（如果存在）
 - cloudflare-worker/worker.js
 
-上传后建议访问：
-https://yc1894386-png.github.io/pocket-reading-vault/?v=feature-retention-fix-20260701
+上传后访问：
+https://yc1894386-png.github.io/pocket-reading-vault/?v=cloud-worker-sync-fix-20260701
 
-注意：
-- cloudflare-worker/worker.js 上传到 GitHub 不等于已经部署到 Cloudflare Worker。
-- 如果云端读取失败，还需要把 cloudflare-worker/worker.js 的内容复制到 Cloudflare Worker 后点击 Deploy。
+如果新设备还是卡在“正在读取云端目录”：
+1. 先确认打开的是上面的新链接。
+2. 手机浏览器清除该站点缓存。
+3. Cloudflare Worker 代码也需要部署到 Worker 后台，GitHub 上传 worker.js 不会自动部署 Worker。
